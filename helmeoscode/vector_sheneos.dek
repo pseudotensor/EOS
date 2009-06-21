@@ -1,0 +1,101 @@
+c..
+c..declaration for pipelining the eos routines
+
+
+
+
+c..maximum length of the row vector
+      integer   numt,numrhob,numyp
+     1	 	,numtorig,numrhoborig,numyporig
+     1	 	,numtmatlab,numrhobmatlab,numypmatlab
+     1	        ,ncinexpected,ncoutexpected
+c +1 corresponds to T=0 and Yp=0 tables
+      parameter (numtorig = 31+1, numrhoborig=104, numyporig=71+1)
+
+c      parameter (numtmatlab = 200, numrhobmatlab=200, numypmatlab=20)
+      parameter (numtmatlab = 32*2, numrhobmatlab=104, numypmatlab=72)
+
+c      Below is for loading original table
+c      parameter (numt = numtorig, numrhob=numrhoborig, numyp=numyporig)
+c      Below is for loading Matlab interpolated version of table
+      parameter (numt = numtmatlab, numrhob=numrhobmatlab, numyp=numypmatlab)
+      parameter (ncinexpected=17,ncoutexpected=19)
+
+c     Parameters from header file
+      integer ncin,ncout,nrhobin,nypin,ntkin,nrhobout,nypout,ntkout
+      common /tableheaderparms1/  ncin,ncout,nrhobin,nypin,ntkin,nrhobout,nypout,ntkout
+
+c     Parameters from header file
+      double precision lrhobminin,lrhobmaxin,lypminin,lypmaxin,ltkminin,ltkmaxin
+     1     ,lrhobminout,lrhobmaxout,lypminout,lypmaxout
+     1     ,ltkminout,ltkmaxout
+      common /tableheaderparms2/  lrhobminin,lrhobmaxin,lypminin,lypmaxin,ltkminin,ltkmaxin
+     1     ,lrhobminout,lrhobmaxout,lypminout,lypmaxout
+     1     ,ltkminout,ltkmaxout 
+
+
+c Shen table (17+2 things)
+      double precision shenlrhob_row(numt,numyp,numrhob), shennb_row(numt,numyp,numrhob),
+     2          shenlyp_row(numt,numyp,numrhob),   shenyp_row(numt,numyp,numrhob),
+     3	        shenf_row(numt,numyp,numrhob),     shenebulk_row(numt,numyp,numrhob),
+     3	        shensbulk_row(numt,numyp,numrhob),
+     4	        shenaheav_row(numt,numyp,numrhob), shenzheav_row(numt,numyp,numrhob),
+     5		shenmstar_row(numt,numyp,numrhob), shenxneut_row(numt,numyp,numrhob),
+     5		shenxprot_row(numt,numyp,numrhob),
+     6		shenxalfa_row(numt,numyp,numrhob), shenxh_row(numt,numyp,numrhob),
+     7		shenpbulk_row(numt,numyp,numrhob), shenmunminusmup_row(numt,numyp,numrhob),
+     8		shenmup_row(numt,numyp,numrhob),
+     9          shenltemp_row(numt,numyp,numrhob),
+     9          shentemp_row(numt,numyp,numrhob)
+c    temp not read-in, but created consistently with original Shen table
+	
+
+      common /shentable1/  shenlrhob_row, shennb_row,
+     2          shenlyp_row,   shenyp_row,
+     3	        shenf_row,     shenebulk_row,
+     3	        shensbulk_row,
+     4	        shenaheav_row, shenzheav_row,
+     5		shenmstar_row, shenxneut_row,
+     5		shenxprot_row,
+     6		shenxalfa_row, shenxh_row,
+     7		shenpbulk_row, shenmunminusmup_row,
+     8		shenmup_row,
+     9          shenltemp_row,
+     9          shentemp_row
+
+      integer shenwithintable_row(numt,numyp,numrhob)
+      common /shentable2/ shenwithintable_row
+
+
+
+
+
+c Shen "single" values FROM table
+      double precision shenlrhob_sing, shennb_sing,
+     2          shenlyp_sing,   shenyp_sing,
+     3	        shenf_sing,     shenebulk_sing,
+     3	        shensbulk_sing,
+     4	        shenaheav_sing, shenzheav_sing,
+     5		shenmstar_sing, shenxneut_sing,
+     5		shenxprot_sing,
+     6		shenxalfa_sing, shenxh_sing,
+     7		shenpbulk_sing, shenmunminusmup_sing,shenmun_sing,
+     8		shenmup_sing,
+     9          shenltemp_sing,
+     9          shentemp_sing
+	
+
+      common /shentable3/  shenlrhob_sing, shennb_sing,
+     2          shenlyp_sing,   shenyp_sing,
+     3	        shenf_sing,     shenebulk_sing,
+     3	        shensbulk_sing,
+     4	        shenaheav_sing, shenzheav_sing,
+     5		shenmstar_sing, shenxneut_sing,
+     5		shenxprot_sing,
+     6		shenxalfa_sing, shenxh_sing,
+     7		shenpbulk_sing, shenmunminusmup_sing,shenmun_sing,
+     8		shenmup_sing,
+     9          shenltemp_sing,
+     9          shentemp_sing
+
+

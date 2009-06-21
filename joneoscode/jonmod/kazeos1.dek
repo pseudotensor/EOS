@@ -1,0 +1,167 @@
+
+c changed Prad -> Pradiation
+ccccccccccccccccccccccccccccccccccccccccc
+c
+c These should all be global varaibles
+c
+cccccccccccccccccccccccccccccccccccccccc
+
+
+c
+      integer computespecies    ! whether to compute species or assume
+c                               ! already computed
+C======================================================================
+      real*8 tdynorye               !dynamical timescale in sec or Y_e
+      real*8 tdynorynu              !dynamical timescale in sec or Y_\nu
+      real*8 hcm                !disk half thickness in cm
+      real*8 rhob               !baryon denstiy in g/cc
+      real*8 tk                 !temperature in K
+C======================================================================
+      real*8 p_tot              !total pressure in erg/cc
+      real*8 p_photon           !photon pressure in erg/cc
+      real*8 p_eleposi          !electron-positron pressure in erg/cc
+      real*8 p_N           !nuclei pressure in erg/cc
+      real*8 p_nu               !neutrino  pressure in erg/cc
+C======================================================================
+C======================================================================
+      real*8 u_tot              !in erg/cc
+      real*8 u_N                !in erg/cc
+C======================================================================
+      real*8 rho_tot            !in erg/cc
+      real*8 rho_photon         !in erg/cc
+      real*8 rho_eleposi        !in erg/cc
+      real*8 rho_N              !in erg/cc
+      real*8 rho_nu             !in erg/cc
+C======================================================================
+      real*8 s_tot              !total entropy density in erg/K/cc
+      real*8 s_photon           !photon entropy density in erg/K/cc
+      real*8 s_eleposi          !electron entropy density in erg/K/cc
+      real*8 s_N                !nucleon entropy density in erg/K/cc
+      real*8 s_nu               !neutrino entropy density in erg/K/cc
+C======================================================================
+      real*8 kazabar,kazzbar  ! average atomic mass and number
+      real*8 kazaheav,kazzheav ! a,z for heavy nuclei (A>4, not alphas)
+      real*8 kazxneut,kazxprot,kazxalfa,kazxheav,abarbound
+      real*8 Ynu,Ynuthermal ! electron neutrino fraction
+      real*8 yetot              !n_p/n_b total (not just free particles)
+      real*8 yefree		!Y_e for free particles only
+      real*8 yebound		!Y_e for bound particles only
+      real*8 yeheav ! heavy nucleis Y_e
+C======================================================================
+      real*8 nptotal,nntotal,npfree,nnfree,npbound,nnbound,npheav,nnheav
+C======================================================================
+      real*8 dyedt,dyedtthin,graddotrhouye,graddotrhouyenonthermal          ! dY_e/dt
+      real*8 thermalye          ! estimate of thermal Y_e
+C======================================================================
+c      real*8 qtautel,qtautmu,qtauttau,qtauael,qtauamu,qtauatau,qtaus
+c     |  ,ntautel,ntautmu,ntauttau,ntauael,ntauamu,ntauatau,ntaus
+c     |	,qtaustotel,qtaustotmu,qtaustottau
+c     |  ,ntaustotel,ntaustotmu,ntaustottau
+
+      real*8 ntauael,ntaustotel
+     |  ,qtautelohcm, qtauaelohcm
+     |  ,qtautnueohcm, qtauanueohcm
+     |  ,qtautnuebarohcm, qtauanuebarohcm
+     |  ,qtautmuohcm, qtauamuohcm
+     |  ,qtauttauohcm, qtauatauohcm,qtausohcm
+     |  ,ntautelohcm, ntauaelohcm
+     |  ,ntautnueohcm, ntauanueohcm
+     |  ,ntautnuebarohcm, ntauanuebarohcm
+     |  ,ntautmuohcm, ntauamuohcm
+     |  ,ntauttauohcm, ntauatauohcm,ntausohcm
+     |  ,Qm
+     |  ,Qmel 
+     |  ,Qmmu 
+     |  ,Qmtau
+     |  ,Nm    
+     |  ,Nmel  
+     |  ,Nmmu  
+     |  ,Nmtau 
+     |  ,qminusel, qminusmu, qminustau
+     |  ,nminusel, nminusmu, nminustau
+     |  ,gammapeglobal,gammaAeglobal,gammapnuglobal,gammapenuglobal
+     |  ,gammanglobal,gammaneglobal,gammannuglobal
+     |  ,gammap2nglobal,gamman2pglobal
+     |  ,Tdifftot,lambdatot,Tthermaltot
+     |  ,Enuglobal,Enueglobal,Enuebarglobal
+     |  ,RufNm,RufQm,Rufgraddotrhouye
+     |  ,unue0,unuebar0,unumu0
+     |  ,nnue0,nnuebar0,nnumu0
+     |  ,nnueth0,nnuebarth0
+     | 	,lambdaintot
+     |  ,tauphotonohcm, tauphotonabsohcm
+
+      real*8 Qphoton
+      common /photonstuff/ Qphoton
+
+
+cc      common/xnucstuff/xnuc
+      common /variable1/ tdynorye,tdynorynu,hcm,rhob,tk
+      common /variable4/ p_tot, u_tot, s_tot, p_photon, p_eleposi, p_N, u_N, p_nu , 
+     1	                 rho_tot, 
+     1 	                 rho_photon, rho_eleposi, rho_N, rho_nu , s_photon, s_eleposi, s_N, s_nu
+
+
+
+      common/variable6/ Ynu,Ynuthermal,yetot,yefree,yebound,yeheav,dyedt,dyedtthin,graddotrhouye,graddotrhouyenonthermal,thermalye
+     |  	,kazabar,kazzbar,kazaheav,kazzheav
+     |          ,kazxneut,kazxprot,kazxalfa,kazxheav,abarbound
+     |      	,nptotal,nntotal,npfree,nnfree,npbound,nnbound,npheav,nnheav
+
+c      common/etaeglobal/ etae,npratiofree,xnuc
+
+      common /globalconditions/ computespecies
+
+
+
+
+      common /neutrinostuff/   ntauael,ntaustotel
+     |  ,qtautelohcm, qtauaelohcm
+     |  ,qtautnueohcm, qtauanueohcm
+     |  ,qtautnuebarohcm, qtauanuebarohcm
+     |  ,qtautmuohcm, qtauamuohcm
+     |  ,qtauttauohcm, qtauatauohcm,qtausohcm
+     |  ,ntautelohcm, ntauaelohcm
+     |  ,ntautnueohcm, ntauanueohcm
+     |  ,ntautnuebarohcm, ntauanuebarohcm
+     |  ,ntautmuohcm, ntauamuohcm
+     |  ,ntauttauohcm, ntauatauohcm,ntausohcm
+     |  ,Qm
+     |  ,Qmel 
+     |  ,Qmmu 
+     |  ,Qmtau
+     |  ,Nm    
+     |  ,Nmel  
+     |  ,Nmmu  
+     |  ,Nmtau 
+     |  ,qminusel, qminusmu, qminustau
+     |  ,nminusel, nminusmu, nminustau
+     |  ,gammapeglobal,gammaAeglobal,gammapnuglobal,gammapenuglobal
+     |  ,gammanglobal,gammaneglobal,gammannuglobal
+     |  ,gammap2nglobal,gamman2pglobal
+     |  ,Tdifftot,lambdatot,Tthermaltot
+     |  ,Enuglobal,Enueglobal,Enuebarglobal
+     |  ,RufNm,RufQm,Rufgraddotrhouye
+     |  ,unue0,unuebar0,unumu0
+     |  ,nnue0,nnuebar0,nnumu0
+     |  ,nnueth0,nnuebarth0
+     | 	,lambdaintot
+     |  ,tauphotonohcm, tauphotonabsohcm
+  
+
+
+
+
+C======================================================================
+C======================================================================
+C======================================================================
+C======================================================================
+C======================================================================
+c      include 'kazeos.loopvars.dek'
+C======================================================================
+c      include 'kazeos.loopparms.dek'
+C======================================================================
+
+
+
+

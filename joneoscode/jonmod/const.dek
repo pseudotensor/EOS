@@ -1,0 +1,162 @@
+c.. 
+c..mathematical and physical constants (in cgs,except e0 which is in ev)
+c..
+c..the 1986 codta recommended valeus of the physical constants
+c..by coehn & taylor 
+
+
+c..declare  
+      double precision pi,rootpi,a2rad,rad2a,eulercon
+      double precision ergPmev,QEMEV
+      double precision ggrav,hcgs,hbarcgs,qe,avo,avoreal,clight,light2,kerg,kev,amu,mumev,mn,mp,me,mb,
+     1                 rbohr,fine,hion,ev2erg,
+     2                 fm,fm3,k2mev,mev2erg,mecc,
+     3                 ssol,asol,weinfre,weinlam,rhonuc
+      double precision mev3tocc,mev4toecc,g2erg,mev3ergKcc,mev2K,memev,Qmev,Deltamev,mev2toergs,mev5toergcms,ga,GF,mevtosec
+      double precision msol,rsol,lsol,mearth,rearth,ly,pc,au,   
+     2                 secyer
+      double precision Aelepos, Anut, AH, AHe, AC12, AO16, ANe20, AMg24, ASi28, AFe56,malpha
+
+c..math constants   
+      parameter        (pi       = 3.1415926535897932384d0, 
+     1			rootpi   = 1.7724538509055160273d0,
+     2                  eulercon = 0.577215664901532861d0,   
+     3                  a2rad    = pi/180.0d0,  rad2a = 180.0d0/pi)
+
+
+c..physical constants
+c      parameter        (ggrav       = 6.67259d-8,
+c     1                  hcgs       = 6.6260755d-27,
+c     2                  hbarcgs    = 0.5 * hcgs/pi,
+c     3                  qe      = 4.8032068d-10,
+c     4                  avo     = 6.0221367d23,
+c     5                  clight  = 2.99792458d10,
+c     6                  kerg    = 1.380658d-16,
+c     7                  kev     = 8.617385d-5,
+c     8                  amu     = 1.6605402d-24,
+c     9                  mn      = 1.6749286d-24,
+c     &                  mp      = 1.6726231d-24,
+c     1                  me      = 9.1093897d-28,
+c     2                  rbohr   = hbarcgs*hbarcgs/(me * qe * qe),
+c     3                  fine    = qe*qe/(hbarcgs*clight),
+c     4                  hion    = 13.605698140d0,
+c     5                  ev2erg  = 1.602d-12)
+c      parameter        (ssol     = 5.67051d-5,
+c     1                  asol    = 4.0d0 * ssol / clight,
+c     2                  weinlam = hcgs*clight/(kerg * 4.965114232d0),
+c     3                  weinfre = 2.821439372d0*kerg/hcgs,
+c     4                  rhonuc  = 2.342d14)
+
+
+
+c..physical constants   
+      parameter        (
+     5                  clight  = 2.99792458d10, 
+     5			light2  = clight*clight,
+     1                  ergPmev = 1.782661758E-30*1E3*clight**2,
+     6                  kerg    = 1.380658d-16,
+     7                  kev     = 8.617385d-5, 
+c    Below is true Avagodro's number such that the true amu=1/avoreal
+c    It appears that everywhere amu is used it's true amu
+     4                  avoreal = 6.02214179d23,
+c    Kaz-like definition:
+c     1                  mb      = (0.5*(mp+mn)),
+c	Normal definition:
+     1                  mb      = (1.0D0/avoreal),
+c    Below is effective avo such that mb=1/avo
+c    It appears that avo is only used to represent 1/mb for conversion
+c      between something/baryon -> something/gram
+     4                  avo     = 1.0/mb,
+c     8                  amu    = 1.660538782d-24,
+     8                  amu    = 1.0/avoreal,
+     8                  mumev    = (amu*clight**2/ergPmev), ! MeV
+     1                  ggrav   = 6.67259d-8,
+     1	                mev3tocc=1.3014d32, !1 MeV^3 = (mev3tocc) /cc
+     1			mev4toecc=2.085d26, !1 MeV^4 = (mev4toecc) erg/cc
+     1			g2erg=0.8987d21,    !1 g = (g2erg) erg
+     1			mev3ergKcc=1.7967d16, !1 MeV^3 = (mev3ergKcc) erg/K/cc
+c     1	 		memev=0.511d0, !electron mass in MeV
+     1	 		memev=0.510998903313142, !electron mass in MeV
+     1			Qmev=1.2935d0, !qvalue of weak interaction between N,P
+     1			Deltamev=3.0d0, ! 1f_{5/2} neutron
+c 1MeV = mev2K
+     1			mev2K=1.16041d10, ! 1MeV = mev2K  K
+     1			mev2toergs=2.4341d15, ! 1 MeV^2 = (mev2toergs) erg/sec
+     1			mev5toergcms=3.1678d47, !1 MeV^5 = (mev5toergcms) erg /cc/sec
+     1			mevtosec=1.519d21, !1 MeV = (mevtosec) /sec
+c     1			ga=1.39d0, !axial vector coupling
+     1			ga=-1.23d0, !axial vector coupling
+     1			GF=(1.16637d-11*0.974213),  !Fermi coupling constant in MeV^-2 multiplied by cos(\theta_c) with \theta_c the Cabibbo mixing angle
+c     1                  hcgs = 6.6260755d-27,   
+     1                  hcgs = 6.62606895392606e-27,   
+     2                  hbarcgs    = 0.5d0 * hcgs/pi,
+     3                  qe      = 4.8032068d-10,   
+c    9                  mn      = 1.6749286d-24,   
+     9                  mn      = 1.674927211E-24,   
+c    &                  mp      = 1.6726231d-24,   
+     &                  mp      = 1.672621637E-24,   
+c    1                  me      = 9.1093897d-28,   
+     1                  me      = 9.10938215E-28,   
+c    m_n-m_p in MeV
+c     1                  QEMEV   = 1.29334,
+     1                  QEMEV   = ((mn-mp)*clight*clight)/ergPmev,
+     2                  rbohr   = hbarcgs*hbarcgs/(me * qe * qe),
+     3                  fine    = qe*qe/(hbarcgs*clight),  
+     4                  hion    = 13.605698140d0,  
+     5                  ev2erg  = ergPmev*1.0D-6,
+c fermis in cgs
+     6                  fm      = 1.0d-13,
+     7                  fm3     = fm*fm*fm,
+     8                  k2mev   = kev * 1.0d-6,
+     9                  mev2erg = ev2erg * 1.0d6,
+     &                  mecc    = me*light2)
+      parameter        (ssol     = 5.67051d-5,
+     1                  asol    = 4.0d0 * ssol / clight, 
+     2                  weinlam = hcgs*clight/(kerg * 4.965114232d0), 
+     3                  weinfre = 2.821439372d0*kerg/hcgs,   
+     4                  rhonuc  = 2.342d14) 
+
+
+c..astronomical constants   
+      parameter        (msol    = 1.9892d33,     
+     1                  rsol    = 6.95997d10,
+     2                  lsol    = 3.8268d33, 
+     3                  mearth  = 5.9764d27, 
+     4                  rearth  = 6.37d8,
+     5                  ly      = 9.460528d17,   
+     6                  pc      = 3.261633d0 * ly, 
+     7                  au      = 1.495978921d13,
+     8                  secyer  = 3.1558149984d7)
+
+c..atomic units constants (i.e. mass in grams is this times 1amu)
+
+c     Mass of one electron in amu
+c      parameter        (Aelepos     = me/amu,
+c     1                  AH      = 1.00794d0-1.0*Aelepos,
+cc  Below was rest-mass energy of Helium w/ its 2 electrons
+c  Below is not corrected using electrons
+c     1                  AHe     = 4.002602d0-2.0*Aelepos,
+c  Below is nuclear binding energy (completely ionized electrons)
+c  Below should give same result as above
+c     1                  AHe     = 4.00153d0,
+c     2			AC12    = 12.01078d0-6.0*Aelepos,
+c     3			AO16    = 15.99943d0-8.0*Aelepos,
+c     4			ANe20   = 20.17976d0-10.0*Aelepos,
+c     5			AMg24   = 24.30506d0-12.0*Aelepos,
+c     6			ASi28   = 28.08553d0-14.0*Aelepos,
+c     7			AFe56   = 55.8452d0-26.0*Aelepos,
+c     8                  malpha  = AHe*amu)
+
+c     Mass of one electron in amu
+      parameter        (Aelepos = me/amu,
+     1                  Anut    = 1.0086649159634,
+     1                  AH      = 1.0072764666089,
+     1                  AHe     = 4.00150609422894,
+     2			AC12    = 11.9967085205421,
+     3			AO16    = 15.99491461956,
+     4			ANe20   = 19.9869543764856,
+     5			AMg24   = 23.9784587412163,
+     6			ASi28   = 27.9692464141811,
+     7			AFe56   = 55.920674347431,
+     8                  malpha  = AHe*amu)
+

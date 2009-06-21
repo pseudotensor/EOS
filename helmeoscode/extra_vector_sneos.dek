@@ -1,0 +1,46 @@
+c
+c
+c All these things are only used to store into _row some LSEOS single things that are as global in vector_eos.single.dek
+c
+c
+c..common block for passing the lattimer-swesty input output around
+
+
+c..photon, e+e-, and bulk contributions
+      double precision 
+     &          frad_row(nrowmax),fele_row(nrowmax),fion_row(nrowmax)
+      common /thy2extra/
+     &          frad_row,fele_row,fion_row
+
+
+c..totals and their derivatives
+      double precision 
+     &                              dpy_row(nrowmax),
+     &                              dey_row(nrowmax),
+     &                              dsy_row(nrowmax),
+     &            ftot_row(nrowmax),dfd_row(nrowmax),dft_row(nrowmax),
+     &                              dfy_row(nrowmax)
+      common /thy3extra/ 
+     &                              dpy_row,
+     &                              dey_row,
+     &                              dsy_row,
+     &            ftot_row,dfd_row,dft_row,
+     &                              dfy_row
+
+
+
+      double precision xneut_row(nrowmax),xprot_row(nrowmax),
+     &            xalfa_row(nrowmax),xheav_row(nrowmax),aheav_row(nrowmax),
+     &            zheav_row(nrowmax),xcheck_row(nrowmax),muhat_row(nrowmax)
+      common /eosm4cextra/  xneut_row,xprot_row,
+     &            xalfa_row,xheav_row,aheav_row,
+     &            zheav_row,xcheck_row,muhat_row
+
+c JCM: these either all already exist or aren't used globally
+c..derivative based quantities
+c      double precision 
+c     &            abar,zbar,zz,zzi,chit,chid,cv,xx,
+c     &            gam3,gam1,nabad,gam2,cp,sound,dse,dpe,dsp
+c      common /thy4/ 
+c     &            abar,zbar,zz,zzi,chit,chid,cv,xx,
+c     &            gam3,gam1,nabad,gam2,cp,sound,dse,dpe,dsp

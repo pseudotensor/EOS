@@ -1,0 +1,57 @@
+eos.exe: eos.o  rhoe.o kine.o rnp.o tau_calc.o muekT.o pressure.o subs.o ne.o qpe2.o qne2.o pe.o gammape.o gammane.o gamman.o
+	ifort  -static -cm -w90 -132 -o eos.exe eos.o rhoe.o kine.o rnp.o tau_calc.o muekT.o pressure.o subs.o ne.o qpe2.o qne2.o pe.o gammape.o gammane.o gamman.o
+
+clean:
+	rm -f *.o core* *~ 
+
+eos.o: eos.f
+	ifort -cm -w90 -132 -c   eos.f
+
+rhoe.o: rhoe.f
+	ifort -cm -w90 -132 -c   rhoe.f
+
+kine.o: kine.f
+	ifort -cm -w90 -132 -c   kine.f
+
+rnp.o: rnp.f
+	ifort -cm -w90 -132 -c   rnp.f
+
+tau_calc.o: tau_calc.f
+	ifort -cm -w90 -132 -c   tau_calc.f
+
+muekT.o: muekT.f
+	ifort -cm -w90 -132 -c  muekT.f
+
+pressure.o: pressure.f
+	ifort -cm -w90 -132 -c   pressure.f
+
+subs.o: subs.f
+	ifort -cm -w90 -132 -c   subs.f
+
+ne.o: ne.f
+	ifort -cm -w90 -132 -c   ne.f
+
+qpe2.o: qpe2.f
+	ifort -cm -w90 -132 -c  qpe2.f
+
+qne2.o: qne2.f
+	ifort -cm -w90 -132 -c   qne2.f
+
+pe.o: pe.f
+	ifort -cm -w90 -132 -c   pe.f
+
+gammape.o: gammape.f
+	ifort -cm -w90 -132 -c  gammape.f
+
+gammane.o: gammane.f
+	ifort -cm -w90 -132 -c  gammane.f
+
+gamman.o: gamman.f
+	ifort  -cm -w90 -132 -c  gamman.f
+
+
+
+# end of makefile.
+
+
+

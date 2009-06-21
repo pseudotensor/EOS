@@ -1,0 +1,30 @@
+c This affects loop strcutures and what's written out
+c For stellar models, need 0/1, 0/1/2, 1 so full result not per unit H
+c For normal H-indep model, need 1, 1, 0
+
+c..Sets which method to use to set n_n/n_p
+c  0 = Kaz thermalization method
+c  1 = Choose Y_e and assume user scales out HCM if nhcm=1
+      integer whichrnpmethod
+c      parameter (whichrnpmethod = 0)
+      parameter (whichrnpmethod = 1)
+
+
+c..Sets which method to use to set Y_\nu
+c  0 = KM07 quasi-thermalization method
+c  1 = Choose Y_\nu and assume user scales out HCM if nhcm=1
+c  2 = Assume complete thermalization (so no hcm dependence)
+      integer whichynumethod
+      parameter (whichynumethod = 0)
+c 	Must be careful with below option if whichhcmmethod==1 since can converge to another solution at large absolute \eta_nu
+c      parameter (whichynumethod = 1)
+c      parameter (whichynumethod = 2)
+
+
+c..Sets which method to use to deal with hcm
+c  0 = assume scaling out hcm so set hcm=1 (previously done by setting nhcm=0)
+c  1 = treat hcm as independent variable
+      integer whichhcmmethod
+c      parameter (whichhcmmethod = 0)
+      parameter (whichhcmmethod = 1)
+

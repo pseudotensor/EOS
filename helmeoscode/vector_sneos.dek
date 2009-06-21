@@ -1,0 +1,79 @@
+c
+c All these things are only used by LSBOX, not LSEOS, and used to store
+c cgs version of LSEOS result as converted by LSBOX
+c
+c
+
+
+c..common block for passing the lattimer-swesty input output around
+
+c..to set the input system of units
+      integer       iunit
+      common /wunt/ iunit
+
+
+c..input quantites, temperature, denisty and ye
+      double precision ye_inp,temp_cgs,den_cgs,temp_nuc,den_nuc
+      common /thy1/    ye_inp,temp_cgs,den_cgs,temp_nuc,den_nuc
+
+      integer usediffinputs,limitedrange,taunsefix
+      common /sneosparms/ usediffinputs,limitedrange,taunsefix
+
+
+      double precision rhotaunsefix,temptaunsefix
+      common /taunsefixstuff/  rhotaunsefix,temptaunsefix
+
+
+c.true.input quantites, temperature, denisty and ye
+      double precision  temp_cgs_lseos,den_cgs_lseos,temp_nuc_lseos,den_nuc_lseos
+      common /thy1true/ temp_cgs_lseos,den_cgs_lseos,temp_nuc_lseos,den_nuc_lseos
+
+
+c..photon, e+e-, and bulk contributions
+      double precision 
+     &          prad_cgs,prad_nuc,pele_cgs,pele_nuc,pbulk_cgs,pbulk_nuc,
+     &          erad_cgs,erad_nuc,eele_cgs,eele_nuc,ebulk_cgs,ebulk_nuc,
+     &          srad_cgs,srad_nuc,sele_cgs,sele_nuc,sbulk_cgs,sbulk_nuc,
+     &          frad_cgs,frad_nuc,fele_cgs,fele_nuc,fbulk_cgs,fbulk_nuc
+      common /thy2/
+     &          prad_cgs,prad_nuc,pele_cgs,pele_nuc,pbulk_cgs,pbulk_nuc,
+     &          erad_cgs,erad_nuc,eele_cgs,eele_nuc,ebulk_cgs,ebulk_nuc,
+     &          srad_cgs,srad_nuc,sele_cgs,sele_nuc,sbulk_cgs,sbulk_nuc,
+     &          frad_cgs,frad_nuc,fele_cgs,fele_nuc,fbulk_cgs,fbulk_nuc
+
+
+c..totals and their derivatives
+      double precision 
+     &            ptot_cgs,ptot_nuc,dpdd_cgs,dpdd_nuc,dpdt_cgs,dpdt_nuc,
+     &                              dpdy_nuc,dpdy_cgs,
+     &            etot_cgs,etot_nuc,dedd_cgs,dedd_nuc,dedt_cgs,dedt_nuc,
+     &                              dedy_nuc,dedy_cgs,
+     &            stot_cgs,stot_nuc,dsdd_cgs,dsdd_nuc,dsdt_cgs,dsdt_nuc,
+     &                              dsdy_nuc,dsdy_cgs,
+     &            ftot_cgs,ftot_nuc,dfdd_cgs,dfdd_nuc,dfdt_cgs,dfdt_nuc,
+     &                              dfdy_nuc,dfdy_cgs
+      common /thy3/ 
+     &            ptot_cgs,ptot_nuc,dpdd_cgs,dpdd_nuc,dpdt_cgs,dpdt_nuc,
+     &                              dpdy_nuc,dpdy_cgs,
+     &            etot_cgs,etot_nuc,dedd_cgs,dedd_nuc,dedt_cgs,dedt_nuc,
+     &                              dedy_nuc,dedy_cgs,
+     &            stot_cgs,stot_nuc,dsdd_cgs,dsdd_nuc,dsdt_cgs,dsdt_nuc,
+     &                              dsdy_nuc,dsdy_cgs,
+     &            ftot_cgs,ftot_nuc,dfdd_cgs,dfdd_nuc,dfdt_cgs,dfdt_nuc,
+     &                              dfdy_nuc,dfdy_cgs
+
+
+c JCM: (in another file: vector_eos.single.dek)
+c..derivative based quantities
+c      double precision 
+c     &            abar,zbar,zz,zzi,chit,chid,cv,xx,
+c     &            gam3,gam1,nabad,gam2,cp,sound,dse,dpe,dsp
+c      common /thy4/ 
+c     &            abar,zbar,zz,zzi,chit,chid,cv,xx,
+c     &            gam3,gam1,nabad,gam2,cp,sound,dse,dpe,dsp
+
+       double precision lsabar,lszbar,lsabarnum
+       common /lsaz/ lsabar,lszbar,lsabarnum
+
+
+

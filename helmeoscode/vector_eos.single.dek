@@ -1,0 +1,143 @@
+ccccccc JCM: everything in here can be outputted.  Other things can be transfered from inside function to here to be accessible for writing
+c
+c All of these things should only be called by HELM or TIMMES, not LSEOS, unless know that *always* identical values once set or reset again
+c
+c
+
+      double precision zz,zzi,xx,xni,dxnidd,dxnidt,dxnida,dxnidz,
+     1                 dpepdt,dpepdd,deepdt,deepdd,dsepdd,dsepdt,
+     2                 dpraddd,dpraddt,deraddd,deraddt,dpiondd,dpiondt,
+     3                 deiondd,deiondt,dsraddd,dsraddt,dsiondd,dsiondt,
+     4                 dse,dpe,dsp,
+     4                 prad,erad,srad,pion,eion,
+     5                 sion,xnem,pele,eele,sele,ppos,epos,spos,pres,ener,entr,dpresdd,
+     6                 dpresdt,denerdd,denerdt,dentrdd,dentrdt,cv,cp,
+     7                 gam1,gam2,gam3,chit,chid,nabad,
+     7                 sound,etaele,etapos,
+     8                 detadt,detadd,xnefer,xnpfer,dxnedt,dxnedd,
+     9                 abar,abarnum,zbar,xne,zeff
+      common /vsing1/  zz,zzi,xx,xni,dxnidd,dxnidt,dxnida,dxnidz,
+     1                 dpepdt,dpepdd,deepdt,deepdd,dsepdd,dsepdt,
+     2                 dpraddd,dpraddt,deraddd,deraddt,dpiondd,dpiondt,
+     3                 deiondd,deiondt,dsraddd,dsraddt,dsiondd,dsiondt,
+     4                 dse,dpe,dsp,
+     4                 prad,erad,srad,pion,eion,
+     5                 sion,xnem,pele,eele,sele,ppos,epos,spos,pres,ener,entr,dpresdd,
+     6                 dpresdt,denerdd,denerdt,dentrdd,dentrdt,cv,cp,
+     7                 gam1,gam2,gam3,chit,chid,nabad,
+     7                 sound,etaele,etapos,
+     8                 detadt,detadd,xnefer,xnpfer,dxnedt,dxnedd,
+     9                 abar,abarnum,zbar,xne,zeff
+
+      double precision
+c etaele,detadd,detadt,detada,detadz,
+c     1                 etapos,
+c     1                 zeff,
+c     2                 xne,
+c,dxnedd,dxnedt,dxneda,dxnedz,
+c     3                 xnefer,
+c     3                 dxneferdd,dxneferdt,dxneferda,dxneferdz,
+c     4                 xnpfer,
+c     4                  dxnpferdd,dxnpferdt,dxnpferda,dxnpferdz,
+c     5                 pele,
+     5                 dpeledd,dpeledt,dpeleda,dpeledz,
+c     6                 ppos,
+     6                 dpposdd,dpposdt,dpposda,dpposdz,
+     7                 pep,
+c,dpepdd,dpepdt,dpepda,dpepdz,
+c     8                 eele,
+     8                 deeledd,deeledt,deeleda,deeledz,
+c     9                 epos,
+     9                 deposdd,deposdt,deposda,deposdz,
+     1                 eep,
+c,deepdd,deepdt,deepda,deepdz,
+c     2                 sele,
+     2                 dseledd,dseledt,dseleda,dseledz,
+c     3                 spos,
+     3                 dsposdd,dsposdt,dsposda,dsposdz,
+     4                 sep
+c,dsepdd,dsepdt,dsepda,dsepdz
+
+
+	common /timmesextra/ 
+c etaele,detadd,detadt,detada,detadz,
+c     1                 etapos,
+c     1                 zeff,
+c     2                 xne,
+c,dxnedd,dxnedt,dxneda,dxnedz,
+c     3                 xnefer,
+c     3                 dxneferdd,dxneferdt,dxneferda,dxneferdz,
+c     4                 xnpfer,
+c     4                  dxnpferdd,dxnpferdt,dxnpferda,dxnpferdz,
+c     5                 pele,
+     5                 dpeledd,dpeledt,dpeleda,dpeledz,
+c     6                 ppos,
+     6                 dpposdd,dpposdt,dpposda,dpposdz,
+     7                 pep,
+c,dpepdd,dpepdt,dpepda,dpepdz,
+c     8                 eele,
+     8                 deeledd,deeledt,deeleda,deeledz,
+c     9                 epos,
+     9                 deposdd,deposdt,deposda,deposdz,
+     1                 eep,
+c,deepdd,deepdt,deepda,deepdz,
+c     2                 sele,
+     2                 dseledd,dseledt,dseleda,dseledz,
+c     3                 spos,
+     3                 dsposdd,dsposdt,dsposda,dsposdz,
+     4                 sep
+c,dsepdd,dsepdt,dsepda,dsepdz
+
+
+
+
+      double precision dxneferdd,dxneferdt,dxneferda,dxneferdz,
+     4                  dxnpferdd,dxnpferdt,dxnpferda,dxnpferdz
+
+      common /dxnestuff/ dxneferdd,dxneferdt,dxneferda,dxneferdz,
+     4                  dxnpferdd,dxnpferdt,dxnpferda,dxnpferdz
+
+
+c..ionization contributions
+      double precision eip,deipdd,deipdt,deipda,deipdz,
+     1                 sip,dsipdd,dsipdt,dsipda,dsipdz
+	common /ionizationcontrib/ eip,deipdd,deipdt,deipda,deipdz,
+     1                 sip,dsipdd,dsipdt,dsipda,dsipdz
+
+
+
+c..for the abar derivatives
+      double precision dpradda,deradda,dsradda,
+     1                 dpionda,deionda,dsionda,
+     2                 dpepda,deepda,dsepda,
+     3                 dpresda,denerda,dentrda,
+     4                 detada,dxneda
+      common /vsing2/  dpradda,deradda,dsradda,
+     1                 dpionda,deionda,dsionda,
+     2                 dpepda,deepda,dsepda,
+     3                 dpresda,denerda,dentrda,
+     4                 detada,dxneda
+
+
+c..for the zbar derivatives
+      double precision dpraddz,deraddz,dsraddz,
+     1                 dpiondz,deiondz,dsiondz,
+     2                 dpepdz,deepdz,dsepdz,
+     3                 dpresdz,denerdz,dentrdz,
+     4                 detadz,dxnedz
+      common /vsing3/  dpraddz,deraddz,dsraddz,
+     1                 dpiondz,deiondz,dsiondz,
+     2                 dpepdz,deepdz,dsepdz,
+     3                 dpresdz,denerdz,dentrdz,
+     4                 detadz,dxnedz
+
+      double precision plasg,plasgdd,plasgdt,plasgda,plasgdz,
+     3                 ecoul,decouldd,decouldt,decoulda,decouldz,
+     4                 pcoul,dpcouldd,dpcouldt,dpcoulda,dpcouldz,
+     5                 scoul,dscouldd,dscouldt,dscoulda,dscouldz
+      common /vsing4/  plasg,plasgdd,plasgdt,plasgda,plasgdz,
+     3                 ecoul,decouldd,decouldt,decoulda,decouldz,
+     4                 pcoul,dpcouldd,dpcouldt,dpcoulda,dpcouldz,
+     5                 scoul,dscouldd,dscouldt,dscoulda,dscouldz
+
+

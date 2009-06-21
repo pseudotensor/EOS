@@ -1,0 +1,69 @@
+ccccccccc
+      parameter(nrhob=100)      !number of doloop steps, 5 in 1 order of mag.
+      parameter(rhobmin=1.d5) !minimum value of rhob in g/cc
+      parameter(rhobmax=1.d15)  !maximum value of rhob in g/cc
+ccccccccc
+      parameter(ntk=50)         !number of doloop steps, 5 in 1 order of mag.
+      parameter(tkmin=1.d8)     !minimum value of temperature in K
+      parameter(tkmax=1.d13)    !maximum value of temperature in K
+ccccccccc
+      parameter(nhcm=1)        !number of doloop steps, 5 in 1 order of mag.
+      parameter(hcmmin=1.d-15)   !minimum value of Hcm in cm 
+      parameter(hcmmax=1.d-15)    !maximum value of Hcm in cm 
+ccccccccc
+      parameter(ntdynorye=50)       !number of doloop steps, 5 in 1 order of mag.
+      parameter(tdynoryemin=1D-2)  !minimum value of tdynorye in sec 
+      parameter(tdynoryemax=0.56d0)   !maximum value of tdynorye in sec 
+ccccccccc
+c TOTAL:
+ccccccccc
+c      parameter(ntdynorynu=20)       !number of doloop steps, 5 in 1 order of mag.
+c      parameter(tdynorynumin=1D-4)  !minimum value of tdynorynu in sec 
+c      parameter(tdynorynumax=1D+4)   !maximum value of tdynorynu in sec 
+ccccccccc
+c PART1
+ccccccccc
+c      parameter(ntdynorynu=4)       !number of doloop steps, 5 in 1 order of mag.
+c      parameter(tdynorynumin=0.000100000000000000000d0)  !minimum value of tdynorynu in sec 
+c      parameter(tdynorynumax=0.00183298071083243594d0)   !maximum value of tdynorynu in sec 
+ccccccccc
+c PART2
+ccccccccc
+c      parameter(ntdynorynu=4)       !number of doloop steps, 5 in 1 order of mag.
+c      parameter(tdynorynumin=0.00483293023857175317d0)  !minimum value of tdynorynu in sec 
+c      parameter(tdynorynumax=0.0885866790410082632d0)   !maximum value of tdynorynu in sec 
+ccccccccc
+c PART3
+ccccccccc
+c      parameter(ntdynorynu=3)       !number of doloop steps, 5 in 1 order of mag.
+c      parameter(tdynorynumin=0.233572146909012230d0)  !minimum value of tdynorynu in sec 
+c      parameter(tdynorynumax=1.62377673918872180d0)   !maximum value of tdynorynu in sec 
+ccccccccc
+c PART4
+ccccccccc
+c      parameter(ntdynorynu=3)       !number of doloop steps, 5 in 1 order of mag.
+c      parameter(tdynorynumin=4.28133239871939392d0)  !minimum value of tdynorynu in sec 
+c      parameter(tdynorynumax=29.7635144163131823d0)   !maximum value of tdynorynu in sec 
+ccccccccc
+c PART5
+ccccccccc
+c      parameter(ntdynorynu=3)       !number of doloop steps, 5 in 1 order of mag.
+c      parameter(tdynorynumin=78.4759970351461270d0)  !minimum value of tdynorynu in sec 
+c      parameter(tdynorynumax=545.559478116851914d0)   !maximum value of tdynorynu in sec 
+ccccccccc
+c PART6
+ccccccccc
+c      parameter(ntdynorynu=3)       !number of doloop steps, 5 in 1 order of mag.
+c      parameter(tdynorynumin=1438.44988828766283d0)  !minimum value of tdynorynu in sec 
+c      parameter(tdynorynumax=10000.0000000000000d0)   !maximum value of tdynorynu in sec 
+ccccccccc
+
+
+c 1) 0.000100000000000000000, 0.000263665089873035827, 0.000695192796177560601, 0.00183298071083243594,
+c 2) 0.00483293023857175317, 0.0127427498570313378, 0.0335981828628378213, 0.0885866790410082632,
+c 3) 0.233572146909012230, 0.615848211066026371, 1.62377673918872180, 
+c 4) 4.28133239871939392, 11.2883789168468906, 29.7635144163131823, 
+c 5) 78.4759970351461270, 206.913808111478967, 545.559478116851914,
+c 6) 1438.44988828766283, 3792.69019073224966, 10000.0000000000000
+
+

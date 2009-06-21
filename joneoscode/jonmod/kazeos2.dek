@@ -1,0 +1,8 @@
+
+c     These quantities are sometimes passed as parameters, so only have global if not passed into that function
+c
+      common/etaeglobal/ etae,etap,etan,etanu
+      real*8 etae,etap,etan,etanu
+
+
+
