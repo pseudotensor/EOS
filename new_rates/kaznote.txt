@@ -1,0 +1,25 @@
+
+However, please be careful to use them because of the following
+reasons,
+ 
+  i) They are slow to be performed.
+ 
+ ii) In calculations of the reaction rates and the emission rates
+     where neutrinos appear in initial states such as n + \nu_e --> p + e^- 
+     (not final states such as n + e^+ --> p + \bar{\nu}_e ), the
+     subroutines assume the perfect Fermi-Dirac distribution of neutrinos
+     and anti-neutrinos.
+ 
+So, you cannot use the reaction rates of (\Gamma_{n + \nu_e --> p +
+e^-} and \Gamma_{n + \nu_e + e^+--> p } and \Gamma_{p + \bar{\nu}_e 
+--> n + e^+ } when the neutrinos are optically thin.  That was because
+I did not solve the energy transfer Boltzmann equations of neutrinos
+which has been main crucial topics among experts of the core-collapsed 
+SNe and difficult to calculate them. I have never tried to do
+that. Instead of solving the Boltzmann equations correctly, I simply
+adopted the approximate method to treat both the optically thick and
+thin cases by introducing TDYN and Hcm and so on, and then including 
+and excluding the initial state neutrinos although we know that
+approximations should be correct in perfectly-optically thick and thin
+limit cases, respectively. As I told you that this idle approximation
+was discussed in Appendix B of Kohri-Narayan-Piran (05). 

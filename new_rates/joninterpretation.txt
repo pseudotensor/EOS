@@ -1,0 +1,21 @@
+
+c Rates below are not to be used in optically thin regime:
+c 
+c gammannu  = \Gamma_{n + \nu_e --> p + e^- }
+c
+c gammapnu  = \Gamma_{p + \bar{\nu}_e --> n + e^+ }
+c
+c gammapenu = \Gamma_{p + e^- + \bar{\nu}_e  --> n }
+
+c ????????? = \Gamma_{n + \nu_e + e^+ --> p }
+c
+c ????????? = \Gamma_{p + \bar{\nu}_e + e^- --> n }
+c
+c gammane   = \Gamma_{n + e^+ --> p + \bar{\nu}_e }
+c 
+c gamman    = \Gamma_{n --> p + e^- + \bar{\nu}_e }
+c
+c gammape   = \Gamma_{p + e^- --> n + \nu_e }
+c
+
+

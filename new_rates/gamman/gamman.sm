@@ -1,0 +1,146 @@
+location 8000 28000 7000 28000
+#location 3500 31000 3500 31000
+
+lweight 3
+
+set lgymn = -3
+set lgymx = 2
+
+set lgxmn=-3
+set lgxmx=2
+
+#################### lower horizontal axis #############################
+limits $(lgxmn) $(lgxmx) $(lgymn) $(lgymx)
+ticksize   -1 0 -1 0
+#ticksize   0 0 0 0
+notation -1 2 -1 2
+expand 2.0
+box  1 2 1 2
+
+######################### deg (10M) #########################################
+define file_type unix
+image imgamman -5  $(lgxmx) $(lgymn) $(lgymx)
+
+
+
+levels   14
+ltype 0
+ctype 2
+xlogarithm
+ylogarithm
+lweight 3
+contour
+lweight 3
+ctype 2
+
+
+levels   9
+ltype 0
+ctype 2
+xlogarithm
+ylogarithm
+lweight 3
+contour
+lweight 3
+ctype 2
+
+
+levels   4
+ltype 0
+ctype 3
+xlogarithm
+ylogarithm
+lweight 6
+contour
+lweight 3
+ctype 2
+
+
+levels   -1
+ltype 0
+ctype 2
+xlogarithm
+ylogarithm
+lweight 3
+contour
+lweight 3
+ctype 2
+
+
+levels   -6
+ltype 0
+ctype 2
+xlogarithm
+ylogarithm
+lweight 3
+contour
+lweight 3
+ctype 2
+
+
+
+
+
+
+
+
+######################################################################
+xlabel T/(10^{11}K)
+ylabel \eta_e
+
+######################################################################
+set xint=(lgxmx-lgxmn)/20
+set yint=(lgymx-lgymn)/20
+
+set x1=lgxmn+xint*3
+set y1=lgymn+yint*3
+relocate $(x1) $(y1)
+expand 1.5
+ctype 2
+label 10^{6}sec
+ctype 2
+
+
+set x1=lgxmn+xint*8
+set y1=lgymn+yint*4
+relocate $(x1) $(y1)
+expand 1.5
+ctype 2
+label 10sec
+ctype 2
+
+
+set x1=lgxmn+xint*9
+set y1=lgymn+yint*10
+relocate $(x1) $(y1)
+expand 1.5
+ctype 3
+label  \Gamma^{-1}_{pe^-\rightarrow n\\nu_e}=
+ctype 2
+
+set x1=lgxmn+xint*8.9
+set y1=lgymn+yint*8.8
+relocate $(x1) $(y1)
+expand 1.5
+ctype 3
+label 10^{-4} sec
+ctype 2
+
+set x1=lgxmn+xint*12
+set y1=lgymn+yint*14
+relocate $(x1) $(y1)
+expand 1.5
+ctype 2
+label 10^{-9}sec
+ctype 2
+
+
+set x1=lgxmn+xint*15
+set y1=lgymn+yint*17
+relocate $(x1) $(y1)
+expand 1.5
+ctype 2
+label 10^{-14}sec
+ctype 2
+
+
