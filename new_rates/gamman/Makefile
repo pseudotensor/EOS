@@ -1,0 +1,21 @@
+mainprogram.exe: mainprogram.o gamman.o subs.o neint.o 
+	ifc -cm -w90 -132 -o mainprogram.exe mainprogram.o gamman.o subs.o neint.o 
+
+clean:
+	rm -f *.o core* *~ 
+
+mainprogram.o: mainprogram.f
+	ifc -cm -w90 -132 -c   mainprogram.f
+
+neint.o: /home/kohri/ndaf/code3/ne/neint/neint.f
+	ifc -cm -w90 -132 -c   /home/kohri/ndaf/code3/ne/neint/neint.f
+
+gamman.o: gamman.f
+	ifc -cm -w90 -132 -c   gamman.f
+
+subs.o: subs.f
+	ifc -cm -w90 -132 -c   subs.f
+
+# end of makefile.
+
+
