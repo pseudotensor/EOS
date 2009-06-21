@@ -1,0 +1,9 @@
+
+c     These quantities are sometimes passed as parameters, so only have global if not passed into that function
+c
+      common/xnucglobal/ npratiofree,xnuc,npratiobound,npratiototal,npratioheav
+      real*8 npratiofree,xnuc,npratiobound,npratiototal,npratioheav
+
+
+
+

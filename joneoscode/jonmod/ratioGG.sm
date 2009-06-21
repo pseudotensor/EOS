@@ -1,0 +1,174 @@
+location 8000 28000 7000 28000
+#location 3500 31000 3500 31000
+
+lweight 3
+
+set lgymn = 6
+set lgymx = 12
+
+set lgxmn=2
+set lgxmx=12
+
+#################### lower horizontal axis #############################
+limits $(lgxmn) $(lgxmx) $(lgymn) $(lgymx)
+#ticksize   -1 0 -1 0
+ticksize   0 0 0 0
+notation -1 2 -1 2
+expand 2.0
+box  1 2 1 2
+
+######################### T11 (10M) #########################################
+define file_type unix
+image imratioGG $(lgxmn) $(lgxmx) $(lgymn) $(lgymx)
+
+levels   1.e-4
+ltype 1
+ctype 6
+xlogarithm
+ylogarithm
+lweight 3
+contour
+lweight 3
+ctype 2
+
+
+levels   1.e-3
+ltype 1
+ctype 2
+xlogarithm
+ylogarithm
+lweight 3
+contour
+lweight 3
+ctype 2
+
+
+levels   1.e-2
+ltype 1
+ctype 5
+xlogarithm
+ylogarithm
+lweight 3
+contour
+lweight 3
+ctype 2
+
+
+levels   1.e-1
+ltype 1
+ctype 4
+xlogarithm
+ylogarithm
+lweight 3
+contour
+lweight 3
+ctype 2
+
+
+levels   1.0001
+ltype 0
+ctype 3
+xlogarithm
+ylogarithm
+lweight 6
+#contour
+lweight 3
+ctype 2
+
+
+levels   0.9999
+ltype 0
+ctype 3
+xlogarithm
+ylogarithm
+lweight 6
+contour
+lweight 3
+ctype 2
+
+
+levels   10.d0
+ltype 1
+ctype 7
+xlogarithm
+ylogarithm
+lweight 3
+contour
+lweight 3
+ctype 2
+
+
+levels   1.d2
+ltype 1
+ctype 8
+xlogarithm
+ylogarithm
+lweight 3
+contour
+lweight 3
+ctype 2
+
+
+######################################################################
+xlabel Log_{10}(\rho_b/g\cdot cm^{-3})
+ylabel Log_{10}(T/K)
+
+######################################################################
+set xint=(lgxmx-lgxmn)/20
+set yint=(lgymx-lgymn)/20
+
+set x1=lgxmn+xint*0
+set y1=lgymn+yint*11
+relocate $(x1) $(y1)
+expand 1.5
+ctype 6
+label \Gamma_{pe^{-}\rightarrow n\\nu_{e}}/\tau_{dyn}^{-1}=10^{-4}
+ctype 2
+
+
+set x1=lgxmn+xint*10
+set y1=lgymn+yint*16
+relocate $(x1) $(y1)
+expand 1.5
+ctype 8
+label \Gamma_{pe^{-}\rightarrow n\\nu_{e}}/\tau_{dyn}^{-1}=10^{2}
+ctype 2
+
+
+set x1=lgxmn+xint*1
+set y1=lgymn+yint*15
+relocate $(x1) $(y1)
+expand 1.5
+ctype 3
+label \Gamma_{pe^{-}\rightarrow n\\nu_{e}}/\tau_{dyn}^{-1}=1
+ctype 2
+
+set x1=lgxmn+xint*2.8
+set y1=lgymn+yint*14
+relocate $(x1) $(y1)
+expand 1.5
+ctype 2
+#label n/p=10^{-3}
+ctype 2
+
+
+
+
+
+######################################################################
+set x1=lgxmn+xint*1
+set y1=lgymn+yint*1
+relocate $(x1) $(y1)
+expand 1.5
+ctype 2
+label H=10km
+ctype 2
+
+set x1=lgxmn+xint*1
+set y1=lgymn+yint*2.5
+relocate $(x1) $(y1)
+expand 1.5
+ctype 2
+label \tau_{dyn}=10^{-1} s
+ctype 2
+

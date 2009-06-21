@@ -1,0 +1,14 @@
+ Reading Shen table
+ nrhobout=         104 nrhob=         200
+ ntkout=          64 ntk=         200
+ Shen EOS header is not setup as identical     as Kaz size for desired density/t
+ emperature points
+ This is ok if size is different     but points in Shen table match
+ Or this is ok if want to just use     linear interpolation regardless of matchi
+ ng
+ Oops, optical depth to photons less than unity
+ Oops, optical depth to photons less than unity
+ Oops, optical depth to photons less than unity
+ Oops, optical depth to photons less than unity
+ Oops, optical depth to photons less than unity
+forrtl: error (69): process interrupted (SIGINT)

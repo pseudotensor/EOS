@@ -1,0 +1,19 @@
+# header
+include makehead.inc
+
+
+FC=ifort
+
+# DEBUG WITH BOUNDS CHECKS
+#FFLAGS=-cm -132 -O0 -C -warn nounused -warn nouncalled -warn
+FFLAGS=-cm -132 -w90
+# DEBUG WITH BOUNDS CHECKS
+#FFLAGS=-cm -132 -O0 -C
+# NORMAL WITH OPTS
+#FFLAGS=-cm -w90 -132
+
+LDFLAGS=
+
+
+include maketail.inc
+

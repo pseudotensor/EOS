@@ -1,0 +1,16 @@
+c
+c This is only for HELM code to mimic Kaz code
+c Not to be used with Kaz code
+c
+cc Things go here if computing quantities of "state"
+c through state_calc(rhob,tk).  All quantities made global available
+c after the subroutine is called
+c
+c      common /mimickaz1/ npratiofree,yetot,Yp,rhop,rhopfree,npfree,nptot,netot,nefree,rhoetot,nnfree,xnuc,etae,rhobfree,rhoalpha
+c      real*8 npratiofree,yetot,Yp,rhop,rhopfree,npfree,nptot,netot,nefree,rhoetot,nnfree,xnuc,etae,rhobfree,rhoalpha
+
+      common /mimickaz2/ Yp,rhop,rhopfree,netot,nefree,rhoetot,rhobfree,rhoalpha
+      real*8 Yp,rhop,rhopfree,netot,nefree,rhoetot,rhobfree,rhoalpha
+c
+c
+c

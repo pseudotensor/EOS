@@ -1,0 +1,524 @@
+Binary file 100rhox50tkx50yex20ynux1h/100rhox50tkx50yex20ynux1h.jonhelm.zip matches
+crap_backup/general_compute_functions.f:c     JCM: below used to store electron EOS properties needed by LSEOS to generate final solution
+crap_backup/general_compute_functions.f:c     JCM:
+crap_backup/general_compute_functions.f:c..   JCM: Therefore whicheleeos=10,12 don't make sense since don't know what abar,zbar will be until here
+crap_backup/jon_ls_2p7.f:c Compared to original code, see JCM comments.
+crap_backup/jon_ls_2p7.f:c JCM changed constants (used my const.dek)
+crap_backup/jon_ls_2p7.f:c JCM: Try more loops
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c     JCM: another version has this included
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM: lieb insert next 4 lines
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM: next 4 lines lieb insert
+crap_backup/jon_ls_2p7.f:c JCM: next 4 lines, lieb insert
+crap_backup/jon_ls_2p7.f:c        JCM: These are particle fractions per unit baryon mass (i.e. not by number, which is why alphas have 4.0)
+crap_backup/jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+crap_backup/jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+crap_backup/jon_ls_2p7.f:c     JCM: GODMARK
+crap_backup/jon_ls_2p7.f:c JCM: lieb insert next 4 lines
+crap_backup/jon_ls_2p7.f:c     JCM: infinite loop occurs here
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM: (SUPERMARK)
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM: (SUPERMARK)
+crap_backup/jon_ls_2p7.f:c JCM: DEBUG:
+crap_backup/jon_ls_2p7.f:c JCM: DEBUG:
+crap_backup/jon_ls_2p7.f:c JCM: DEBUG:
+crap_backup/jon_ls_2p7.f:c JCM: DEBUG:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM: (hopefully bug fix will find this out)
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM: hopefully this is caught
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:cc JCM: moved any_electron() to jon_lsbox.f
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM:
+crap_backup/jon_ls_2p7.f:c JCM: presumed already included elsewhere
+crap_backup/jon_eosfxt.f:c JCM:
+crap_backup/jon_eosfxt.f:c JCM:
+crap_backup/jon_eosfxt.f:c JCM:
+crap_backup/jon_eosfxt.f:c JCM: (now these things are single globals in vector_eos.single.dek)
+crap_backup/jon_eosfxt.f:c JCM: trying more accuracy
+crap_backup/jon_eosfxt.f:c JCM: DEBUG:
+crap_backup/jon_eosfxt.f:c     JCM:
+crap_backup/jon_eosfxt.f:c JCM:
+crap_backup/jon_eosfxt.f:c JCM:
+crap_backup/jon_eosfxt.f:c JCM: added below xnem assignment as in HELM so consistent with HELM
+crap_backup/jon_eosfxt.f:c JCM: Made storage a subroutine
+crap_backup/jon_eosfxt.f:c JCM:
+crap_backup/jon_eosfxt.f:c JCM:
+crap_backup/jon_eosfxt.f:c JCM: Went to 18 figures, no change
+crap_backup/vector_sneos.dek:c JCM: (in another file: vector_eos.single.dek)
+crap_backup/jon_sheneos.f:c     JCM: passed parameters
+crap_backup/jon_sheneos.f:c     JCM: passed parameter to return to tell if converged or not
+crap_backup/jon_sheneos.f:c JCM:
+crap_backup/jon_sheneos.f:c JCM:
+crap_backup/jon_sheneos.f:c  JCM:
+crap_backup/jon_sheneos.f:c  JCM:
+crap_backup/jon_helmstandard.f:c .. JCM: abar is exactly mutot computed in ~/sm/grbmodel.m
+crap_backup/jon_helmstandard.f:c JCM
+crap_backup/jon_helmstandard.f:c JCM 
+crap_backup/eos_m4c.inc:cJCM:
+crap_backup/eos_m4c.inc:cc JCM: Some convergence parameters for LSEOS code itself
+crap_backup/eos_m4c.inc:c JCM:
+crap_backup/eos_m4c.inc:c     JCM:
+crap_backup/eos_m4c.inc:cJCM:
+crap_backup/eos_m4c.inc:cJCM:
+crap_backup/eos_m4c.inc:c     JCM: hbar in "MeV s" and c in "fm/s"
+crap_backup/eos_m4c.inc:c JCM:
+crap_backup/eos_m4c.inc:c JCM:
+crap_backup/jon_lsbox.f:c JCM: I added anyeos() to call any eos
+crap_backup/jon_lsbox.f:c JCM: I added jonnucbox() as wrapper to wrapper called lsbox() or shenbox()
+crap_backup/jon_lsbox.f:c     JCM: For HELM, add-in eosfxt.f TIMMES-like code for eip
+crap_backup/jon_lsbox.f:c     JCM: etaele has rest-mass subtracted out
+crap_backup/jon_lsbox.f:c     JCM: etaepos has double rest-mass added in
+crap_backup/jon_lsbox.f:c     JCM: etaepos = -etae-2/betatemp
+crap_backup/jon_lsbox.f:c     JCM: When outputting, make (LSEOS/Kaz)-like (no subtraction)
+crap_backup/jon_lsbox.f:c JCM: previously in jon_ls_2p7.f
+crap_backup/jon_lsbox.f:c JCM: below used to store electron EOS properties needed by LSEOS to generate final solution
+crap_backup/jon_lsbox.f:c  JCM:
+crap_backup/jon_lsbox.f:c JCM:
+crap_backup/jon_lsbox.f:c JCM:
+crap_backup/jon_lsbox.f:c JCM: These ??_row values (HELM/TIMMES output format) are stored into native LSEOS electron variables
+crap_backup/jon_lsbox.f:c  JCM:
+crap_backup/jon_lsbox.f:c     JCM: passed parameters
+crap_backup/jon_lsbox.f:c     JCM: passed parameter to return to tell if converged or not
+crap_backup/jon_lsbox.f:c  JCM:
+crap_backup/jon_lsbox.f:c JCM:
+crap_backup/jon_lsbox.f:c  JCM:
+crap_backup/jon_lsbox.f:c     JCM: passed parameter to return to tell if converged or not
+crap_backup/jon_lsbox.f:c JCM:
+crap_backup/jon_lsbox.f:c JCM:
+crap_backup/jon_lsbox.f:c  JCM:
+crap_backup/jon_lsbox.f:c JCM: note that the below means that:
+crap_backup/jon_lsbox.f:c     JCM: For LSEOS, at \rho=1.644676...E14g/cc T=5E8-1E11, cp=Inf and cv~-Inf
+crap_backup/jon_lsbox.f:c JCM:
+crap_backup/jon_lsbox.f:c  JCM:
+crap_backup/jon_helm_azbarset.f:c..   xmass   = mass fractions      (JCM: local rest-mass density fraction of this species)
+crap_backup/jon_helm_azbarset.f:c..   ymass   = molar fractions     (JCM: set internally by HELM code)
+crap_backup/jon_helm_azbarset.f:c..   aion    = number of nucleons  (JCM: set to be total rest-mass of species per unit amu -- and this is consistent with how used to define pressure, etc. in this code)
+crap_backup/jon_helm_azbarset.f:c..   zion    = number of protons   (JCM: = Y_e aion since HELM defines Y_e = zion/aion)
+crap_backup/jon_helm_azbarset.f:c  JCM (abar must be mass of particle per unit amu given how used in pressure)
+crap_backup/jon_helm_azbarset.f:c  JCM:
+crap_backup/jon_helm_azbarset.f:c  JCM:
+crap_backup/jon_helm_azbarset.f:c .. JCM: abar is exactly mutot computed in ~/sm/grbmodel.m
+crap_backup/jon_helm_azbarset.f:c    JCM: Now true Ye = zbar/abarnum
+crap_backup/jon_helm_azbarset.f:c    JCM: GODMARK: Not actually sure how HELM uses Ye.  Might be using a fake Ye that is based upon mass.  Real Ye should only be used when determining fraction of electrons or protons per unit baryon NUMBER.  JCM's Ye should be used when wanting mass fraction of protons per unit baryon mass
+crap_backup/vector_eos.single.dek:ccccccc JCM: everything in here can be outputted.  Other things can be transfered from inside function to here to be accessible for writing
+crap_backup/jon_helm_compute.f:c         Modified by JCM using Kaz's new formula
+crap_backup/extra_vector_sneos.dek:c JCM: these either all already exist or aren't used globally
+crap_backup/jon_helm_computekazlike.f:c     Modified by JCM using Kaz's new formula
+Binary file crap_backup/helm_jonmod4.zip matches
+eos_m4c.inc:cJCM:
+eos_m4c.inc:cc JCM: Some convergence parameters for LSEOS code itself
+eos_m4c.inc:c JCM:
+eos_m4c.inc:c     JCM:
+eos_m4c.inc:cJCM:
+eos_m4c.inc:cJCM:
+eos_m4c.inc:c     JCM: hbar in "MeV s" and c in "fm/s"
+eos_m4c.inc:c JCM:
+eos_m4c.inc:c JCM:
+extra_vector_sneos.dek:c JCM: these either all already exist or aren't used globally
+general_compute_functions.f:c     JCM: below used to store electron EOS properties needed by LSEOS to generate final solution
+general_compute_functions.f:c     JCM:
+general_compute_functions.f:c..   JCM: Therefore whicheleeos=10,12 don't make sense since don't know what abar,zbar will be until here
+helm_1point_testlowerutot/jon_helmstandard.f:c .. JCM: abar is exactly mutot computed in ~/sm/grbmodel.m
+helm_1point_testlowerutot/jon_helmstandard.f:c JCM
+helm_1point_testlowerutot/jon_helmstandard.f:c JCM 
+helm_1point_testlowerutot/jon_helm_compute.f:c         Modified by JCM using Kaz's new formula
+helm_1point_testlowerutot/jon_helmstandard.f~:c .. JCM: abar is exactly mutot computed in ~/sm/grbmodel.m
+helm_1point_testlowerutot/jon_helmstandard.f~:c JCM
+helm_1point_testlowerutot/jon_helmstandard.f~:c JCM 
+helm_1point_testlowerutot/jon_helm_compute.f~:c         Modified by JCM using Kaz's new formula
+Binary file helm_1point_testlowerutot/helm_jonmod5.zip matches
+helmeos_1point/jon_helmstandard.f:c .. JCM: abar is exactly mutot computed in ~/sm/grbmodel.m
+helmeos_1point/jon_helmstandard.f:c JCM
+helmeos_1point/jon_helmstandard.f:c JCM 
+helmeos_1point/jon_helm_compute.f:c         Modified by JCM using Kaz's new formula
+helmeos_1point/jon_helmstandard.f~:c .. JCM: abar is exactly mutot computed in ~/sm/grbmodel.m
+helmeos_1point/jon_helm_compute.f~:c         Modified by JCM using Kaz's new formula
+Binary file helmeos_1point/helm_jonmod4.zip matches
+jon_eosfxt.f:c JCM:
+jon_eosfxt.f:c JCM:
+jon_eosfxt.f:c JCM:
+jon_eosfxt.f:c JCM: (now these things are single globals in vector_eos.single.dek)
+jon_eosfxt.f:c JCM: trying more accuracy
+jon_eosfxt.f:c JCM: DEBUG:
+jon_eosfxt.f:c     JCM:
+jon_eosfxt.f:c JCM:
+jon_eosfxt.f:c JCM:
+jon_eosfxt.f:c JCM: added below xnem assignment as in HELM so consistent with HELM
+jon_eosfxt.f:c JCM: Made storage a subroutine
+jon_eosfxt.f:c JCM:
+jon_eosfxt.f:c JCM:
+jon_eosfxt.f:c JCM: Went to 18 figures, no change
+jon_helm_azbarset.f:c..   xmass   = mass fractions      (JCM: local rest-mass density fraction of this species)
+jon_helm_azbarset.f:c..   ymass   = molar fractions     (JCM: set internally by HELM code)
+jon_helm_azbarset.f:c..   aion    = number of nucleons  (JCM: set to be total rest-mass of species per unit amu -- and this is consistent with how used to define pressure, etc. in this code)
+jon_helm_azbarset.f:c..   zion    = number of protons   (JCM: = Y_e aion since HELM defines Y_e = zion/aion)
+jon_helm_azbarset.f:c  JCM (abar must be mass of particle per unit amu given how used in pressure)
+jon_helm_azbarset.f:c  JCM:
+jon_helm_azbarset.f:c  JCM:
+jon_helm_azbarset.f:c .. JCM: abar is exactly mutot computed in ~/sm/grbmodel.m
+jon_helm_azbarset.f:c    JCM: Now true Ye = zbar/abarnum
+jon_helm_azbarset.f:c    JCM: GODMARK: Not actually sure how HELM uses Ye.  Might be using a fake Ye that is based upon mass.  Real Ye should only be used when determining fraction of electrons or protons per unit baryon NUMBER.  JCM's Ye should be used when wanting mass fraction of protons per unit baryon mass
+jon_helm_computekazlike.f:c     Modified by JCM using Kaz's new formula
+jon_helmstandard.f:c JCM: Made storage a subroutine
+jon_helmstandard.f:c JCM:
+jon_helmstandard.f:c JCM
+jon_helmstandard.f:c JCM 
+jon_helmstandard.f:c JCM: (moved to vector_eos.single.dek as global varaible)
+jon_helmstandard.f:c JCM:
+jon_helmstandard.f:c JCM:
+jon_helmstandard.f:c JCM:
+jon_helmstandard.f:c JCM:
+jon_helmstandard.f:c JCM:
+jon_helmstandard.f:c JCM:
+jon_helmstandard.f:c JCM:
+jon_helmstandard.f:c JCM:
+jon_helmstandard.f:c JCM:
+jon_helmstandard.f:c JCM:
+jon_helmstandard.f:c     JCM: general initialize
+jon_helmstandard.f:c  JCM:
+jon_helmstandard.f:c      JCM: non-relativistic ions
+jon_helmstandard.f:c      JCM: I notice that for low density and low temperature this becomes
+jon_helmstandard.f:c      JCM: sele is noisy at low temp and low densities, so fixed df_t above
+jon_helmstandard.f:c JCM: Made storage a subroutine
+jon_ls_2p7.f:c Compared to original code, see JCM comments.
+jon_ls_2p7.f:c JCM changed constants (used my const.dek)
+jon_ls_2p7.f:c JCM: Try more loops
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c     JCM: another version has this included
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM: lieb insert next 4 lines
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM: next 4 lines lieb insert
+jon_ls_2p7.f:c JCM: next 4 lines, lieb insert
+jon_ls_2p7.f:c        JCM: These are particle fractions per unit baryon mass (i.e. not by number, which is why alphas have 4.0)
+jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+jon_ls_2p7.f:c     JCM: GODMARK
+jon_ls_2p7.f:c JCM: lieb insert next 4 lines
+jon_ls_2p7.f:c     JCM: infinite loop occurs here
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM: (SUPERMARK)
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM: (SUPERMARK)
+jon_ls_2p7.f:c JCM: DEBUG:
+jon_ls_2p7.f:c JCM: DEBUG:
+jon_ls_2p7.f:c JCM: DEBUG:
+jon_ls_2p7.f:c JCM: DEBUG:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM: (hopefully bug fix will find this out)
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM: hopefully this is caught
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:cc JCM: moved any_electron() to jon_lsbox.f
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM:
+jon_ls_2p7.f:c JCM: presumed already included elsewhere
+jon_lsbox.f:c JCM: I added anyeos() to call any eos
+jon_lsbox.f:c JCM: I added jonnucbox() as wrapper to wrapper called lsbox() or shenbox()
+jon_lsbox.f:c     JCM: For HELM, add-in eosfxt.f TIMMES-like code for eip
+jon_lsbox.f:c     JCM: etaele has rest-mass subtracted out
+jon_lsbox.f:c     JCM: etaepos has double rest-mass added in
+jon_lsbox.f:c     JCM: etaepos = -etae-2/betatemp
+jon_lsbox.f:c     JCM: When outputting, make (LSEOS/Kaz)-like (no subtraction)
+jon_lsbox.f:c JCM: previously in jon_ls_2p7.f
+jon_lsbox.f:c JCM: below used to store electron EOS properties needed by LSEOS to generate final solution
+jon_lsbox.f:c  JCM:
+jon_lsbox.f:c JCM:
+jon_lsbox.f:c JCM:
+jon_lsbox.f:c JCM: These ??_row values (HELM/TIMMES output format) are stored into native LSEOS electron variables
+jon_lsbox.f:c  JCM:
+jon_lsbox.f:c     JCM: passed parameters
+jon_lsbox.f:c     JCM: passed parameter to return to tell if converged or not
+jon_lsbox.f:c  JCM:
+jon_lsbox.f:c JCM:
+jon_lsbox.f:c  JCM:
+jon_lsbox.f:c     JCM: passed parameter to return to tell if converged or not
+jon_lsbox.f:c JCM:
+jon_lsbox.f:c JCM:
+jon_lsbox.f:c  JCM:
+jon_lsbox.f:c JCM: note that the below means that:
+jon_lsbox.f:c     JCM: For LSEOS, at \rho=1.644676...E14g/cc T=5E8-1E11, cp=Inf and cv~-Inf
+jon_lsbox.f:c JCM:
+jon_lsbox.f:c  JCM:
+jon_sheneos.f:c     JCM: passed parameters
+jon_sheneos.f:c     JCM: passed parameter to return to tell if converged or not
+jon_sheneos.f:c JCM:
+jon_sheneos.f:c JCM:
+jon_sheneos.f:c  JCM:
+jon_sheneos.f:c  JCM:
+testsegfault/jon_helmstandard.f:c  JCM (abar must be mass of particle per unit amu given how used in pressure)
+testsegfault/jon_helmstandard.f:c  JCM:
+testsegfault/jon_helmstandard.f:c  JCM:
+testsegfault/jon_helmstandard.f:c .. JCM: abar is exactly mutot computed in ~/sm/grbmodel.m
+testsegfault/jon_helmstandard.f:c    JCM: Now true Ye = zbar/abarnum
+testsegfault/jon_helmstandard.f:c    JCM: GODMARK: Not actually sure how HELM uses Ye.  Might be using a fake Ye that is based upon mass.  Real Ye should only be used when determining fraction of electrons or protons per unit baryon NUMBER.  JCM's Ye should be used when wanting mass fraction of protons per unit baryon mass
+testsegfault/jon_helmstandard.f:c JCM
+testsegfault/jon_helmstandard.f:c JCM 
+testsegfault/jon_helmstandard.f:c JCM:
+testsegfault/jon_helmstandard.f:c  JCM:
+testsegfault/jon_helm_azbarset.f:c..xmass   = mass fractions      (JCM: local rest-mass density fraction of this species)
+testsegfault/jon_helm_azbarset.f:c..ymass   = molar fractions     (JCM: set internally by HELM code)
+testsegfault/jon_helm_azbarset.f:c..aion    = number of nucleons  (JCM: set to be total rest-mass of species per unit amu -- and this is consistent with how used to define pressure, etc. in this code)
+testsegfault/jon_helm_azbarset.f:c..zion    = number of protons   (JCM: = Y_e aion since HELM defines Y_e = zion/aion)
+testsegfault/jon_helm_compute.f:c         Modified by JCM using Kaz's new formula
+Binary file testsegfault/helm_jonmod7.zip matches
+u/ki/jmckinne/research/helm/general_compute_functions.f:c     JCM: below used to store electron EOS properties needed by LSEOS to generate final solution
+u/ki/jmckinne/research/helm/general_compute_functions.f:c     JCM:
+u/ki/jmckinne/research/helm/general_compute_functions.f:c..   JCM: Therefore whicheleeos=10,12 don't make sense since don't know what abar,zbar will be until here
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c Compared to original code, see JCM comments.
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM changed constants (used my const.dek)
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: Try more loops
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c     JCM: another version has this included
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: lieb insert next 4 lines
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: next 4 lines lieb insert
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: next 4 lines, lieb insert
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c        JCM: These are particle fractions per unit baryon mass (i.e. not by number, which is why alphas have 4.0)
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c     JCM: GODMARK
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: lieb insert next 4 lines
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c     JCM: infinite loop occurs here
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: dimensionless chemical potentials for protons and neutrons
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: (SUPERMARK)
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: (SUPERMARK)
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: DEBUG:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: DEBUG:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: DEBUG:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: DEBUG:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: (hopefully bug fix will find this out)
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: hopefully this is caught
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:cc JCM: moved any_electron() to jon_lsbox.f
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM:
+u/ki/jmckinne/research/helm/jon_ls_2p7.f:c JCM: presumed already included elsewhere
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c JCM:
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c JCM:
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c JCM:
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c JCM: (now these things are single globals in vector_eos.single.dek)
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c JCM: trying more accuracy
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c JCM: DEBUG:
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c     JCM:
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c JCM:
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c JCM:
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c JCM: added below xnem assignment as in HELM so consistent with HELM
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c JCM: Made storage a subroutine
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c JCM:
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c JCM:
+u/ki/jmckinne/research/helm/jon_eosfxt.f:c JCM: Went to 18 figures, no change
+u/ki/jmckinne/research/helm/vector_sneos.dek:c JCM: (in another file: vector_eos.single.dek)
+u/ki/jmckinne/research/helm/jon_sheneos.f:c     JCM: passed parameters
+u/ki/jmckinne/research/helm/jon_sheneos.f:c     JCM: passed parameter to return to tell if converged or not
+u/ki/jmckinne/research/helm/jon_sheneos.f:c JCM:
+u/ki/jmckinne/research/helm/jon_sheneos.f:c JCM:
+u/ki/jmckinne/research/helm/jon_sheneos.f:c  JCM:
+u/ki/jmckinne/research/helm/jon_sheneos.f:c  JCM:
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM: Made storage a subroutine
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM:
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM 
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM: (moved to vector_eos.single.dek as global varaible)
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM:
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM:
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM:
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM:
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM:
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM:
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM:
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM:
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM:
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM:
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c     JCM: general initialize
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c  JCM:
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c      JCM: non-relativistic ions
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c      JCM: I notice that for low density and low temperature this becomes
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c      JCM: sele is noisy at low temp and low densities, so fixed df_t above
+u/ki/jmckinne/research/helm/jon_helmstandard.f:c JCM: Made storage a subroutine
+u/ki/jmckinne/research/helm/eos_m4c.inc:cJCM:
+u/ki/jmckinne/research/helm/eos_m4c.inc:cc JCM: Some convergence parameters for LSEOS code itself
+u/ki/jmckinne/research/helm/eos_m4c.inc:c JCM:
+u/ki/jmckinne/research/helm/eos_m4c.inc:c     JCM:
+u/ki/jmckinne/research/helm/eos_m4c.inc:cJCM:
+u/ki/jmckinne/research/helm/eos_m4c.inc:cJCM:
+u/ki/jmckinne/research/helm/eos_m4c.inc:c     JCM: hbar in "MeV s" and c in "fm/s"
+u/ki/jmckinne/research/helm/eos_m4c.inc:c JCM:
+u/ki/jmckinne/research/helm/eos_m4c.inc:c JCM:
+u/ki/jmckinne/research/helm/jon_lsbox.f:c JCM: I added anyeos() to call any eos
+u/ki/jmckinne/research/helm/jon_lsbox.f:c JCM: I added jonnucbox() as wrapper to wrapper called lsbox() or shenbox()
+u/ki/jmckinne/research/helm/jon_lsbox.f:c     JCM: For HELM, add-in eosfxt.f TIMMES-like code for eip
+u/ki/jmckinne/research/helm/jon_lsbox.f:c     JCM: etaele has rest-mass subtracted out
+u/ki/jmckinne/research/helm/jon_lsbox.f:c     JCM: etaepos has double rest-mass added in
+u/ki/jmckinne/research/helm/jon_lsbox.f:c     JCM: etaepos = -etae-2/betatemp
+u/ki/jmckinne/research/helm/jon_lsbox.f:c     JCM: When outputting, make (LSEOS/Kaz)-like (no subtraction)
+u/ki/jmckinne/research/helm/jon_lsbox.f:c JCM: previously in jon_ls_2p7.f
+u/ki/jmckinne/research/helm/jon_lsbox.f:c JCM: below used to store electron EOS properties needed by LSEOS to generate final solution
+u/ki/jmckinne/research/helm/jon_lsbox.f:c  JCM:
+u/ki/jmckinne/research/helm/jon_lsbox.f:c JCM:
+u/ki/jmckinne/research/helm/jon_lsbox.f:c JCM:
+u/ki/jmckinne/research/helm/jon_lsbox.f:c JCM: These ??_row values (HELM/TIMMES output format) are stored into native LSEOS electron variables
+u/ki/jmckinne/research/helm/jon_lsbox.f:c  JCM:
+u/ki/jmckinne/research/helm/jon_lsbox.f:c     JCM: passed parameters
+u/ki/jmckinne/research/helm/jon_lsbox.f:c     JCM: passed parameter to return to tell if converged or not
+u/ki/jmckinne/research/helm/jon_lsbox.f:c  JCM:
+u/ki/jmckinne/research/helm/jon_lsbox.f:c JCM:
+u/ki/jmckinne/research/helm/jon_lsbox.f:c  JCM:
+u/ki/jmckinne/research/helm/jon_lsbox.f:c     JCM: passed parameter to return to tell if converged or not
+u/ki/jmckinne/research/helm/jon_lsbox.f:c JCM:
+u/ki/jmckinne/research/helm/jon_lsbox.f:c JCM:
+u/ki/jmckinne/research/helm/jon_lsbox.f:c  JCM:
+u/ki/jmckinne/research/helm/jon_lsbox.f:c JCM: note that the below means that:
+u/ki/jmckinne/research/helm/jon_lsbox.f:c     JCM: For LSEOS, at \rho=1.644676...E14g/cc T=5E8-1E11, cp=Inf and cv~-Inf
+u/ki/jmckinne/research/helm/jon_lsbox.f:c JCM:
+u/ki/jmckinne/research/helm/jon_lsbox.f:c  JCM:
+u/ki/jmckinne/research/helm/jon_helm_azbarset.f:c..   xmass   = mass fractions      (JCM: local rest-mass density fraction of this species)
+u/ki/jmckinne/research/helm/jon_helm_azbarset.f:c..   ymass   = molar fractions     (JCM: set internally by HELM code)
+u/ki/jmckinne/research/helm/jon_helm_azbarset.f:c..   aion    = number of nucleons  (JCM: set to be total rest-mass of species per unit amu -- and this is consistent with how used to define pressure, etc. in this code)
+u/ki/jmckinne/research/helm/jon_helm_azbarset.f:c..   zion    = number of protons   (JCM: = Y_e aion since HELM defines Y_e = zion/aion)
+u/ki/jmckinne/research/helm/jon_helm_azbarset.f:c  JCM (abar must be mass of particle per unit amu given how used in pressure)
+u/ki/jmckinne/research/helm/jon_helm_azbarset.f:c  JCM:
+u/ki/jmckinne/research/helm/jon_helm_azbarset.f:c  JCM:
+u/ki/jmckinne/research/helm/jon_helm_azbarset.f:c .. JCM: abar is exactly mutot computed in ~/sm/grbmodel.m
+u/ki/jmckinne/research/helm/jon_helm_azbarset.f:c    JCM: Now true Ye = zbar/abarnum
+u/ki/jmckinne/research/helm/jon_helm_azbarset.f:c    JCM: GODMARK: Not actually sure how HELM uses Ye.  Might be using a fake Ye that is based upon mass.  Real Ye should only be used when determining fraction of electrons or protons per unit baryon NUMBER.  JCM's Ye should be used when wanting mass fraction of protons per unit baryon mass
+u/ki/jmckinne/research/helm/vector_eos.single.dek:ccccccc JCM: everything in here can be outputted.  Other things can be transfered from inside function to here to be accessible for writing
+u/ki/jmckinne/research/helm/extra_vector_sneos.dek:c JCM: these either all already exist or aren't used globally
+u/ki/jmckinne/research/helm/jon_helm_computekazlike.f:c     Modified by JCM using Kaz's new formula
+vector_eos.single.dek:ccccccc JCM: everything in here can be outputted.  Other things can be transfered from inside function to here to be accessible for writing
+vector_sneos.dek:c JCM: (in another file: vector_eos.single.dek)

@@ -1,0 +1,48 @@
+c      parameter(ntk=101)         !number of doloop steps, 5 in 1 order of mag.
+c     JON:
+c      parameter(ntk=20)         !number of doloop steps, 5 in 1 order of mag.
+      parameter(ntk=200)         !number of doloop steps, 5 in 1 order of mag.
+c      parameter(ntk=1)         !number of doloop steps, 5 in 1 order of mag.
+      parameter(tkmin=1.d4)     !minimum value of temperature in K
+c      parameter(tkmin=6.918d09)     !minimum value of temperature in K
+      parameter(tkmax=1.d13)    !maximum value of temperature in K
+c      parameter(tkmax=6.918d09)    !maximum value of temperature in K
+C======================================================================
+
+c      parameter(nrhob=101)      !number of doloop steps, 5 in 1 order of mag.
+c      parameter(nrhob=20)      !number of doloop steps, 5 in 1 order of mag.
+      parameter(nrhob=200)      !number of doloop steps, 5 in 1 order of mag.
+c      parameter(nrhob=1)      !number of doloop steps, 5 in 1 order of mag.
+      parameter(rhobmin=1.d2) !minimum value of rhob in g/cc
+c      parameter(rhobmin=7.943d11) !minimum value of rhob in g/cc
+      parameter(rhobmax=1.d15)  !maximum value of rhob in g/cc
+c      parameter(rhobmax=7.943d11)  !maximum value of rhob in g/cc
+C======================================================================
+
+c      parameter(nhcm=10)        !number of doloop steps, 5 in 1 order of mag.
+      parameter(nhcm=1)        !number of doloop steps, 5 in 1 order of mag.
+c      parameter(nhcm=1)        !number of doloop steps, 5 in 1 order of mag.
+      parameter(hcmmin=1.d-15)   !minimum value of Hcm in cm 
+c      parameter(hcmmin=1.d-2)   !minimum value of Hcm in cm 
+      parameter(hcmmax=1.d-15)    !maximum value of Hcm in cm 
+c      parameter(hcmmax=1.d-2)    !maximum value of Hcm in cm 
+C======================================================================
+
+c      parameter(ntdynorye=11)       !number of doloop steps, 5 in 1 order of mag.
+      parameter(ntdynorye=50)       !number of doloop steps, 5 in 1 order of mag.
+c      parameter(tdynoryemin=1.d-3)  !minimum value of tdynorye in sec 
+      parameter(tdynoryemin=1D-2)  !minimum value of tdynorye in sec 
+c      parameter(tdynoryemax=1.d2)   !maximum value of tdynorye in sec 
+      parameter(tdynoryemax=0.56d0)   !maximum value of tdynorye in sec 
+
+
+
+C======================================================================
+
+      parameter(ntdynorynu=1)       !number of doloop steps, 5 in 1 order of mag.
+      parameter(tdynorynumin=1D-2)  !minimum value of tdynorynu in sec 
+      parameter(tdynorynumax=1D2)   !maximum value of tdynorynu in sec 
+
+
+
+

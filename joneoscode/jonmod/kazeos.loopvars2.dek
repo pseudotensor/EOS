@@ -1,0 +1,23 @@
+c	These things are set at runtime
+
+C======================================================================
+      integer itk               !doloop index of tk loop
+      real*8 inttk              !loginterval of doloop steps
+
+C======================================================================
+      integer irhob            !doloop index of rhob loop
+      real*8 intrhob            !loginterval of doloop steps
+
+C======================================================================
+      integer ihcm             !doloop index of Hcm loop
+      real*8 inthcm             !loginterval of doloop steps
+
+C======================================================================
+      integer itdynorye            !doloop index of tdynorye loop
+      real*8 inttdynorye            !loginterval of doloop steps
+C======================================================================
+      integer itdynorynu            !doloop index of tdynorynu loop
+      real*8 inttdynorynu            !loginterval of doloop steps
+C======================================================================
+
+

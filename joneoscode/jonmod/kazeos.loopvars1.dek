@@ -1,0 +1,25 @@
+c	These things are set by user before running and are constants
+
+C======================================================================
+      integer ntk               !number of doloop steps
+      real*8 tkmin              !minimum value of temperature in K
+      real*8 tkmax              !maximum value of temperature in K
+C======================================================================
+      integer nrhob             !number of doloop steps
+      real*8 rhobmin            !minimum value of rhob in g/cc
+      real*8 rhobmax            !maximum value of rhob in g/cc
+C======================================================================
+      integer nhcm              !number of doloop steps
+      real*8 hcmmin             !minimum value of Hcm in cm
+      real*8 hcmmax             !maximum value of Hcm in cm 
+C======================================================================
+      integer ntdynorye             !number of doloop steps
+      real*8 tdynoryemin            !minimum value of tdynorye in sec
+      real*8 tdynoryemax            !maximum value of tdynorye in sec 
+C======================================================================
+      integer ntdynorynu             !number of doloop steps
+      real*8 tdynorynumin            !minimum value of tdynorynu in sec
+      real*8 tdynorynumax            !maximum value of tdynorynu in sec 
+C======================================================================
+
+

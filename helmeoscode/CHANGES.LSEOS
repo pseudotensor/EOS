@@ -1,0 +1,53 @@
+
+ -----------------------------------------------------------------------
+
+  Here are a few significant changes from earlier versions of
+  the EOS:
+
+         +++++++++++++++++  V. 2.7 9/1/95 ++++++++++++++++++++++++++++++
+
+     1.)  The 16pt. Gauss--Laguerre quadrature in the full electron
+          EOS was replaced with 64 pt. IMT quadrature (see 
+          Natarajan & Kumar, Comp. Phys. Comm., v76, (1993) 48-50)
+          which is much more accurate when the electron or positrons 
+          are degenerate.  The 16pt. Gauss-Laguerre method can still
+          be accessed by going into the routine EL_EOS and commenting
+          out the section using EL_IMT and commenting in the section
+          using  EL_GL.
+
+         +++++++++++++++++  V. 2.6 +++++++++++++++++++++++++++++++++++++
+
+
+     1.)  No more "fermi.atb" file.  The Fermi integral routines
+          now have the spline coefficients data'd in instead of
+          having to read this file.  You still must call LOADMX()
+          prior to calling the EOS the first time in order to
+          initialize the boundary & Maxwell construction tables.
+
+     2.)  Full electron EOS is now incorporated into the code.
+          The code no longer solely uses the relativistic EOS in the LS
+          nuclear physics paper:  
+
+             Nucl. Phys. A, vol. 535, (1991), p.331-376
+
+          The code uses the relativistic electron EOS when
+          appropriate, and computes the full (arbitrary relativity)
+          Fermi integrals elsewhere by means of Gauss-Laguere 
+          quadrature.  The effects of pair production are included 
+          everywhere.
+
+     3.)  The code now expect the boundary & Maxwell contruction
+          files to be named "bound.atb" & "maxwel.atb" and no
+          longer prompts for the file names.  My suggestion
+          for handling this is to symbolically link the appropriate 
+          *.atb files to these names before starting your code.
+          As an example, suppose you wanted to use the EOS with
+          the K=220 MeV parameter set, then create the symbolic links
+          by typing the commands:
+
+               ln -s bd180.atb bound.atb
+               ln -s max180.atb maxwel.atb
+
+          before you run the code.
+
+ -----------------------------------------------------------------------

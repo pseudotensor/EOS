@@ -1,0 +1,19 @@
+      parameter(ntk=1)         !number of doloop steps, 5 in 1 order of mag.
+      parameter(tkmin=1.d4)     !minimum value of temperature in K
+      parameter(tkmax=1.d4)    !maximum value of temperature in K
+
+      parameter(nrhob=200)      !number of doloop steps, 5 in 1 order of mag.
+      parameter(rhobmin=1.d2) !minimum value of rhob in g/cc
+      parameter(rhobmax=1.d15)  !maximum value of rhob in g/cc
+
+      parameter(nhcm=1)        !number of doloop steps, 5 in 1 order of mag.
+      parameter(hcmmin=1.d-15)   !minimum value of Hcm in cm 
+      parameter(hcmmax=1.d-15)    !maximum value of Hcm in cm 
+
+      parameter(ntdyn=1)       !number of doloop steps, 5 in 1 order of mag.
+      parameter(tdynmin=1.d-15)  !minimum value of tdyn in sec 
+      parameter(tdynmax=1.d-15)   !maximum value of tdyn in sec 
+
+
+
+
