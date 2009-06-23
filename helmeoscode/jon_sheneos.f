@@ -373,7 +373,7 @@ c         whichfunction=0
 
 
 
-         if(1) then
+         if(0) then
             write(*,*) lYpfloor,ltempfloor,Ypfloor,tempfloor,azmin,xmin
 
 c     DEBUG:
