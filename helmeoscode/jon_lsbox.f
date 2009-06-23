@@ -976,7 +976,7 @@ c     NEW LSEOS quantities
       end if
 
 c     GODMARK: treat the below as species information?
-      write(*,*) 'etaprecheck',loci,etapls,etanls
+c      write(*,*) 'etaprecheck',loci,etapls,etanls
       etap_row(loci) = etapls
       etan_row(loci) = etanls
       etanu_row(loci) = 0.0
@@ -2139,7 +2139,7 @@ c     Local index
       
 
 c..bring in the lattimer-swesty data structures
-      include 'eos_m4c.commononly.inc'
+c      include 'eos_m4c.commononly.inc'
 
       include 'const.dek'
 
@@ -2263,10 +2263,11 @@ c     GODMARK: WHICH ONE OF BELOW:
 c        etaele_row(loci) = etae
         etaele_row(loci) = etaele
 
-        etap_row(loci) = etapls
-        etan_row(loci) = etanls
-        etanu_row(loci) = etanu
-        write(*,*) 'storerow',loci,etaele,etapls,etanls,etanu
+c     Don't set etap_row and etan_row here!
+c        etap_row(loci) = etapls
+c        etan_row(loci) = etanls
+c        etanu_row(loci) = etanu
+c        write(*,*) 'storerow',loci,etaele,etapls,etanls,etanu
 
         detat_row(loci)  = detadt
         detad_row(loci)  = detadd
