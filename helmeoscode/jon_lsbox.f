@@ -728,7 +728,7 @@ c     Get in terms of per baryon
 
 cccccccccc STEP2 ccccccccccc
 c     Setup electron EOS inputs for A and Z to have consistent zbar,abar,density,temperature as nuclear EOS
-            write(*,*) 'store_row_lsspecies',loci
+c            write(*,*) 'store_row_lsspecies',loci
             call store_row_lsspecies(loci)
 c     This is the one set of things we store back overwriting original choice by non-nuclear EOS
 c     Required for getting nuclear version of (e.g.) etapls,etanls that is needed by neutrinos later
@@ -1243,7 +1243,7 @@ c     Below is ONLY time eta,etap,etan,etanu should be assigned or used since LS
       etan=etan_row(loci)
       etanu=etanu_row(loci)
 
-      write(*,*) 'etacheck',loci,etae,etap,etan,etanu
+c      write(*,*) 'etacheck',loci,etae,etap,etan,etanu
 
       nptotal = nptotal_row(loci)
       nntotal = nntotal_row(loci)
@@ -2484,7 +2484,7 @@ c     Caution:
       etan=etan_row(loci)
       etanls=etan
       etanu=etanu_row(loci)
-      write(*,*) 'storebackrow',loci,etae,etap,etan,etanu
+c      write(*,*) 'storebackrow',loci,etae,etap,etan,etanu
 
 
 cccccccccccccccc
