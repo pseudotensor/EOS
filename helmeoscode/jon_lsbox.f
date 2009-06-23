@@ -3771,21 +3771,21 @@ c     JCM: For LSEOS, at \rho=1.644676...E14g/cc T=5E8-1E11, cp=Inf and cv~-Inf
 c     And sound=Nan
 c     If this happens, assume cp just large or phase transition
 c     In any case reset cp to be large
-         if(cp>1E49) then
-            cp=1E49
+         if(cp>1D49) then
+            cp=1D49
             sound=clight*0.9999
          end if
-         if(cp<-1E49) then
-            cp=-1E49
+         if(cp<-1D49) then
+            cp=-1D49
             sound=clight*0.9999
          end if
 
-         if(cv>1E49) then
-            cv=1E49
+         if(cv>1D49) then
+            cv=1D49
             sound=clight*0.9999
          end if
-         if(cv<-1E49) then
-            cv=-1E49
+         if(cv<-1D49) then
+            cv=-1D49
             sound=clight*0.9999
          end if
 
@@ -3795,21 +3795,21 @@ c     In any case reset cp to be large
 
 
          if(cp-cp .ne. 0.0) then
-            cp = 1E49
+            cp = 1D49
          end if
 
          if(cv.ne.cv) then
-            cv = 1E49
+            cv = 1D49
          end if
 
          cpinf=1.0/0.0
 
          if(abs(cp).eq.abs(cpinf)) then
-            cp = 1E49
+            cp = 1D49
          end if
 
          if(abs(cp).gt.huge(cp)) then
-            cp = 1E49
+            cp = 1D49
          end if
 
 
