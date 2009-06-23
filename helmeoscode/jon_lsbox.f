@@ -1827,8 +1827,6 @@ c     But since rely universal variables, need to uniformly initialize
       implicit none
 
 
-c..bring in the lattimer-swesty data structures
-      include 'eos_m4c.commononly.inc'
 
       include 'const.dek'
 
@@ -2064,8 +2062,9 @@ c     Needed for normal output of eosother.dat
           yetot = 0.0d0
           yeheav = 0.0d0
 
-          etapls=0.0d0
-          etanls=0.0d0
+c     Don't zero out ls quantities that are already set as desired
+c          etapls=0.0d0
+c          etanls=0.0d0
           etap=0.0d0
           etan=0.0d0
           etanu=0.0d0
