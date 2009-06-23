@@ -924,7 +924,7 @@ cccccccccccccccccccccccccccccccccccccccc
 
 c     Set Yp to be 0
 c     log10(Yp) shouldn't be used
-               shenlyp_row(kk,jj,ii)=-1E50
+               shenlyp_row(kk,jj,ii)=-1D50
                shenyp_row(kk,jj,ii)=0.0
 	
 

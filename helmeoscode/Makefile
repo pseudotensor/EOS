@@ -87,7 +87,8 @@ all: helmeos.exe helmstareos.exe
 
 OBJS=jon_helm_azbarset.o jon_sneut5.o jon_kazQm.o jon_helm_computekazlike.o jon_helm_outputstyle.o jon_helmstandard.o jon_eosfxt.o jon_lsbox.o general_compute_functions.o jon_ls_2p7.o jon_sheneos.o
 
-KAZDIR=~/research/kazeos/jonmod
+#KAZDIR=~/research/kazeos/jonmod
+KAZDIR=../joneoscode/jonmod/
 
 KAZOBJS=$(KAZDIR)/muekT.o $(KAZDIR)/kazeos_compute.o $(KAZDIR)/rhoe.o $(KAZDIR)/kine.o $(KAZDIR)/rnp.o $(KAZDIR)/tau_calc.o $(KAZDIR)/fermidirac.o $(KAZDIR)/xnuc_calc_new.o $(KAZDIR)/pressure.o $(KAZDIR)/subs.o $(KAZDIR)/ne.o $(KAZDIR)/qpe2.o $(KAZDIR)/qAe2.o $(KAZDIR)/qne2.o $(KAZDIR)/qn2.o $(KAZDIR)/pe.o $(KAZDIR)/gammape.o $(KAZDIR)/gammaAe.o $(KAZDIR)/gammane.o $(KAZDIR)/gamman.o $(KAZDIR)/gammannu.o $(KAZDIR)/gammapenu.o $(KAZDIR)/gammapnu.o $(KAZDIR)/yefit.o $(KAZDIR)/kazloopfunctions.o
 
