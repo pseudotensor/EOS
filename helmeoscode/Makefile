@@ -65,7 +65,7 @@
 # 0.5) [Modify eosparms.f, kazeos.parms.dek (1,0,1)]
 # 1) make clean ; make
 #    Setup grbmodel directory for looking at stellar data and generating inital stellar model data for HARM
-# 2) sh copy2grbmodel.sh (if want to have helmstareos.exe and EOS tables to be in grbmodel directory)
+# 2) sh copy2grbmodel.sh <SMGRBDESTDIR>    (if want to have helmstareos.exe and EOS tables to be in grbmodel directory)
 #
 #
 # Purpose of other scripts:
@@ -98,7 +98,7 @@ DEPS=Makefile $(OBJS) $(KAZOBJS) $(KAZDEPS) kaz_state.dek kaz_fakestate.dek
 
 # DEBUG WITH BOUNDS CHECKS
 #FFLAGS=-cm -132 -O0 -C -warn nounused -warn nouncalled -warn
-FFLAGS=-cm -132 -w90
+FFLAGS=-cm -132 -w90 -g
 # autoparallelization doesn't do well
 #FFLAGS=-cm -parallel -132 -w90
 #FFLAGS=-cm -132 -O0 -C

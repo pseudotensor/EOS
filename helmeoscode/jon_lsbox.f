@@ -728,10 +728,11 @@ c     Get in terms of per baryon
 
 cccccccccc STEP2 ccccccccccc
 c     Setup electron EOS inputs for A and Z to have consistent zbar,abar,density,temperature as nuclear EOS
-
+            write(*,*) 'store_row_lsspecies',loci
             call store_row_lsspecies(loci)
 c     This is the one set of things we store back overwriting original choice by non-nuclear EOS
-c            call store_row_lsspecies(index)
+c     Required for getting nuclear version of (e.g.) etapls,etanls that is needed by neutrinos later
+            call store_row_lsspecies(index)
             
 
 cccccccccc STEP3 ccccccccccc
@@ -975,6 +976,7 @@ c     NEW LSEOS quantities
       end if
 
 c     GODMARK: treat the below as species information?
+      write(*,*) 'etaprecheck',loci,etapls,etanls
       etap_row(loci) = etapls
       etan_row(loci) = etanls
       etanu_row(loci) = 0.0
@@ -1235,12 +1237,13 @@ c      write(*,*) 'kazazbar',kazabar,kazzbar,abarbound
 
 c     If not getting Kaz EOS to compute this, then needed
 c     If Kaz EOS will compute this, won't hurt to make this assignment
+c     Below is ONLY time eta,etap,etan,etanu should be assigned or used since LS/Shen EOS set etapls,etanls that should elsewhere be used.
       etae=etaele_row(loci)
       etap=etap_row(loci)
       etan=etan_row(loci)
       etanu=etanu_row(loci)
 
-c      write(*,*) 'etacheck',etap,etan
+      write(*,*) 'etacheck',loci,etae,etap,etan,etanu
 
       nptotal = nptotal_row(loci)
       nntotal = nntotal_row(loci)
@@ -1824,6 +1827,9 @@ c     But since rely universal variables, need to uniformly initialize
       implicit none
 
 
+c..bring in the lattimer-swesty data structures
+      include 'eos_m4c.commononly.inc'
+
       include 'const.dek'
 
       include 'vector_eos.dek'
@@ -2058,6 +2064,8 @@ c     Needed for normal output of eosother.dat
           yetot = 0.0d0
           yeheav = 0.0d0
 
+          etapls=0.0d0
+          etanls=0.0d0
           etap=0.0d0
           etan=0.0d0
           etanu=0.0d0
@@ -2131,6 +2139,8 @@ c     Local index
       integer whichnonnucleareos,storenewspecies
       
 
+c..bring in the lattimer-swesty data structures
+      include 'eos_m4c.commononly.inc'
 
       include 'const.dek'
 
@@ -2249,7 +2259,16 @@ c     Below was only set in TIMMES EOS
         end if
 
 
+c       \eta's
+c     GODMARK: WHICH ONE OF BELOW:
+c        etaele_row(loci) = etae
         etaele_row(loci) = etaele
+
+        etap_row(loci) = etapls
+        etan_row(loci) = etanls
+        etanu_row(loci) = etanu
+        write(*,*) 'storerow',loci,etaele,etapls,etanls,etanu
+
         detat_row(loci)  = detadt
         detad_row(loci)  = detadd
         detaa_row(loci)  = detada
@@ -2444,6 +2463,9 @@ c     Used to store what Kaz generated and put into arrays to be placed back int
 c     Passed quantity
 c     Local index
       integer loci
+
+c..bring in the lattimer-swesty data structures
+      include 'eos_m4c.commononly.inc'
       
       include 'const.dek'
 
@@ -2455,11 +2477,14 @@ c     Caution:
       include 'kazeos.dek' ! includes a very similar name etae for etaele
 
 
-
       etae=etaele_row(loci)
+      etaele=etae
       etap=etap_row(loci)
+      etapls=etap
       etan=etan_row(loci)
+      etanls=etan
       etanu=etanu_row(loci)
+      write(*,*) 'storebackrow',loci,etae,etap,etan,etanu
 
 
 cccccccccccccccc

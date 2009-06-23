@@ -1673,8 +1673,8 @@ c     Below for diagnostics
 
 c     Old way to get dY_e/dt
       if(1) then
-         taulocal_nue = ddim((1.0-dexp(-(ntaut_nue))),0.0)
-         taulocal_nuebar = ddim((1.0-dexp(-(ntaut_nuebar))),0.0)
+         taulocal_nue = ddim((1.0-dexp(-(ntaut_nue))),0.0d0)
+         taulocal_nuebar = ddim((1.0-dexp(-(ntaut_nuebar))),0.0d0)
       else
 c     Assume only used for optically thin calculation
          taulocal_nue = 0.0
