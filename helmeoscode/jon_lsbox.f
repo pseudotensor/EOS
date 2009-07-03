@@ -733,6 +733,9 @@ c            write(*,*) 'store_row_lsspecies',loci
 c     This is the one set of things we store back overwriting original choice by non-nuclear EOS
 c     Required for getting nuclear version of (e.g.) etapls,etanls that is needed by neutrinos later
             call store_row_lsspecies(index)
+c            etap_row(index) = etap_row(loci)
+c            etan_row(index) = etan_row(loci)
+
             
 
 cccccccccc STEP3 ccccccccccc
