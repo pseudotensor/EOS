@@ -43,7 +43,7 @@
 ########################
 #    Goto correct directory (helm directory is central site for use of KAZ/HELM/SHEN together):
 # 1) cd /u/ki/jmckinne/research/helm/
-# 1.5) [Modify eosparms.f, kazeos.parks.dek, kazeos.loopparms.dek]
+# 1.5) [Modify eosparms.f, kazeos.parms.dek, kazeos.loopparms.dek]
 #    Make combo code and create directory for processing (modify DIR=)
 # 2) sh runjonhelm.sh
 #    Create eosparms.head
@@ -117,7 +117,7 @@ helmstareos.exe: jon_helm_stellarinput.o $(DEPS)
 
 
 clean:
-	rm -f *.o core* *~ 
+	rm -f $(OBJS) $(KAZOBJS) core* *~ helmeos.exe helmstareos.exe
 
 jon_helm.o: jon_helm.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek   kazeos.loopparms.dek  kaz_state.dek  kaz_fakestate.dek const.dek jon_helmstandard.o jon_eosfxt.o Makefile
 	$(FC)  -c $(FFLAGS)  jon_helm.f
