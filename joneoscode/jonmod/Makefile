@@ -29,7 +29,7 @@ eos.exe: eos.o $(DEPS)
 
 
 clean:
-	rm -f *.o core* *~ 
+	rm -f $(KAZOBJS) core* *~ eos.exe
 
 eos.o: eos.f kazeos.loopparms.dek kazeos.loopvars.dek const.dek kazeos.dek kazeos.parms.dek
 	$(FC) $(FFLAGS) -c   eos.f
