@@ -1,5 +1,47 @@
 ##############
 #
+#jon_helmstandard.f : Wrapper for full EOS tables
+#jon_helm_stellarinput.f : Wrapper for stellar EOS tables
+#
+#eosparms.f : Setup which EOSs to use
+#eosmemory.f : Memory allocated for processing EOS
+#
+#compute_nuclear_azbar.mex.f : Compute nuclear version of <A> and <Z> from component information (i.e. xprot, xneut, etc.)
+#general_compute_functions.f : Various calculations used also in Matlab
+#computeyerhob.f : Compute Y_e(rhob)
+#jon_helm_azbarset.f : Compute <A>, <Z>, etc.
+#enforce_x_consistency.mex.f : Matlab Mex function to check x=\sum x_i
+#oldyeshecheck.f : Check Y_e
+#enforce_ye_consistency.mex.f : Matlab Mex to check Y_e
+#
+#
+#jon_eosfxt.f : Generates TIMMES EOS result
+#gauss_fermi.f : TIMMES aux file
+#jon_ls_2p7.f: Generates LS EOS result
+#jon_sheneos.f : Generates Shen EOS result
+#jon_helm.f : Generates HELM EOS result
+#
+#jon_lsbox.f :  Combines Shen/LS with non-nuclear EOS
+#
+#jon_sneut5.f : Lattimer (Itoh) neutrino physics
+#jon_kazQm.f : Simplified Kaz neutrino physics
+#
+#jon_helm_computekazlike.f : Reformat LS/Shen/HELM/TIMMES result into Kaz format
+#jon_helm_outputstyle.f : Output formats for final finals and calls full neutrino physics function
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+##############
+#
+##############
+#
 # General instructions for KAZ/HELM/SHEN/MATLABINTERP code use
 #
 ########################
