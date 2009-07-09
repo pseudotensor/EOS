@@ -1119,6 +1119,8 @@ c     This extrapolation of etap and etan works unless in hydrogen region.  Just
             muhat = lsabar
 
             etapls = 1D-49
+            etanls = 1D-49
+
 c     Assume beta equilibrium as valid at high temperatures
 c     see Kohri & Mineshige (2002)
             if(temp_row(loci) .gt. me*light2/kerg) then
