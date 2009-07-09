@@ -4,7 +4,8 @@ c
 c
 c     Assumes species computed via kaz_species_etae() or externally
 c
-c     Globally uses:
+c     Globally uses several quantities, see preparecall2kazeos() in jon_lsbox.f
+c     Things globally need include (e.g.):
 c     rhob,tk,hcm,tdynorye,tdynorynu
 c     npfree,nnfree,npheav,nnheav,kazaheav,kazzheav
 c     yetot,abarbound
@@ -18,7 +19,7 @@ c     Note that when finding rho,T,Y_e,Y_\nu table, only things computed here ch
 
 c     ynumethod=0 : quasi-thermalization (must have hcm dep)
 c     ynumethod=1 : Y_nu dependence (so no hcm dep)
-c     ynumethod=2 : Y_nu thermal (so no hcm dep)
+c     ynumethod=2 : Y_nu thermal (so no hcm dep) [Does not exist anymore]
 
 
 C======================================================================
@@ -121,6 +122,10 @@ c     Check if converged if gone through at least one full iteration:
 
          end do
  777     continue
+
+c     Assign final converged Ynu to overwrite "guess" for what is generally an independent variable
+         tdynorynu=Ynu
+
       end if
 
 

@@ -1119,7 +1119,19 @@ c     This extrapolation of etap and etan works unless in hydrogen region.  Just
             muhat = lsabar
 
             etapls = 1D-49
-            etanls = 1D-49
+c     Assume beta equilibrium as valid at high temperatures
+c     see Kohri & Mineshige (2002)
+            if(temp_row(loci) .gt. me*light2/kerg) then
+               etanls = etapls + etae
+            end if
+
+c     Except sometimes assume degenerate nucleons at high density and low temp
+c     see Kohri & Mineshige (2002)
+            if( (temp_row(loci) .lt. me*light2/kerg) .AND. (den_row(loci).gt. 1.0D10) ) then
+               etanls = etae + (mn-mb)*light2
+               etapls = etae + (mp-mb)*light2
+            end if
+
 
             xnuc = xnut + xprot
             yetot = lszbar/lsabar
@@ -1490,11 +1502,11 @@ c      write(*,*) 'etacheck',loci,etae,etap,etan,etanu
       nnheav = nnheav_row(loci)
 
 c DEBUG if things are set or not
-      write(*,*) loci,rhob,tk,hcm,tdynorye,tdynorynu,npratiototal,xnuc
-     1 ,yetot,yefree,yebound,npratiofree,npratiobound,npratioheav
-     1 ,kazabar,kazzbar,abarbound,kazxneut,kazxprot,kazxalfa
-     1 ,kazxheav,kazaheav,kazzheav,yeheav,etae,etap,etan,etanu
-     1 ,nptotal,nntotal,npfree,nnfree,npbound,nnbound,npheav,nnheav
+c      write(*,*) loci,rhob,tk,hcm,tdynorye,tdynorynu,npratiototal,xnuc
+c     1 ,yetot,yefree,yebound,npratiofree,npratiobound,npratioheav
+c     1 ,kazabar,kazzbar,abarbound,kazxneut,kazxprot,kazxalfa
+c     1 ,kazxheav,kazaheav,kazzheav,yeheav,etae,etap,etan,etanu
+c     1 ,nptotal,nntotal,npfree,nnfree,npbound,nnbound,npheav,nnheav
 
 
       
