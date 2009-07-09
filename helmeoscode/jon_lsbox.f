@@ -1131,7 +1131,7 @@ c     Except sometimes assume degenerate nucleons at high density and low temp
 c     see Kohri & Mineshige (2002)
             if( (temp_row(loci) .lt. me*light2/kerg) .AND. (den_row(loci).gt. 1.0D10) ) then
                etanls = etae + (mn-mb)*light2
-               etapls = etae + (mp-mb)*light2
+               etapls = 1D-49
             end if
 
 
