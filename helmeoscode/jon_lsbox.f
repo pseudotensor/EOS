@@ -1038,7 +1038,7 @@ c     We want to use store_row_lsspecies() below, but first assign right-hand-si
          lsabar=abar_row(loci)
          lsabarnum=abarnum_row(loci)
 
-         if(lsabar.gt.1.5) then
+         if(lsabar.gt.4.5) then
 c     call computemutotfit_xnuc0(den_row(),temp_row(loci),abar_row(loci))
             xnut =1D-49
             xprot =1D-49
@@ -1072,6 +1072,41 @@ c     Note that etapls and etanls are set from "lsindex" unlike others, which me
             nnbound = nntotal
             npheav = nptotal
             nnheav = nntotal
+
+         else if(lsabar.gt.3.5) then
+c     call computemutotfit_xnuc0(den_row(),temp_row(loci),abar_row(loci))
+            xnut =1D-49
+            xprot =1D-49
+            xalfa = 1.0d0
+            xh = 1D-49
+            a = 1D-49
+            x = 0.50d0 ! doesn't matter
+            muhat = lsabar
+
+c     Note that etapls and etanls are set from "lsindex" unlike others, which means we use nuclear versions of these, where nuclear versions are assigned at the boundary of the table where nuclear EOS exists (goodconverge.eq.1)
+            etapls = etap_row(lsindex)
+            etanls = etan_row(lsindex)
+
+            xnuc = xnut + xprot
+            yetot = x
+            yefree = 0.5d0      !doesn't matter
+            yebound = x
+            yeheav = 0.5d0 ! doesn't matter
+            npratiofree = 1D-49
+            npratiobound = 1.0d0-x
+            npratiototal = npratiobound
+            abarbound = lsabar
+
+            nblocal = (den_row(loci)/mb)
+            
+            nptotal = nblocal/(1.0d0 + npratiototal)
+            nntotal = nblocal - nptotal
+            npfree = 1D-49
+            nnfree = 1D-49
+            npbound = nptotal
+            nnbound = nntotal
+            npheav = 1D-49
+            nnheav = 1D-49
 
          else
 c     This extrapolation of etap and etan works unless in hydrogen region.  Just force etap=etan=0 if in that region where etae>>1
