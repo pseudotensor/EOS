@@ -134,8 +134,10 @@ c     Ensure that neutrino terms aren't there by getting rid of them if they are
             etot_row(jj) = etot_row(jj) - rho_nu/den_row(jj)
             stot_row(jj) = stot_row(jj) - (kerg*s_nu)/den_row(jj)
 
+c     Convert HELM EOS format of _row -> kaz like format of variables
             call preparecall2kazeos(jj)
 
+c     Compute neutrino terms, perhaps iterating to get solution for a given optical depth or dynamical timescale
             call kaz_physics_neutrinos_etae(etae,etap,etan,etanu)
 
             ptot_row(jj) = ptot_row(jj) + p_nu

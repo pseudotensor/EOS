@@ -139,6 +139,9 @@ c     Now read in (realize Ynu=1E-4 may be HUGE for optical-depth supressed Ynu)
 c         write(*,*) 'abarcompute',rhob,tk,yein,ionmax,xmass,abar_row(j),abarnum_row(j),zbar_row(j),abarbound_row(j)
 c         write(*,*) 'abarcompute',abar_row(j),abarnum_row(j)
 
+c     Now set Y_e for Kaz processing parts of jon_lsbox.f
+         tdynorye_row(j) = tdynorye
+
          tdynorynu_row(j) = tdynorynu
 
 

@@ -45,7 +45,74 @@ c
 c
 c
 c
-
+cccccccccc List of subroutines:
+c
+cccccccccccccccccccccccccccccccccccc
+c  Primary function called externally to get full EOS:
+c      subroutine anyeos()
+c
+cccccccccccccccccccccccccccccccccccc
+c
+cccccccccccccccccccccccccccccccccccc
+c  Set how extrapolation should be done and limit rho,T,Ye based upon whether within nuclear EOS or also if NSE holds
+c      subroutine tableminmaxfixes(tmin, tmax, rhomin, rhomax, ypmin, ypmax)
+cccccccccccccccccccccccccccccccccccc
+c
+cccccccccccccccccccccccccccccccccccc
+c  Wrapper to call LS and Shen EOSs
+c      subroutine jonnucbox(numconverged,numgoodconverged)
+c  Wrapper for calling LS EOS
+c      subroutine lsbox(iunitlocal, yelocal, tklocal, rhoblocal, didconverge)
+c      subroutine loadguess
+c      subroutine lsguess(rho,temp,ye,etanlin,etaplin,yplin)
+cccccccccccccccccccccccccccccccccccc
+c
+cccccccccccccccccccccccccccccccccccc
+c  Routines that check convergence and accuracy of general and specific checks for LS EOS
+c      subroutine check_convergence(didconverge,goodconverge,numconverged,numgoodconverged)
+c      subroutine check_convergence_lseos(didconverge,goodconverge,numconverged,numgoodconverged)
+cccccccccccccccccccccccccccccccccccc
+c
+cccccccccccccccccccccccccccccccccccc
+c  Wrappers to call HELM, TIMMES, and old LS electron EOS
+c      subroutine full_nonnuclear_eos(whichnonnucleareos, loci, dostore,dostorespecies)
+c      subroutine any_electron(tin,yein,dnsin)
+c      subroutine any_electron_new(tin,yein,dnsin)
+c Some calculations that want that normally done in Kaz EOS so also do for HELM/TIMMES EOSs
+c      subroutine helmtimmes_extracalculation(loci,whichnonnucleareos)
+c
+c  Wrapper to call Kaz EOS for its electron or simple nuclear EOS:
+c      subroutine kazeoswrapper()
+c Prepare to call Kaz for either EOS or for neutrinos at end when writing to file:
+c      subroutine preparecall2kazeos(loci)
+c  After calling kazeoswrapper(), stores Kaz variables into normal EOS variables
+c      subroutine store_row_kazeos2helminternals()
+c  Convert species information from normal EOS to Kaz EOS format
+c      subroutine eos2kazeos_species(nbtotal)
+cccccccccccccccccccccccccccccccccccc
+c
+c
+cccccccccccccccccccccccccccccccccccc
+c Initialize EOS variables (not arrays) used by HELM/TIMMES:
+c      subroutine init_row()
+c Initialize EOS variables (not arrays) used by LS EOS
+c      subroutine zero_cgsnuc_quantities()
+c
+c Store EOS results from individual variables to array location of similar name
+c      subroutine store_row(loci,whichnonnucleareos,storenewspecies)
+c
+c Store LSEOS results (_nuc) into _cgs variable names (not arrays) [includes energy/baryon offset!]
+c      subroutine store_row_fromlseos2cgs(didconverge)
+c Calles store_row() to get the ele EOS and then LSEOS/Shen EOS results in _cgs/_nuc are put into HELM (normal) EOS *arrays* of similar names
+c      subroutine store_row_fromcgsnuc2helmeos(loci)
+c Store "Species" information from LS EOS (and Shen EOS) variable names into *arrays* of simliar names
+c      subroutine store_row_lsspecies(loci)
+c
+c Used before file writing in order to take arrays and store them back into individual variable names:
+c      subroutine storeback_row(loci)
+c
+c
+cccccccccccccccccccccccccccccccccccc
 
 
 
@@ -471,7 +538,7 @@ c     write(*,*) "Calling store_row_fromlseos2helmeos",index,lsindex
          if(goodconverge.eq.0) then
 cccccccccccccccccccccccccccccccccccccccccccccccccc
 c
-c  If no good convergence (or using limited range), then reduce to HELM/TIMMES/KAZ/etc. non-nuclear EOS
+c  If no good convergence (or using limited range), then extrapolate into non-nuclear region (e.g. reduce to HELM/TIMMES/KAZ/etc. non-nuclear EOS)
 c
 cccccccccccccccccccccccccccccccccccccccccccccccccc
 
@@ -732,17 +799,18 @@ c            write(*,*) 'store_row_lsspecies',loci
             call store_row_lsspecies(loci)
 c     This is the one set of things we store back overwriting original choice by non-nuclear EOS
 c     Required for getting nuclear version of (e.g.) etapls,etanls that is needed by neutrinos later
-            call store_row_lsspecies(index)
+c            call store_row_lsspecies(index)
 c            etap_row(index) = etap_row(loci)
 c            etan_row(index) = etan_row(loci)
 
-            
+           
 
 cccccccccc STEP3 ccccccccccc
 c     Get non-nuclear EOS solution for nuclei at nuclear version of temperature, density, and species
 c     Store results in lsindex so don't overwrite nuclear species information
 c            write(*,*) 'atincorrect',den_row(loci),temp_row(loci)
             call full_nonnuclear_eos(whicheleeos,lsindex,0,1)
+
 
 cccccccccc STEP4 ccccccccccc
 c     Store non-nuclear nuclei terms as part of offset (nuclear EOS includes Coulomb term in "ion")
@@ -803,8 +871,9 @@ c            write(*,*) 'diffstuff',difffactor1,difffactor2,difffactor,difffacto
 
 c         write(*,*) 'atcorrect',den_row(loci),temp_row(loci)
 
+c     abar,zbar,abarnum still old non-nuclear values since nuclear didn't converge so didn't call store_row_lsspecies()
+c     The 0,1 means don't overwrite any _row's or species information (i.e. don't call store_row_lsspecies())
          call full_nonnuclear_eos(whicheleeos,lsindex,0,1)
-
 
 
 c     p and s don't have binding energy to shift and any mismatch is simply error
@@ -868,12 +937,17 @@ c     Have to correct totals and individuals since already totalled into pres,en
 
 c         write(*,*) 'diffs',localpdiff,localediff,localsdiff
 
-cccccccccc STEP7 ccccccccccc
+ccccccccccSTEP7 ccccccccccc
 c     Finally, store into ???_row @ index where normally would have been put
 c     This only stores back non-nuclear nucleon+electron+total into index space, ALSO overwriting nuclear species information
-c         call store_row(index,whicheleeos,0)
+c     call store_row(index,whicheleeos,0)
          call store_row(index,whicheleeos,1)
+         
+         call backstore_row_lsspecies(index)
 
+c     Store "LS" results back into normal array
+         call store_row_lsspecies(index)
+         
 
 
 
@@ -928,11 +1002,128 @@ cccccccccccccccccccccccccccccc
 
 
 
+c Should roughly be inverse of store_row_lsspecies()
+c But should be consistent with how set abar and zbar initially in jon_helm.f or jon_helm_stellarinput.f
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      subroutine backstore_row_lsspecies(loci)
+      implicit none
+      save
+      
+      integer loci
+      double precision nblocal
 
 
 
 
-c
+c..bring in the lattimer-swesty data structures
+      include 'eos_m4c.commononly.inc'
+c      include 'el_eos.inc'
+c..bring in the data structure for LSEOS
+c  contains single globals
+      include 'vector_eos.dek'
+      include 'vector_eos.single.dek'
+      include 'vector_sneos.dek'
+      include 'extra_vector_sneos.dek'
+c      include 'const.dek'
+c..bring in the data structure for HELM or TIMMES EOS
+      include 'kazeos.dek'
+
+c     Constants
+      include 'const.dek'
+
+
+
+c     We want to use store_row_lsspecies() below, but first assign right-hand-side inside there to be correct
+         lszbar=zbar_row(loci)
+         lsabar=abar_row(loci)
+         lsabarnum=abarnum_row(loci)
+
+         if(lsabar.gt.1.5) then
+c     call computemutotfit_xnuc0(den_row(),temp_row(loci),abar_row(loci))
+            xnut =1D-49
+            xprot =1D-49
+            xalfa = 1D-49
+            xh = 1.0d0
+            a = lsabar
+            x = lszbar/lsabar
+            muhat = lsabar
+
+c     Note that etapls and etanls are set from "lsindex" unlike others, which means we use nuclear versions of these, where nuclear versions are assigned at the boundary of the table where nuclear EOS exists (goodconverge.eq.1)
+            etapls = etap_row(lsindex)
+            etanls = etan_row(lsindex)
+
+            xnuc = xnut + xprot
+            yetot = x
+            yefree = 0.5d0      !doesn't matter
+            yebound = x
+            yeheav = x
+            npratiofree = 1D-49
+            npratiobound = 1.0d0-x
+            npratiototal = npratiobound
+            abarbound = lsabar
+
+            nblocal = (den_row(loci)/mb)
+            
+            nptotal = nblocal/(1.0d0 + npratiototal)
+            nntotal = nblocal - nptotal
+            npfree = 1D-49
+            nnfree = 1D-49
+            npbound = nptotal
+            nnbound = nntotal
+            npheav = nptotal
+            nnheav = nntotal
+
+         else
+c     This extrapolation of etap and etan works unless in hydrogen region.  Just force etap=etan=0 if in that region where etae>>1
+            xnut = 1D-49
+            xprot =1
+            xalfa = 1D-49
+            xh = 1D-49
+            a = 1D-49
+            x = 0.5d0
+            muhat = lsabar
+
+            etapls = 1D-49
+            etanls = 1D-49
+
+            xnuc = xnut + xprot
+            yetot = lszbar/lsabar
+            yefree = lszbar/lsabar
+            yebound = 1D-49
+            yeheav = 0.5d0 !doesn't matter
+            npratiofree = 1.0d0 - yefree
+            npratiobound = 1D-49
+            npratiototal = npratiofree
+            abarbound = 1D-49
+
+            nblocal = (den_row(loci)/mb)
+            
+            nptotal = nblocal/(1.0d0 + npratiototal)
+            nntotal = nblocal - nptotal
+            npfree = nptotal
+            nnfree = nntotal
+            npbound = 1D-49
+            nnbound = 1D-49
+            npheav = 1D-49
+            nnheav = 1D-49
+
+         end if
+
+
+
+      
+
+
+      return
+      end
+
+
+
+
+
+
+
+c Should roughly be inverse of preparecall2kazeos() except for independent variables
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       subroutine store_row_lsspecies(loci)
       implicit none
@@ -1185,6 +1376,7 @@ c     Act like HELM/TIMMES and store internals into ???_row() arrays for a given
 cccccccccccccccccccccccccccccccccccccccccccccccccc
 c
 c     Sets up call to kazeos by assigning variables NEEDED BY Kaz EOS, not necessarily generated by Kaz EOS
+c     Should roughly be inverse of store_row_lsspecies() except for independent variables
 c
 cccccccccccccccccccccccccccccccccccccccccccccccccc
       subroutine preparecall2kazeos(loci)
@@ -1211,24 +1403,8 @@ c      tdynorye=zbar_row(loci)/abarnum_row(loci)
       tdynorynu=tdynorynu_row(loci)
 
 
-
-      npratiototal = (1.0-tdynorye)/tdynorye  ! no _row, but set in kaz_species_etae()
-c     Rest are for overriding Kaz-set species in case using nuclear EOS
-      xnuc=xnuc_row(loci)
-      yetot=yetot_row(loci)
-      yefree=yefree_row(loci)
-      yebound=yebound_row(loci)
-      npratiofree=npratiofree_row(loci)
-      npratiobound = npratiobound_row(loci)
-      npratioheav = npratioheav_row(loci)
-
       kazabar=abar_row(loci)
       kazzbar=zbar_row(loci)
-
-      abarbound = abarbound_row(loci)
-
-c     DEBUG:
-c      write(*,*) 'kazazbar',kazabar,kazzbar,abarbound
 
       kazxneut=xneut_row(loci)
       kazxprot=xprot_row(loci)
@@ -1236,15 +1412,36 @@ c      write(*,*) 'kazazbar',kazabar,kazzbar,abarbound
       kazxheav=xheav_row(loci)
       kazaheav=aheav_row(loci)
       kazzheav=zheav_row(loci)
-      yeheav = (kazzheav/kazaheav) ! no _row, but set in kaz_species_etae()
+c      yeheav = (kazzheav/kazaheav) ! no _row, but set in kaz_species_etae()
+c      xcheck_row() and muhat_row() are not needed by kaz EOS
 
 c     If not getting Kaz EOS to compute this, then needed
 c     If Kaz EOS will compute this, won't hurt to make this assignment
 c     Below is ONLY time eta,etap,etan,etanu should be assigned or used since LS/Shen EOS set etapls,etanls that should elsewhere be used.
+c     Note that etaele_row() is non-nuclear so doesn't appear in store_row_lsspecies()
       etae=etaele_row(loci)
       etap=etap_row(loci)
       etan=etan_row(loci)
       etanu=etanu_row(loci)
+
+
+      npratiototal = (1.0-tdynorye)/tdynorye  ! no _row, but set in kaz_species_etae()
+
+c     Rest are for overriding Kaz-set species in case using nuclear EOS
+      xnuc=xnuc_row(loci)
+      yetot=yetot_row(loci)
+      yefree=yefree_row(loci)
+      yebound=yebound_row(loci)
+      yeheav=yeheav_row(loci)
+      npratiofree=npratiofree_row(loci)
+      npratiobound = npratiobound_row(loci)
+      npratioheav = npratioheav_row(loci)
+      abarbound = abarbound_row(loci)
+
+c     DEBUG:
+c      write(*,*) 'kazazbar',kazabar,kazzbar,abarbound
+
+
 
 c      write(*,*) 'etacheck',loci,etae,etap,etan,etanu
 
@@ -1257,7 +1454,12 @@ c      write(*,*) 'etacheck',loci,etae,etap,etan,etanu
       npheav = npheav_row(loci)
       nnheav = nnheav_row(loci)
 
-
+c DEBUG if things are set or not
+      write(*,*) loci,rhob,tk,hcm,tdynorye,tdynorynu,npratiototal,xnuc
+     1 ,yetot,yefree,yebound,npratiofree,npratiobound,npratioheav
+     1 ,kazabar,kazzbar,abarbound,kazxneut,kazxprot,kazxalfa
+     1 ,kazxheav,kazaheav,kazzheav,yeheav,etae,etap,etan,etanu
+     1 ,nptotal,nntotal,npfree,nnfree,npbound,nnbound,npheav,nnheav
 
 
       
@@ -2261,8 +2463,11 @@ c     Below was only set in TIMMES EOS
         end if
 
 
+
+
+c        Store species information
 c       \eta's
-c     GODMARK: WHICH ONE OF BELOW:
+c     GODMARK: Careful to choose correct etae vs. etaele below
 c        etaele_row(loci) = etae
         etaele_row(loci) = etaele
 
@@ -2478,6 +2683,164 @@ c..bring in the lattimer-swesty data structures
 c      include 'vector_eos.extra4kaz.dek'
 c     Caution:
       include 'kazeos.dek' ! includes a very similar name etae for etaele
+
+
+
+
+
+
+
+c..   store this row back into individual variables
+      pres =       ptot_row(loci)
+      dpresdt =       dpt_row(loci)
+      dpresdd =       dpd_row(loci)
+      dpresda    =       dpa_row(loci)
+      dpresdz =       dpz_row(loci)
+
+      ener =       etot_row(loci)
+      denerdt =       det_row(loci)
+      denerdd =       ded_row(loci)
+      denerda    =       dea_row(loci)
+      denerdz =       dez_row(loci)
+
+      entr =       stot_row(loci)
+      dentrdt =       dst_row(loci)
+      dentrdd =       dsd_row(loci)
+      dentrda    =       dsa_row(loci)
+      dentrdz =       dsz_row(loci)
+
+      prad =       prad_row(loci)
+      if(1) then
+         dpraddt =          dpradt_row(loci)
+         dpraddd =          dpradd_row(loci)
+         dpradda =          dprada_row(loci)
+         dpraddz =          dpradz_row(loci)
+      end if
+
+
+      erad =       erad_row(loci)
+      if(1) then
+         deraddt =          deradt_row(loci)
+         deraddd =          deradd_row(loci)
+         deradda =          derada_row(loci)
+         deraddz =          deradz_row(loci)
+      end if
+
+      srad  =       srad_row(loci)
+      if(1) then
+         dsraddt =          dsradt_row(loci)
+         dsraddd =          dsradd_row(loci)
+         dsradda =          dsrada_row(loci)
+         dsraddz =          dsradz_row(loci)
+      end if
+
+      pion =       pion_row(loci)
+      eion =       eion_row(loci)
+      sion  =       sion_row(loci)
+
+      xni =       xni_row(loci)
+
+      pele =       pele_row(loci)
+      ppos =       ppos_row(loci)
+      dpepdt =       dpept_row(loci)
+      dpepdd =       dpepd_row(loci)
+      dpepda   =       dpepa_row(loci)
+      dpepdz =       dpepz_row(loci)
+
+      eele =       eele_row(loci)
+      epos =       eele_row(loci)
+      deepdt =       deept_row(loci)
+      deepdd =       deepd_row(loci)
+      deepda    =       deepa_row(loci)
+      deepdz =       deepz_row(loci)
+
+      sele =       sele_row(loci)
+      spos =       sele_row(loci)
+      dsepdt  =       dsept_row(loci)
+      dsepdd  =       dsepd_row(loci)
+      dsepda         =       dsepa_row(loci)
+      dsepdz =       dsepz_row(loci)
+
+      if(1) then
+
+         if(whicheleeos.eq.2) then
+            xne =             xnem_row(loci)
+         else if(whicheleeos.eq.0) then
+            xnem =             xnem_row(loci)
+         end if
+      else
+         xnem =          xnem_row(loci)
+      end if
+
+      xnefer =       xne_row(loci)
+
+      if(whicheleeos.eq.2) then
+         dxnedt =          dxnet_row(loci)
+         dxnedd =          dxned_row(loci)
+         dxneda =          dxnea_row(loci)
+         dxnedz =          dxnez_row(loci)
+      else if(whicheleeos.eq.0) then
+         dxneferdt  =          dxnet_row(loci)
+         dxnpferdt =          dxnet_row(loci)
+
+         dxneferdd =          dxned_row(loci)
+         dxnpferdd =          dxned_row(loci)
+
+         dxneferda =          dxnea_row(loci)
+         dxnpferda =          dxnea_row(loci)
+
+         dxneferdz =          dxnez_row(loci)
+         dxnpferdz =          dxnez_row(loci)
+      end if
+
+      xnpfer =       xnp_row(loci) !new
+
+      if(1) then
+c     Below was only set in TIMMES EOS
+         zeff =          zeff_row(loci)
+      end if
+
+
+c     \eta's
+c     GODMARK: WHICH ONE OF BELOW:
+      etaele =       etaele_row(loci)
+
+c     write(*,*) 'storerow',loci,etaele,etapls,etanls,etanu
+
+      detadt =       detat_row(loci)
+      detadd =       detad_row(loci)
+      detada =       detaa_row(loci)
+      detadz =       detaz_row(loci)
+      etapos =       etapos_row(loci)!new
+
+      if(1) then
+         if(whicheleeos.eq.2) then
+            eip =             eip_row(loci)
+            sip =             sip_row(loci)
+         else if(whicheleeos.eq.0) then
+c     Not set since not assigned!           
+         end if
+      end if
+
+      pcoul =       pcou_row(loci)
+      ecoul =       ecou_row(loci)
+      scoul  =       scou_row(loci)
+      plasg =       plasg_row(loci)
+
+      dse =       dse_row(loci)
+      dpe =       dpe_row(loci)
+      dsp =       dsp_row(loci)
+
+      cv =       cv_row(loci)
+      cp =       cp_row(loci)
+      gam1 =       gam1_row(loci)
+      gam2 =       gam2_row(loci)
+      gam3 =       gam3_row(loci)
+      sound =       cs_row(loci)
+
+
+
+
 
 
       etae=etaele_row(loci)
@@ -2729,7 +3092,7 @@ c     GODMARK: NOTE THAT the RHS should only have non-loci things unless inputs 
 
 
 c     Some extra Kaz-like calculations to be done by all EOSs
-c     Requires already globally set: yetot,yefree,yebound,yeheav,xnuc,,kazxheav
+c     Requires already globally set: yetot,yefree,yebound,yeheav,xnuc,kazxheav
       subroutine eos2kazeos_species(nbtotal)
       implicit none
 
