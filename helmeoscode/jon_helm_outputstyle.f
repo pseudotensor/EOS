@@ -86,6 +86,7 @@ cccccccccccccccccc
 c
 c Output Kaz-like variables (including primary data used by to interpolate to use in HARM)
 c
+c   Currently outputs eos.dat and eosother.dat
 c
          call kaz_output()
 

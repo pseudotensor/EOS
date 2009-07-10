@@ -880,7 +880,7 @@ c     p and s don't have binding energy to shift and any mismatch is simply erro
          localpdiff=0
 c     GODMARK:
 c         localediff=0
-         localsdiff=0
+c         localsdiff=0
 
          if(1.eq.0) then
 c     DEBUG GODMARK
@@ -3878,7 +3878,7 @@ c Used to check if cp is Infinity (i.e. must be same type?)
 c JCM:
 c Used to offset total specific energy
       double precision yelocal
-      double precision lsoffset
+      double precision lsoffset,lsoffsetentropy
 
 c      double precision npratiobound
 
@@ -3995,6 +3995,10 @@ c     For LSEOS this means adding 8.07131747535936MeV to the nuclear term
          bu = bu + lsoffset
          utot  = utot + lsoffset
 
+         lsoffsetentropy = lsoffset / temp_nuc
+         bs = bs + lsoffsetentropy
+         stot = stot + lsoffsetentropy
+
 c     Most negative specific energy gets is about 10MeV/baryon
 c     GODMARK: This still leaves poor connection to ideal gas
 c         lsoffset=20.0*yelocal
@@ -4023,6 +4027,10 @@ c     For LSEOS this means adding 8.07131747535936MeV to the nuclear term
          lsoffset=8.07131747535936
          bu = bu + lsoffset
          utot  = utot + lsoffset
+
+         lsoffsetentropy = lsoffset / temp_nuc
+         bs = bs + lsoffsetentropy
+         stot = stot + lsoffsetentropy
 
 c
 c     Was using below
