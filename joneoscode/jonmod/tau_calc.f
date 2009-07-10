@@ -1918,7 +1918,7 @@ c     1     )/(nminus_nue + nminus_nuebar + nminusmu + nminustau+SMALL)
 c     JCM: This is use to evolve Y_\nu, that only involves thermalizing electron types of neutrinos
 c     JCM: So for now just ignore \mu and \tau types
 c     Number-rate weighted mean free path (i.e. most important emission dominates estimate of \lambda)
-      ilambdaintot = (
+      ilambdaintot = 1D-49 + (
      1     +nminus_nue/lambdain_nue
      1     +nminus_nuebar/lambdain_nuebar
      1     )/(nminus_nue + nminus_nuebar + SMALL)
