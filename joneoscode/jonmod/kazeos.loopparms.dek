@@ -1,9 +1,9 @@
 ccccccccc
-      parameter(nrhob=10)      !number of doloop steps, 5 in 1 order of mag.
+      parameter(nrhob=100)      !number of doloop steps, 5 in 1 order of mag.
       parameter(rhobmin=1.d0) !minimum value of rhob in g/cc
       parameter(rhobmax=1.d15)  !maximum value of rhob in g/cc
 ccccccccc
-      parameter(ntk=10)         !number of doloop steps, 5 in 1 order of mag.
+      parameter(ntk=50)         !number of doloop steps, 5 in 1 order of mag.
       parameter(tkmin=1.d5)     !minimum value of temperature in K
       parameter(tkmax=1.d13)    !maximum value of temperature in K
 ccccccccc
@@ -11,7 +11,7 @@ ccccccccc
       parameter(hcmmin=1.d-15)   !minimum value of Hcm in cm 
       parameter(hcmmax=1.d-15)    !maximum value of Hcm in cm 
 ccccccccc
-      parameter(ntdynorye=10)       !number of doloop steps, 5 in 1 order of mag.
+      parameter(ntdynorye=50)       !number of doloop steps, 5 in 1 order of mag.
       parameter(tdynoryemin=1D-2)  !minimum value of tdynorye in sec 
       parameter(tdynoryemax=0.56d0)   !maximum value of tdynorye in sec 
 ccccccccc
@@ -19,4 +19,4 @@ c TOTAL:
 ccccccccc
       parameter(ntdynorynu=2)       !number of doloop steps, 5 in 1 order of mag.
       parameter(tdynorynumin=1D-15)  !minimum value of tdynorynu in sec 
-      parameter(tdynorynumax=1.0)   !maximum value of tdynorynu in sec 
+      parameter(tdynorynumax=1.D0)   !maximum value of tdynorynu in sec 
