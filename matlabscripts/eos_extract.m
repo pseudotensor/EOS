@@ -171,7 +171,7 @@ function eos_extract()
   nco=myhead(ii); ii=ii+1;
   numextras=myhead(ii); ii=ii+1;
 
-  % 5 indeps and 3 things each indep = 15 total
+  % 5 indeps and 3 things each indep = 15 total + lsoffset + fakelsoffset
   [myhead,count]=fscanf(fid,'%d %g %g',[3]);
   ii=1;
   nrhob=myhead(ii); ii=ii+1;
@@ -201,6 +201,10 @@ function eos_extract()
   nhcm=myhead(ii); ii=ii+1;
   hcmmin=myhead(ii); ii=ii+1;
   hcmmax=myhead(ii); ii=ii+1;
+
+  % lsoffset stuff
+  lsoffset=myhead(ii); ii=ii+1;
+  fakelsoffset=myhead(ii); ii=ii+1;
 
 
   fclose(fid);
@@ -2408,6 +2412,9 @@ function eos_extract()
       fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',truentdynorye,ltdynoryemin,ltdynoryemax,stepltdynorye,baseltdynorye,linearoffsetltdynorye);
       fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',truentdynorynu,ltdynorynumin,ltdynorynumax,stepltdynorynu,baseltdynorynu,linearoffsetltdynorynu);
       fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',truenhcm,lhcmmin,lhcmmax,steplhcm,baselhcm,linearoffsetlhcm);
+
+      fprintf(fid5,'%21.15g %21.15g\n',lsoffset,fakelsoffset);
+
       fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',ntk,ltkmin,ltkmax,stepltk,baseltk,linearoffsetltk);
 
       fclose(fid5);

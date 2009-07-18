@@ -48,6 +48,10 @@ c     Open data files first time, to be append to later (i.e. not appending to p
 c      open(21,file='eosdebug.dat',status='unknown')
  
 
+c     Setup true and fake nuclear offset
+      call setup_lsoffset()
+
+
 c     Below uses vars set by kazeos.loop*.dek (not globals)
 c     Note that most of this data isn't used, but useful to keep SM macros simple
       call outputkazheader()

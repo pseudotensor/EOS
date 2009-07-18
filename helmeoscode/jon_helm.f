@@ -53,6 +53,9 @@ c     Open data files first time, to be append to later
       open(19,file='eosazbar.dat',status='unknown')
       open(20,file='eosdetails.dat',status='unknown')
 
+
+c     Setup true and fake nuclear offset
+      call setup_lsoffset()
  
 
 c     Below uses vars set by kazeos.loop*.dek (not globals)

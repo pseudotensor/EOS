@@ -3853,6 +3853,59 @@ c     Convert from LSEOS-like values to cgs values
 
 
 
+c     Store nuclear offset
+      subroutine setup_lsoffset()
+      implicit none
+
+
+      include 'kazeos.dek'
+      include 'eosparms.f'
+      include 'const.dek'
+
+
+      lsoffset=0.0d0
+      fakelsoffset=0.0d0
+
+
+c     Set certain parameters
+c     LS EOS OFFSET
+      if(whichnucleareos.eq.1) then
+c     Modify the total for energy/gram
+c         lsoffset=QEMEV*yelocal+16.0*yelocal*2.0
+c         lsoffset=QEMEV*yelocal+16.0
+c         lsoffset=16.0
+c         lsoffset=9.14
+c     Incorrect to enforce offset, must leave so that utot< possible
+c         lsoffset=0.0
+
+c     See top of jon_lsbox.f.  One must ensure total mass-energy density is actually correct -- can't be arbitrarily offset
+c     For LSEOS this means adding 8.07131747535936MeV to the nuclear term
+         lsoffset=8.07131747535936
+         fakelsoffset=1.1
+      end if
+
+
+c     SHEN EOS OFFSET
+      if(whichnucleareos.eq.3) then
+c     Modify the total for energy/gram
+c         lsoffset=QEMEV*yelocal*8.0
+c     Incorrect to enforce offset, must leave so that utot< possible
+c         lsoffset=9.14
+c         lsoffset = 0.0
+c Absolute minimum Shen ebulk is -9.132329941 according to table (happens at large Y_e and low temperatures when nuclei are very bound)
+c         lsoffset=0         
+
+c     See top of jon_lsbox.f.  One must ensure total mass-energy density is actually correct -- can't be arbitrarily offset
+c     For LSEOS this means adding 8.07131747535936MeV to the nuclear term
+         lsoffset=8.07131747535936
+         fakelsoffset=1.1
+      end if
+
+
+      return
+      end
+
+
 
 
 
@@ -3878,7 +3931,9 @@ c Used to check if cp is Infinity (i.e. must be same type?)
 c JCM:
 c Used to offset total specific energy
       double precision yelocal
-      double precision lsoffset,lsoffsetentropy
+c      double precision lsoffset,lsoffsetentropy
+      double precision lsoffsetentropy
+c      double precision fakelsoffset
 
 c      double precision npratiobound
 
@@ -3979,67 +4034,13 @@ c      lszbar=zbar
 
 
 
-c     LS EOS OFFSET
-      if(whichnucleareos.eq.1) then
-c     Modify the total for energy/gram
-c         lsoffset=QEMEV*yelocal+16.0*yelocal*2.0
-c         lsoffset=QEMEV*yelocal+16.0
-c         lsoffset=16.0
-c         lsoffset=9.14
-c     Incorrect to enforce offset, must leave so that utot< possible
-c         lsoffset=0.0
-
-c     See top of jon_lsbox.f.  One must ensure total mass-energy density is actually correct -- can't be arbitrarily offset
-c     For LSEOS this means adding 8.07131747535936MeV to the nuclear term
-         lsoffset=8.07131747535936
-         bu = bu + lsoffset
-         utot  = utot + lsoffset
-
+         bu = bu + lsoffset + fakelsoffset
+         utot  = utot + lsoffset + fakelsoffset
+         
          lsoffsetentropy = lsoffset / temp_nuc
          bs = bs + lsoffsetentropy
          stot = stot + lsoffsetentropy
 
-c     Most negative specific energy gets is about 10MeV/baryon
-c     GODMARK: This still leaves poor connection to ideal gas
-c         lsoffset=20.0*yelocal
-
-c     Was using below:
-c         bu = bu + lsoffset
-c         utot  = utot + lsoffset
-c         if(utot.lt.0.0) then
-c            write(*,*) bu,utot,lsoffset
-c         end if
-      end if
-
-
-c     SHEN EOS OFFSET
-      if(whichnucleareos.eq.3) then
-c     Modify the total for energy/gram
-c         lsoffset=QEMEV*yelocal*8.0
-c     Incorrect to enforce offset, must leave so that utot< possible
-c         lsoffset=9.14
-c         lsoffset = 0.0
-c Absolute minimum Shen ebulk is -9.132329941 according to table (happens at large Y_e and low temperatures when nuclei are very bound)
-c         lsoffset=0         
-
-c     See top of jon_lsbox.f.  One must ensure total mass-energy density is actually correct -- can't be arbitrarily offset
-c     For LSEOS this means adding 8.07131747535936MeV to the nuclear term
-         lsoffset=8.07131747535936
-         bu = bu + lsoffset
-         utot  = utot + lsoffset
-
-         lsoffsetentropy = lsoffset / temp_nuc
-         bs = bs + lsoffsetentropy
-         stot = stot + lsoffsetentropy
-
-c
-c     Was using below
-c         bu = bu + lsoffset
-c         utot  = utot + lsoffset
-c         if(utot.lt.0.0) then
-c            write(*,*) bu,utot,lsoffset
-c         end if
-      end if
 
 
 
@@ -4394,10 +4395,6 @@ c     Local index
 c     local variables
       double precision ytot1,zbarxx
 
-c JCM:
-c Used to offset total specific energy
-      double precision yelocal
-      double precision lsoffset
 
 
       include 'const.dek'
