@@ -203,6 +203,8 @@ function eos_extract()
   hcmmax=myhead(ii); ii=ii+1;
 
   % lsoffset stuff
+  [myhead,count]=fscanf(fid,'%g %g',[2]);
+  ii=1;
   lsoffset=myhead(ii); ii=ii+1;
   fakelsoffset=myhead(ii); ii=ii+1;
 
@@ -1159,6 +1161,7 @@ function eos_extract()
                   [lptotdiffutotx,lptotdiffutoty] = consolidator(log10(ptotdiff(p,:,q,r)),log10(utot(p,:,q,r)),'mean',CONTOL);
 
                   [lchidiffptotx,lchidiffptoty] = consolidator(log10(chidiff(p,:,q,r)),log10(ptot(p,:,q,r)),'mean',CONTOL);
+                  [lchidiffsspecx,lchidiffsspecy] = consolidator(log10(chidiff(p,:,q,r)),log10(sspec(p,:,q,r)),'mean',CONTOL);
 
                   [lsspecptotx,lsspecptoty] = consolidator(log10(sspec(p,:,q,r)),log10(ptot(p,:,q,r)),'mean',CONTOL);
                   [lsspecutotx,lsspecutoty] = consolidator(log10(sspec(p,:,q,r)),log10(utot(p,:,q,r)),'mean',CONTOL);
@@ -1252,6 +1255,9 @@ function eos_extract()
 
                   lchidiffptotx=log10(chidiff(p,:,q,r));
                   lchidiffptoty=log10(ptot(p,:,q,r));
+
+                  lchidiffsspecx=log10(chidiff(p,:,q,r));
+                  lchidiffsspecy=log10(sspec(p,:,q,r));
 
                   lsspecptotx=log10(sspec(p,:,q,r));
                   lsspecptoty=log10(ptot(p,:,q,r));
@@ -1363,6 +1369,12 @@ function eos_extract()
                 % 1/(drho0/dp)|chi
                 PofCHIdiff(p,:,q,r) = 10.^(myinterp1(4,lchidiffptotx, lchidiffptoty, lchidiffgrid',interptype));
 
+                % below is specificentropy(rho0,\chi,H)
+                % below used for Ss[rho0,chi]
+                % 1/ (dchi/dSs)|rho0
+                % 1/(drho0/dSs)|chi
+                SSofCHIdiff(p,:,q,r) = 10.^(myinterp1(4,lchidiffsspecx, lchidiffsspecy, lchidiffgrid',interptype));
+                
                 % Below is PofS(rho0,S,H)
                 % below used for c_s^2 = 1/h dp/drho0|S
                 PofS(p,:,q,r) = 10.^(myinterp1(5,lsspecptotx, lsspecptoty, lsspecgrid',interptype));
@@ -1470,6 +1482,8 @@ function eos_extract()
 
               PofCHIdiff = cleanvar(4, PofCHIdiff, rhobgrid4d, chigrid4d);
 
+              SSofCHIdiff = cleanvar(400, SSofCHIdiff, rhobgrid4d, chigrid4d);
+
               PofS = cleanvar(5, PofS, rhobcsqgrid4d, sspecgrid4d); % here S is specific entropy and uses rhobcsq
               UofS = cleanvar(6, UofS, rhobcsqgrid4d, sspecgrid4d); % here S is specific entropy and uses rhobcsq
               UdiffofS = cleanvar(6, UdiffofS, rhobcsqgrid4d, sspecgrid4d); % here S is specific entropy and uses rhobcsq
@@ -1506,6 +1520,7 @@ function eos_extract()
                 HofUdiff(~isfinite(HofUdiff))=OUTBOUNDSVALUE;
                 UofPdiff(~isfinite(UofPdiff))=OUTBOUNDSVALUE;
                 PofCHIdiff(~isfinite(PofCHIdiff))=OUTBOUNDSVALUE;
+                SSofCHIdiff(~isfinite(SSofCHIdiff))=OUTBOUNDSVALUE;
                 PofS(~isfinite(PofS))=OUTBOUNDSVALUE;
                 UofS(~isfinite(UofS))=OUTBOUNDSVALUE;
                 UdiffofS(~isfinite(UdiffofS))=OUTBOUNDSVALUE;
@@ -1549,6 +1564,10 @@ function eos_extract()
 
                         if(~isfinite(PofCHIdiff(p,q,r,s)))
                           PofCHIdiff(p,q,r,s)=OUTBOUNDSVALUE;
+                        end
+
+                        if(~isfinite(SSofCHIdiff(p,q,r,s)))
+                          SSofCHIdiff(p,q,r,s)=OUTBOUNDSVALUE;
                         end
 
                         if(~isfinite(PofS(p,q,r,s)))
@@ -1680,6 +1699,7 @@ function eos_extract()
               roughPofS(:,:)=PofS(:,:,q,r);
               roughPofUdiff(:,:)=PofUdiff(:,:,q,r);
               roughPofCHIdiff(:,:)=PofCHIdiff(:,:,q,r);
+              roughSSofCHIdiff(:,:)=SSofCHIdiff(:,:,q,r);
               roughSofUdiff(:,:)=SofUdiff(:,:,q,r);
               
               % moving average uses 1,1 for size of averaging region
@@ -1690,6 +1710,7 @@ function eos_extract()
               myPofS(:,:)=moving_average2(roughPofS(:,:),1,1);
               myPofUdiff(:,:)=moving_average2(roughPofUdiff(:,:),1,1);
               myPofCHIdiff(:,:)=moving_average2(roughPofCHIdiff(:,:),1,1);
+              mySSofCHIdiff(:,:)=moving_average2(roughSSofCHIdiff(:,:),1,1);
               mySofUdiff(:,:)=moving_average2(roughSofUdiff(:,:),1,1);
 
               
@@ -1721,6 +1742,7 @@ function eos_extract()
                 [dPofSdlS(:,:), dPofSdlrho0(:,:)] = gradient(myPofS(:,:),lsspeci,lrhocsqi);
                 [dPofUdiffdludiff(:,:), dPofUdiffdlrho0(:,:)] = gradient(myPofUdiff(:,:),lutotdiffi,lrhocsqi);
                 [dPofCHIdiffdlchidiff(:,:), dPofCHIdiffdlrho0(:,:)] = gradient(myPofCHIdiff(:,:),lchidiffi,lrhocsqi);
+                [dSSofCHIdiffdlchidiff(:,:), dSSofCHIdiffdlrho0(:,:)] = gradient(mySSofCHIdiff(:,:),lchidiffi,lrhocsqi);
                 [dSofUdiffdludiff(:,:), dSofUdiffdlrho0(:,:)] = gradient(mySofUdiff(:,:),lutotdiffi,lrhocsqi);
                 
                 dPofSdS(:,:,q,r)=dPofSdlS(:,:)./sspecgrid4d(:,:,q,r);
@@ -1731,7 +1753,10 @@ function eos_extract()
 
                 dPofCHIdiffdchidiff(:,:,q,r)=dPofCHIdiffdlchidiff(:,:)./chidiffgrid4d(:,:,q,r);
                 dPofCHIdiffdrho0(:,:,q,r)=dPofCHIdiffdlrho0(:,:)./rhobcsqgrid4d(:,:,q,r);
-                
+
+                dSSofCHIdiffdchidiff(:,:,q,r)=dSSofCHIdiffdlchidiff(:,:)./chidiffgrid4d(:,:,q,r);
+                dSSofCHIdiffdrho0(:,:,q,r)=dSSofCHIdiffdlrho0(:,:)./rhobcsqgrid4d(:,:,q,r);
+
                 dSofUdiffdudiff(:,:,q,r)=dSofUdiffdludiff(:,:)./utotdiffgrid4d(:,:,q,r);
                 dSofUdiffdrho0(:,:,q,r)=dSofUdiffdlrho0(:,:)./rhobcsqgrid4d(:,:,q,r);
                 
@@ -1751,7 +1776,10 @@ function eos_extract()
                 
                 % PofCHI(rho0, chi ,H) then derivative is dchi, drho0, dH
                 [dPofCHIdiffdchidiff(:,:,q,r), dPofCHIdiffdrho0(:,:,q,r)] = gradient(myPofCHIdiff(:,:),chidiffi,rhocsqi);
-                
+
+                % SSofCHI(rho0, chi ,H) then derivative is dchi, drho0, dH
+                [dSSofCHIdiffdchidiff(:,:,q,r), dSSofCHIdiffdrho0(:,:,q,r)] = gradient(mySSofCHIdiff(:,:),chidiffi,rhocsqi);
+
                 % SofU(rho0,U,H) then derivative is dU, drho0, dH
                 [dSofUdiffdudiff(:,:,q,r), dSofUdiffdrho0(:,:,q,r)] = gradient(mySofUdiff(:,:), utotdiffi,rhocsqi);
                 
@@ -1764,16 +1792,19 @@ function eos_extract()
               % The below 3 things seem to cause division by 0, so trap below those things making the value out of bounds
               dPofUdiffdu(:,:,q,r) = dPofUdiffdudiff(:,:,q,r)./dUofUdiffdudiff(:,:,q,r);
               dPofCHIdiffdchi(:,:,q,r) = dPofCHIdiffdchidiff(:,:,q,r)./dCHIofCHIdiffdchidiff(:,:,q,r);
+              dSSofCHIdiffdchi(:,:,q,r) = dSSofCHIdiffdchidiff(:,:,q,r)./dCHIofCHIdiffdchidiff(:,:,q,r);
               dSofUdiffdu(:,:,q,r) = dSofUdiffdudiff(:,:,q,r)./dUofUdiffdudiff(:,:,q,r);
               
               dPofUdiffdu(~isfinite(dPofUdiffdu)) = OUTBOUNDSVALUE;
               dPofCHIdiffdchi(~isfinite(dPofCHIdiffdchi)) = OUTBOUNDSVALUE;
+              dSSofCHIdiffdchi(~isfinite(dSSofCHIdiffdchi)) = OUTBOUNDSVALUE;
               dSofUdiffdu(~isfinite(dSofUdiffdu)) = OUTBOUNDSVALUE;
 
               
             end
           end
 
+          % DEBUG CODE:
           %gradPofCHIdiff=gradient(ptot(1,:,1,1),chidiff(1,:,1,1));
           %figure; plot(chidiff(1,:,1,1),gradPofCHIdiff)
 
@@ -1970,12 +2001,19 @@ function eos_extract()
                 % dSofUdiffduout(p,:,q,r)      = 10.^(myinterp1(25,lutotdiffgrid, log10(dSofUdiffdu(p,:,q,r)), lutotdiffoutgrid',interptype));
                 dSofUdiffdrho0out(p,:,q,r)    = myinterp1(24,lutotdiffgrid, dSofUdiffdrho0(p,:,q,r), lutotdiffoutgrid',interptype);
                 dSofUdiffduout(p,:,q,r)       = myinterp1(25,lutotdiffgrid, dSofUdiffdu(p,:,q,r), lutotdiffoutgrid',interptype);
+
                 PofCHIdiffout(p,:,q,r)        = 10.^(myinterp1(4,lchidiffgrid, log10(PofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptype));
                 % dPofCHIdiffdrho0out(p,:,q,r) = 10.^(myinterp1(26,lchidiffgrid, log10(dPofCHIdiffdrho0(p,:,q,r)), lchidiffoutgrid',interptype));
                 % dPofCHIdiffdchiout(p,:,q,r)  = 10.^(myinterp1(27,lchidiffgrid, log10(dPofCHIdiffdchi(p,:,q,r)), lchidiffoutgrid',interptype));
                 dPofCHIdiffdrho0out(p,:,q,r)  = myinterp1(26,lchidiffgrid, dPofCHIdiffdrho0(p,:,q,r), lchidiffoutgrid',interptype);
                 dPofCHIdiffdchiout(p,:,q,r)   = myinterp1(27,lchidiffgrid, dPofCHIdiffdchi(p,:,q,r), lchidiffoutgrid',interptype);
-                
+
+                SSofCHIdiffout(p,:,q,r)        = 10.^(myinterp1(4,lchidiffgrid, log10(SSofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptype));
+                % dSSofCHIdiffdrho0out(p,:,q,r) = 10.^(myinterp1(26,lchidiffgrid, log10(dSSofCHIdiffdrho0(p,:,q,r)), lchidiffoutgrid',interptype));
+                % dSSofCHIdiffdchiout(p,:,q,r)  = 10.^(myinterp1(27,lchidiffgrid, log10(dSSofCHIdiffdchi(p,:,q,r)), lchidiffoutgrid',interptype));
+                dSSofCHIdiffdrho0out(p,:,q,r)  = myinterp1(26,lchidiffgrid, dSSofCHIdiffdrho0(p,:,q,r), lchidiffoutgrid',interptype);
+                dSSofCHIdiffdchiout(p,:,q,r)   = myinterp1(27,lchidiffgrid, dSSofCHIdiffdchi(p,:,q,r), lchidiffoutgrid',interptype);
+
                 tkofUdiffout(p,:,q,r)         = 10.^(myinterp1(29,lutotdiffgrid, log10(tkofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype));
                 tkofPdiffout(p,:,q,r)         = 10.^(myinterp1(30,lptotdiffgrid, log10(tkofPdiff(p,:,q,r)), lptotdiffoutgrid',interptype));
                 tkofCHIdiffout(p,:,q,r)       = 10.^(myinterp1(31,lchidiffgrid, log10(tkofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptype));
@@ -2004,8 +2042,8 @@ function eos_extract()
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
           clear UofUdiff PofPdiff CHIofCHIdiff PofUdiff HofUdiff UofPdiff dPofUdiffdrho0 dPofUdiffdu cs2ofUdiff cs2ofUdiffcgs SofUdiff
-          clear dSofUdiffdrho0 dSofUdiffdu PofCHIdiff dPofCHIdiffdrho0 dPofCHIdiffdchi tkofUdiff tkofPdiff tkofCHIdiff
-          clear HofU cs2 PofU UofP dPofUdrho0 dPofUdu cs2cgs SofU dSofUdrho0 dSofUdu PofCHI dPofCHIdrho0 dPofCHIdchi tkofU tkofP tkofCHI;
+          clear dSofUdiffdrho0 dSofUdiffdu PofCHIdiff dPofCHIdiffdrho0 dPofCHIdiffdchi SSofCHIdiff dSSofCHIdiffdrho0 dSSofCHIdiffdchi tkofUdiff tkofPdiff tkofCHIdiff
+          clear HofU cs2 PofU UofP dPofUdrho0 dPofUdu cs2cgs SofU dSofUdrho0 dSofUdu PofCHI dPofCHIdrho0 dPofCHIdchi SSofCHI dSSofCHIdrho0 dSSofCHIdchi tkofU tkofP tkofCHI;
           clear extraofU;
 
 
@@ -2115,7 +2153,11 @@ function eos_extract()
             PofCHIdiffout(~isfinite(PofCHIdiffout))=OUTBOUNDSVALUE;
             dPofCHIdiffdrho0out(~isfinite(dPofCHIdiffdrho0out))=OUTBOUNDSVALUE;
             dPofCHIdiffdchiout(~isfinite(dPofCHIdiffdchiout))=OUTBOUNDSVALUE;
-            
+
+            SSofCHIdiffout(~isfinite(SSofCHIdiffout))=OUTBOUNDSVALUE;
+            dSSofCHIdiffdrho0out(~isfinite(dSSofCHIdiffdrho0out))=OUTBOUNDSVALUE;
+            dSSofCHIdiffdchiout(~isfinite(dSSofCHIdiffdchiout))=OUTBOUNDSVALUE;
+
             tkofUdiffout(~isfinite(tkofUdiffout))=OUTBOUNDSVALUE;
             tkofPdiffout(~isfinite(tkofPdiffout))=OUTBOUNDSVALUE;
             tkofCHIdiffout(~isfinite(tkofCHIdiffout))=OUTBOUNDSVALUE;
@@ -2204,7 +2246,22 @@ function eos_extract()
                       break
                     end
                   end
-                  
+
+                  m0=-1;
+                  for m=nrhob:-1:1
+                    if((dSSofCHIdiffdrho0out(m,n,o,p)<0.0 || dSSofCHIdiffdrho0out(m,n,o,p)>5.0)&&(tkofCHIdiffout(m,n,o,p)>1E11)&&(rhob(m,n,o,p)<1E8)  )
+                      %            if(dSSofCHIdiffdrho0out(m,n,o,p)<0.0 || dSSofCHIdiffdrho0out(m,n,o,p)>5.0)
+                      m0=m;
+                    end
+                    if(m0>=1)
+                      %fprintf(fiddebug,'dP3fix %d %d %d %d\n',p,o,n,m0);
+                      for mm=m0:-1:1
+                        dSSofCHIdiffdrho0out(mm,n,o,p)=OUTBOUNDSVALUE;
+                      end
+                      break
+                    end
+                  end
+
                   
                 end
               end
@@ -2241,6 +2298,7 @@ function eos_extract()
                           dPofUdiffdrho0out(m,n,o,p), dPofUdiffduout(m,n,o,p), ...
                           cs2ofUdiffcgsout(m,n,o,p), ...
                           SofUdiffout(m,n,o,p), dSofUdiffdrho0out(m,n,o,p), dSofUdiffduout(m,n,o,p), ...
+                          SSofCHIdiffout(m,n,o,p), dSSofCHIdiffdrho0out(m,n,o,p), dSSofCHIdiffdchiout(m,n,o,p), ...
                           PofCHIdiffout(m,n,o,p), dPofCHIdiffdrho0out(m,n,o,p), dPofCHIdiffdchiout(m,n,o,p), ...
                           tkofUdiffout(m,n,o,p),tkofPdiffout(m,n,o,p),tkofCHIdiffout(m,n,o,p) ...
                           );
@@ -2368,7 +2426,7 @@ function eos_extract()
       NUMVAR1=3;
       NUMFUN1=4;
       NUMCS=1;
-      NUMFUN2=6;
+      NUMFUN2=9;
       NUMTEMP=3;
       % 29 + numextras
       NUMOUTCOLUMNS=NUMDIMEN+NUMEOSINDEPS+NUMVAR1+NUMFUN1+NUMCS+NUMFUN2+NUMTEMP+numextras;

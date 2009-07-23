@@ -44,6 +44,9 @@ function funout = cleanvar(whichvar, funin, X, Y)
   if whichvar==4
     funin(myisnan) = idealPofCHI(X(myisnan),Y(myisnan));
   end
+  if whichvar==400
+    funin(myisnan) = idealSSofCHI(X(myisnan),Y(myisnan));
+  end
   if whichvar==5
     funin(myisnan) = idealPofS(X(myisnan),Y(myisnan));
   end
@@ -160,6 +163,7 @@ out = 1.5.*(P + 3.0.*P.*P./(2.0.*rhobcsq+sqrt(9.0.*P.*P+4.0.*rhobcsq.*rhobcsq)))
 
 end
 
+  
 function out = idealPofCHI(rho0, CHI)
 
 GAMMA=(4.0/3.0);
@@ -180,6 +184,14 @@ out=(5.0./8.0).*(wmrho0 - delta./(1.0+sqrt(1.0+delta2)));
 
 
 
+end
+
+
+
+function out = idealSSofCHI(rho0, CHI)
+
+  out = 0.0;
+  
 end
 
 
