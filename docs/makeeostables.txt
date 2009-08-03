@@ -1,0 +1,164 @@
+2) Generating EOS table from EOS Fortran code
+Version 1 Updated by Jonathan M. on 02 Jul 2009.
+**************
+Overall, this document explains how to generate EOS tables that are ultimately used in HARM.
+**************
+
+*Create Shen EOS table that is interpolated*
+*NOT WRITTEN CLEARLY YET*
+1) Using relativity because 32-bit and problem with 64-bit
+below uses research/eos/shen_interp.m that should be copied using gethelmmatlabs.sh on the system using Matlab
+2) sh sheneosinterp.sh
+?????????? below ?????????? -- seems there are no nan's or inf's anymore
+3) sed 's/NaN/0.0/g' sheneos.dat > sheneosnonnan.dat ; cp sheneosnonnan.dat sheneos.dat
+
+
+*Review Shen EOS table in SM*
+1) go to shen_helm_eostable directory
+2) rdshentable0
+3) plc 0 xalfa
+To see values on contour plot do: image cursor
+Then click on a point and get the reported value
+4) Set WHICHLEV and PLANE to see other slices of 3D data
+
+*And also look at Matlab interpolated/processed Shen Table
+1) go to shen_helm_eostable directory
+2) rdshenmatlab
+3) plc 0 aheav
+To see values on contour plot do: image cursor
+Then click on a point and get the reported value
+4) Set WHICHLEV and PLANE to see other slices of 3D data
+
+*Create full EOS table*
+1) Go to helmeoscode directory
+2) Can change things in eosparms.f, kazeos.parms.dek and kazeos.loopparms.dek
+3) In kazeos.parms.dek:
+NORMAL FULL Ye,Ynu dependent EOS has:
+parameter (whichrnpmethod = 1)
+parameter (whichynumethod = 1)
+parameter (whichhcmmethod = 0)
+SIMPLE Ynu quasi-thermalization table has [also used for stellar model compilation]
+parameter (whichrnpmethod = 1)
+parameter (whichynumethod = 0)
+parameter (whichhcmmethod = 1)
+4) kazeos.loopparms.dek: Sets ranges of table in rho,T,(H if whichhcmmethod==1), Y_e, Y_nu space
+5) make clean ; make
+6) sh copyjonhelm.sh <DATADIR> (e.g. sh copyjonhelm.sh ../fulltabletest1)
+7) cd <DATADIR>
+8) rm -rf eos.head eosdetails.dat eosother.dat eos.dat eoscoulomb.dat eosazbar.dat
+9) ./helmeos.exe &> output.txt
+
+
+*Review FULL EOS table in SM*
+1) load SM
+2) load macros:
+gogrmhd
+jre kaz.m
+jre grbmodel.m
+3) Run macros:
+rdmykazeos eos.dat
+rdmykazeosother eosother.dat
+rdhelmcou eoscoulomb.dat
+rdhelmextra eosazbar.dat
+4) Plot few things setup to setup in 3D space from 4D data (e.g.):
+plc 0 (LG(mydptot))
+plc 0 (LG(mydutot))
+plc 0 (LG(mydstot))
+
+5) Some other things not yet with 4D->3D copy, but still can view:
+showpressure 1 1
+plcs2helm
+agzplc 'dump' cs2helm
+6) Show where nuclear EOS converged:
+pleos2dconv
+
+
+
+
+
+
+*Process EOS with Matlab to produce "new" table used by HARM*
+*Assume have access via ssh; probably have matlab's ~/.ssh/authorized_keys with that users public key inside added to the file*
+1) *Create eosparms.head*
+eosparms.head filled with (e.g.):
+1E-8 1E-8 1E-8 1E-8 1E-14 1E-14 1E-14 1E-14
+2) *If desired, copy data-directory to another computer (say from ki-rh39 to ki-rh42) before processing on the new computer*
+e.g. scp -rp <dir> jon@ki-rh42:<otherdir>
+
+3) Ensure latest Matlab scripts.
+
+a) If one believes Matlab scripts may have changed, then do:
+ssh matlab@ki-rh42
+cd matlab
+export HOST=<your host>
+export USER=<your username>
+export REMOTEDIR=<your directory with matlabscripts and helmeoscode directory on your machine>
+
+scp $USER@$HOST:"$REMOTEDIR/matlabscripts/eos_extract.m $REMOTEDIR/matlabscripts/monotonize.m $REMOTEDIR/matlabscripts/shen_interp.m" .
+scp $USER@$HOST:"$REMOTEDIR/helmeoscode/enforce_x_consistency.mex.f $REMOTEDIR/helmeoscode/enforce_ye_consistency.mex.f $REMOTEDIR/helmeoscode/compute_nuclear_azbar.mex.f $REMOTEDIR/helmeoscode/general_compute_functions.f $REMOTEDIR/helmeoscode/eosparms.f $REMOTEDIR/helmeoscode/const.dek $REMOTEDIR/helmeoscode/gethelmmatlabs.sh $REMOTEDIR/helmeoscode/sheneosinterprunmatlab.sh" .
+
+exit
+
+b) If using own version of Matlab
+Can get matlab scripts if using local Matab:
+svn checkout https://harm.unfuddle.com/svn/harm_matlabscripts/ <some directory>
+
+But note that original source for eos_extract and mex files is actually in joneoscodes/helmeoscode/ and joneoscodes/joneoscode/jonmod/
+
+5) *Convert to HARM form*
+*sh eosextract???.sh : Choose the version of script to run. Normal is (with mod of DIR=) (takes < 1 hour for 50x50x50x1x1): e.g.:*
+
+sh eosextract2c.sh remotedirtest1 test1
+
+6) If Matlab script doesn't run, then ensure matlab server running:
+ssh matlab@ki-rh42
+/data/opt/matlab/etc/lmstart
+exit
+
+*Check that files exist and make sense: eosmonodegen*.dat , eosnew*.head , eosnew*.dat , eosdegennew*.dat
+
+7) Link up to standard names (e.g.):
+
+ln -s eosnewtest1.head eosnew.head
+ln -s eosnewtest1.dat eosnew.dat
+ln -s eosmonodegentest1.dat eosmonodegen.dat
+ln -s eosdegennewtest1.dat eosdegennew.dat
+
+
+*Review Matlab-generated EOS files in SM:*
+1) Be in directory with eosnew* files generated above
+2) load sm
+3) load macros:
+gogrmhd
+jre kaz.m
+jre kazpostmatlab.m
+4) Run macros:
+rdjoneos 'test1'
+rdjondegeneos 'test1'
+
+5) Check some things about EOS:
+jre kaz.m
+jre grbmodel.m
+jre kazpostmatlab.m
+
+checkeossimplenew
+plc 0 (LG(rhob))
+
+6) Check monotonicity of pre-Matlab EOS
+jre kaz.m
+jre grbmodel.m
+jre kazpostmatlab.m
+
+*Pre-Matlab plot of EOS near degeneracy*
+checkhelmmonoeos 1 0
+*Pre-Matlab with degendiff shown: Bad points are red -- not working as desired yet*
+redohelmmono 1 0
+*See whether monotonic: Any visible lines are not monotonic somewhere*
+nonmonosequence2
+
+
+
+------------------------------------------------------------------------------------
+Example EOS table from HELM and from Matlab script to be used by HARM:
+
+http://www.slac.stanford.edu/~jmckinne/testfulleostable2.zip

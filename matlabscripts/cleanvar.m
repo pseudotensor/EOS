@@ -24,7 +24,8 @@
 % 200: log10(UofUdiff)
 % 201: log10(PofPdiff)
 % 202: log10(CHIofCHIdiff)
-
+% 203: log10(SofSdiff)
+% 65 : UofSdiff
 
 
 % input is full 4-D quantities
@@ -41,6 +42,9 @@ function funout = cleanvar(whichvar, funin, X, Y)
   if whichvar==3
     funin(myisnan) = idealUofP(X(myisnan),Y(myisnan));
   end
+  if whichvar==65
+    funin(myisnan) = idealUofSdiff(X(myisnan),Y(myisnan));
+  end
   if whichvar==4
     funin(myisnan) = idealPofCHI(X(myisnan),Y(myisnan));
   end
@@ -49,6 +53,9 @@ function funout = cleanvar(whichvar, funin, X, Y)
   end
   if whichvar==5
     funin(myisnan) = idealPofS(X(myisnan),Y(myisnan));
+  end
+  if whichvar==6
+    funin(myisnan) = idealUofS(X(myisnan),Y(myisnan));
   end
   if whichvar==6
     funin(myisnan) = idealUofS(X(myisnan),Y(myisnan));
@@ -89,6 +96,10 @@ function funout = cleanvar(whichvar, funin, X, Y)
 
   if whichvar==202
     funin(myisnan) = idealUofU(X(myisnan),Y(myisnan));
+  end
+
+  if whichvar==203
+    funin(myisnan) = idealSofS(X(myisnan),Y(myisnan));
   end
 
   % assume rest are derivative quantities (i.e. derived from the above)
@@ -160,6 +171,13 @@ GAMMA=(4.0/3.0);
 c = 2.99792458E10;
 rhobcsq=rho0.*(c.*c);
 out = 1.5.*(P + 3.0.*P.*P./(2.0.*rhobcsq+sqrt(9.0.*P.*P+4.0.*rhobcsq.*rhobcsq)));
+
+end
+
+
+function out = idealUofSdiff(rho0, Sdiff)
+
+out = 0.0;
 
 end
 
@@ -250,12 +268,12 @@ end
 
 
 % here S is specific entropy
-function out = idealUofS(rhobcsq, S)
+function out = idealUofS(rhobcsq, Ss)
 
 GAMMA=(4.0/3.0);
 
 % idealPofS takes in specific entropy
-out = idealPofS(rhobcsq,S)./(GAMMA-1.0);
+out = idealPofS(rhobcsq,Ss)./(GAMMA-1.0);
 
 %		out = OUTBOUNDSVALUE;
 % not setup for Mignone EOS yet
@@ -307,9 +325,25 @@ OUTBOUNDSVALUE=1E-20;
 end
 
 
+function out = idealtkofS(rho0, S)
+
+% put in something small so know that out of Kaz-EOS for function(rho0,u)
+%out = 1E-20;
+OUTBOUNDSVALUE=1E-20;
+		out = OUTBOUNDSVALUE;
+
+end
+
+
 function out = idealUofU(rho0, U)
 
   out = U;
+
+end
+
+function out = idealSofS(rho0, S)
+
+  out = S;
 
 end
 

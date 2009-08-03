@@ -29,7 +29,7 @@ function varargout = myinterp1(whichvar, varargin)
 % NORMAL: (when using Tk to indicate whether proper inversion)
 % seems like extrapolation shouldn't be too bad as long as near boundaries of valid EOS
 % extrapolation seems possibly best for iterative inversion too so can temporarily step out of validity -- but no guarantee that doesn't keep going away from valid EOS
-if (whichvar~=29 && whichvar~=30 && whichvar~=31)
+if (whichvar~=29 && whichvar~=30 && whichvar~=31 && whichvar~=32)
 
 
   % DO EXTRAPOLATION
