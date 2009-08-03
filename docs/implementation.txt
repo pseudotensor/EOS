@@ -1,0 +1,40 @@
+As in first paper using realistic EOS, extended appendices
+Version 1 Updated by Jonathan M. on 20 Jun 2009.
+http://www.cfa.harvard.edu/~jmckinney/grmhd3dcorecollapse.pdf
+
+EOS Code and Raw DATA
+Version 1 Updated by Jonathan M. on 20 Jun 2009.
+1) Note that code from helm.003.tar.gz, helm.212108.tgz, jonmodkazeos_005.tar.gz,kazeos_neutrinos.122108.tgz, fdgas.tar.bz2 are now in the EOS repository.
+2) See the "Makefile" file in the helmeoscode directory in the EOS repository for notes on how to use the below EOS stuff.
+
+MATLAB USER FULL BACKUP: http://www.slac.stanford.edu/~jmckinne/matlab.home.all.tgz
+MATLAB SCRIPTS BACKUP: http://www.slac.stanford.edu/~jmckinne/matlab.home.scripts.tgz
+
+Shen EOS Tables (raw and processed) included in helm.003.tar.gz and helm.212108.tgz: http://www.slac.stanford.edu/~jmckinne/sheneos.tables.orig_and_processed.tgz
+
+See for original Shen EOS Tables and the User's Guide: http://user.numazu-ct.ac.jp/~sumi/eos/index.html
+
+Code BACKUP: http://www.slac.stanford.edu/~jmckinne/helm.003.tar.gz
+FULL BACKUP: http://www.slac.stanford.edu/~jmckinne/helm.212108.tgz
+Jon EOS CODE BACKUP: http://www.slac.stanford.edu/~jmckinne/jonmodkazeos_005.tar.gz
+Full KAZEOS+JONEOS BACKUP: http://www.slac.stanford.edu/~jmckinne/kazeos_neutrinos.122108.tgz
+
+OTHER EOS FULL BACKUP: http://www.slac.stanford.edu/~jmckinne/eos.dir.tgz
+
+[See also SM scripts related to grbmodel.m]
+GRB Stellar Models: http://www.slac.stanford.edu/~jmckinne/grb_stellarmodels.tgz
+
+Avery's attempts: http://www.slac.stanford.edu/~jmckinne/fdgas.tar.bz2
+Avery's attempts: http://www.slac.stanford.edu/~jmckinne/kazaveryeos.tgz
+Avery's attempts: http://www.slac.stanford.edu/~jmckinne/eos_june9.dat
+
+EOS Mathematica Files
+Version 1 Updated by Jonathan M. on 20 Jun 2009.
+http://www.slac.stanford.edu/~jmckinne/mathematica_eos_neutrino.zip
+
+EOS web links to papers
+Version 1 Updated by Jonathan M. on 20 Jun 2009.
+http://www.cfa.harvard.edu/~jmckinney/eos/lattimer_swesty_1991.pdf
+http://www.cfa.harvard.edu/~jmckinney/eos/burrows_a_neutrinos_review_1990_annurev.ns.40.120190.pdf
+http://www.cfa.harvard.edu/~jmckinney/eos/_papers_good_heatingrates.zip
+http://www.cfa.harvard.edu/~jmckinney/eos/_papers_grbpapers_general.zip
