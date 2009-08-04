@@ -1,0 +1,43 @@
+    Consolidator has many uses. It was designed to solve an interpolation problem and a Delaunay problem, but I've added other uses too. It can serve as a tool which counts the number of replicates of each point, or as simply an implementation of unique(x,'rows'), but with a tolerance on that unique-ness.
+
+Interpolation fails when there are replicate x values. Often it is recommended to form the mean of y for the replicate x values, eliminating the reps. Consolidator does this, and allows a tolerance on how close two values of x need be to be considered replicates. x may have multiple columns, i.e., it works on multi-dimensional data. x may even be a character array.
+
+This same problem is seen both in interp1 and in griddata. Delaunay and delaunayn are also not robust when called with data that has replicates or near replicates.
+
+Example usages:
+
+% counting replicates
+x = round(rand(100000,1)*2);
+[xc,yc] = consolidator(x,[],'count');
+[xc,yc]
+ans =
+0 25160
+1 49844
+2 24996
+
+% aggregate y for the unique elements in x
+% y = x(:,1) + x(:,2) + error
+x = round(rand(100000,2)*2);
+y = sum(x,2)+randn(size(x,1),1);
+[xc,yc] = consolidator(x,y,'mean');
+[xc,yc]
+ans =
+0 0 0.0054
+0 1.0000 0.9905
+0 2.0000 1.9895
+1.0000 0 0.9957
+1.0000 1.0000 1.9970
+1.0000 2.0000 2.9988
+2.0000 0 2.0136
+2.0000 1.0000 2.9985
+2.0000 2.0000 3.9891
+
+Alternate usage using a function handle:
+[xc,yc] = consolidator(x,y,@mean);
+
+The aggregation can also be of many types. Min, max, mean, sum, std, var, median, prod, as well as geometric and harmonic means, plus the simple count option. Use of a function handle allows for
+any aggregation the user may desire.
+
+Consolidator is very different from accumarray.
+Note that accumarray builds a potentially huge
+array, filled with zeros. This array cannot be sparse in higher than 2 dimensions. Also, accumarray does not allow a tolerance. Its first argument MUST be an index. Finally, consolidator works on strings too.

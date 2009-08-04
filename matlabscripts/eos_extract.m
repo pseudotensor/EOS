@@ -473,6 +473,11 @@ function eos_extract()
         % otherwise EOS is non-convex and multivalued for a single internal energy
         % for the HARM code, all that really matters is that chi=u+p is single valued
         %
+        %
+        % http://www.sciencedirect.com/science?_ob=ArticleURL&_udi=B6WHY-4TP49TB-2&_user=145269&_rdoc=1&_fmt=&_orig=search&_sort=d&_docanchor=&view=c&_acct=C000012078&_version=1&_urlVersion=0&_userid=145269&md5=35910ec6d3376be6c25aa7d25e3259f4
+        %
+        % Need EOS to be convex.
+        %
         if forcemonotk==1
 
           for p=1:nrhob
@@ -488,6 +493,7 @@ function eos_extract()
                 %stot(p,:,q,r)
 
                 % entropy should be monotonic so that can be used as independent variable, but only needs to be monotonic for P(S) and U(S), not T(S).
+                % montonizing stot means sspec will be monotonic as required for entropy evolution
                 stot(p,:,q,r)=monotonize(stot(p,:,q,r));
                 
 
@@ -1203,6 +1209,7 @@ function eos_extract()
                   %
                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+                  %Consolidator: http://www.mathworks.com/matlabcentral/fileexchange/8354
 
                   % make sure things interpolating are unique
                   % Here x = utotdiff,ptotdiff,chidiff,sspec and y = ptot, hspec, utot, ptot, stot, Tk, extra?, etc.
@@ -2184,6 +2191,31 @@ function eos_extract()
 
           fprintf(fiddebug,'End Downsample %d %d %d\n',hiter,titer,ynuiter);
 
+          
+          %          stot(p,:,q,r)=monotonize(stot(p,:,q,r));
+          % Below is done because S(T) need not be monotonic, but U(S) and U(T) should be.  So can't force monotonicity of S(T) like did at top of this file with U(T) and P(T) and CHI(T)
+          % NOT sure if necessary since no derivatives needed of it, so don't require monotonicity.
+          % Below used in HARM for entropy-tracking of same fluid element.  Entropy lookup can be arbitrary and non-monotonic and that's fine.
+%          fprintf(fiddebug,'Begin monotonize of final output for U(S) %d %d %d\n',hiter,titer,ynuiter);
+%
+%          for p=1:nrhob
+%            for q=1:ntdynorye
+%              for r=1:nhcm
+%
+%                UofSdiffout(p,:,q,r) = monotonize(UofSdiffout(p,:,q,r));
+%
+%              end
+%            end
+%          end
+%          
+%          fprintf(fiddebug,'End monotonize of final output for U(S) %d %d %d\n',hiter,titer,ynuiter);
+          
+          
+          
+          
+          
+          
+     
 
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
           %
@@ -2448,10 +2480,10 @@ function eos_extract()
             for o=1:ntdynorye
               for n=1:nutotdiffout
                 for m=1:nrhob
-                  %            0                  +5                                                      +7                              +4      +1               +2              +2      +1                     +3                      +3                      +3                              +4 
+                  %            0                  +5                                                      +8                              +4      +1               +2              +2      +1                     +3                      +3                      +3                              +4 
                   fprintf(fid3,'%3d %3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
                           m-1, n-1, titer-1, ynuiter-1, hiter-1,...
-                          rhob(m,n,o,p), utotdiffoutgrid(n), ptotdiffoutgrid(n), chidiffoutgrid(n), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
+                          rhob(m,n,o,p), utotdiffoutgrid(n), ptotdiffoutgrid(n), chidiffoutgrid(n), stotdiffoutgrid(n), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
                           UofUdiffout(m,n,o,p), PofPdiffout(m,n,o,p), CHIofCHIdiffout(m,n,o,p), SofSdiffout(m,n,o,p), ...
                           PofUdiffout(m,n,o,p), ...
                           UofPdiffout(m,n,o,p), UofSdiffout(m,n,o,p), ...
@@ -2585,9 +2617,9 @@ function eos_extract()
       NUMEOSINDEPS=8; % same as in kazfulleos.global.h (for checking HARM expectation with Matlab output)
       NUMVAR1=4; % utotdiff,ptotdiff,chidiff,stotdiff (for checking HARM expectation with Matlab output)
       % below begins PofRHOU, etc. as in kazfulleos.c
-      NUMFUN1=4;
+      NUMFUN1=1+2+2;
       NUMCS=1;
-      NUMFUN2=1+3+3+3;
+      NUMFUN2=3+3+3;
       NUMTEMP=4;
       % 29 + numextras
       NUMOUTCOLUMNS=NUMINDEPDIMENS+NUMEOSINDEPS+NUMVAR1+NUMFUN1+NUMCS+NUMFUN2+NUMTEMP+numextras;
