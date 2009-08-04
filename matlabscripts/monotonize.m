@@ -1,5 +1,6 @@
 %http://physics.gac.edu/~huber/matlab/mtlbasic.htm
 
+
 function out = monotonize(inputlist)
 % check if list is not sorted
 % If not sorted, then enforce the function to be monotonically *increasing*
@@ -152,7 +153,31 @@ end
 
 
 
+
+
+% test function
+function out = testfunc()
+
+inputlist = 1:.1:10;
+sizelisttemp=size(inputlist(:));
+sizelist=sizelisttemp(1);
+inputlist(50)=1;
+inputlist(51)=1.5;
+inputlist(53)=1.2;
+inputlist(sizelist)=1;
+
+inputlist(50)
+inputlist=monotonize(inputlist);
+inputlist(50)
+
+
+end
+
+
+
+
 function out = monotonizeold(inputlist)
+%function out = monotonize(inputlist)
 % check if list is not sorted
 % If not sorted, then enforce the function to be monotonically *increasing*
 % Fill-in non-monotone regions with linear interpolation over smallest domain needed for monotonicity to be secured
@@ -236,22 +261,3 @@ end
 
 end
 
-
-
-% test function
-function out = testfunc()
-
-inputlist = 1:.1:10;
-sizelisttemp=size(inputlist(:));
-sizelist=sizelisttemp(1);
-inputlist(50)=1;
-inputlist(51)=1.5;
-inputlist(53)=1.2;
-inputlist(sizelist)=1;
-
-inputlist(50)
-inputlist=monotonize(inputlist);
-inputlist(50)
-
-
-end
