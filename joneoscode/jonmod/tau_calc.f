@@ -124,7 +124,7 @@ c     Check if converged if gone through at least one full iteration:
  777     continue
 
 c     Assign final converged Ynu to overwrite "guess" for what is generally an independent variable
-         tdynorynu=Ynu
+         tdynorynu =  Ynuiter
 
       end if
 
@@ -164,12 +164,13 @@ c     Determine fmin
          call tau_calc_sub(tauiter,ynumethod
      1        ,rho10,T11,xnuc,etae,etap,etan,etanu
      1        )
-         fmin = (Ynu - tdynorynu)/(dabs(tdynorynu)+SMALL)
+
+         fmin = (Ynuiter - tdynorynu)/(dabs(tdynorynu)+SMALL)
 
 
        if(fmin.gt.0.0) then
             write(*,*) 'fmin is >0.0',fmin,eta_nuemin
-            write(*,*) 'Ynu,tdynorynu',Ynu,tdynorynu
+            write(*,*) 'Ynuiter,tdynorynu',Ynuiter,tdynorynu
             write(*,*) 'fminmax',eta_nuemin,fmin,eta_nuemax,fmax
 
 c     Try a negative \eta_nu for this case
@@ -178,13 +179,13 @@ c     Try a negative \eta_nu for this case
             call tau_calc_sub(tauiter,ynumethod
      1           ,rho10,T11,xnuc,etae,etap,etan,etanu
      1           )
-            fmin = (Ynu - tdynorynu)/(dabs(tdynorynu)+SMALL)
+            fmin = (Ynuiter - tdynorynu)/(dabs(tdynorynu)+SMALL)
             if(fmin.gt.0.0) then
                write(*,*) 'fmin is >0.0',fmin,eta_nuemin
-               write(*,*) 'Ynu,tdynorynu',Ynu,tdynorynu
+               write(*,*) 'Ynuiter,tdynorynu',Ynuiter,tdynorynu
                write(*,*) 'Could not fix fmin1'
-c     So just use the smallest anti-thermal value obtained rather than stopping -- user should check that generated Ynu is not too large
-               return ! since done and will just use this anti-thermal etanu and resulting Ynu
+c     So just use the smallest anti-thermal value obtained rather than stopping -- user should check that generated Ynuiter is not too large
+               return ! since done and will just use this anti-thermal etanu and resulting Ynuiter
             end if
          end if
 
@@ -199,18 +200,18 @@ c     Determine fmax
          call tau_calc_sub(tauiter,ynumethod
      1        ,rho10,T11,xnuc,etae,etap,etan,etanu
      1        )
-         fmax = (Ynu - tdynorynu)/(dabs(tdynorynu)+SMALL)
+         fmax = (Ynuiter - tdynorynu)/(dabs(tdynorynu)+SMALL)
 
 cfmin is >0.0   121177.009637179       9.999999999999999E-021
-c Ynu,tdynorynu   15680962086.9804       9.999999939225290E-009
+c Ynuiter,tdynorynu   15680962086.9804       9.999999939225290E-009
 c fminmax  9.999999999999999E-021   121177.009637179       1.000000000000000E+020  1.568096218228100E+018
 
 
          if(fmax.lt.0.0) then
             write(*,*) 'fmax is <0.0',fmax,eta_nuemax
-            write(*,*) 'Ynu,tdynorynu',Ynu,tdynorynu
+            write(*,*) 'Ynuiter,tdynorynu',Ynuiter,tdynorynu
             write(*,*) 'fminmax',eta_nuemin,fmin,eta_nuemax,fmax
-c     Rather than stopping, use the Ynu from this largest \eta_nu -- user should check Ynu at end
+c     Rather than stopping, use the Ynuiter from this largest \eta_nu -- user should check Ynuiter at end
             return
          end if
          
@@ -233,7 +234,7 @@ c            write(*,*) 'tauiter',tauiter
 
 
 c     error function
-            ferr = (Ynu - tdynorynu)/(dabs(tdynorynu)+SMALL)
+            ferr = (Ynuiter - tdynorynu)/(dabs(tdynorynu)+SMALL)
 
             if (ferr.gt.0.d0) then
                eta_nuemax=etanu
@@ -244,10 +245,10 @@ c     error function
             endif
 
 c            write(*,*) 'ferr',ferr,eta_nuemin,etanu,eta_nuemax
-c            write(*,*) 'Ynu',Ynu,tdynorynu
+c            write(*,*) 'Ynuiter',Ynuiter,tdynorynu
 
             if(dabs(tdynorynu).gt.SMALL) then
-c     Normally want Ynu to be close to desired answer
+c     Normally want Ynuiter to be close to desired answer
                eps1=dabs(ferr)
                eps2=dabs(log10(eta_nuemax/eta_nuemin))/dabs(log10(eta_nuemin))
 
@@ -2003,13 +2004,18 @@ c
 c     For any ynumethod, set Ynu but changes for whichhcmmethod
 c
 cccccccccccccccccccccccccccccccccccccc
+      
+c     Below Ynu0 assignment is always true
+      Ynu0 = Ynu0local
+
+c     Below assignment of Ynu depends upon whether Ynu is to be computed or is really Ynu0 that is independent variable for table
       if(whichhcmmethod.eq.0) then
 c     Then scale-free with H so using Ynu0 instead of Ynu and will have to iteratively determine Ynu0/Ynu/Yl/Ye
-         Ynu = Ynu0local
-c         write(*,*) 'Ynu0set',Ynu,Ynu0local
+         Ynuiter = Ynu0local
+c         write(*,*) 'Ynu0set',Ynuiter,Ynu0local
       else
-         Ynu = Ynulocal
-c         write(*,*) 'Ynuset',Ynu,Ynulocal
+         Ynuiter = Ynulocal
+c         write(*,*) 'Ynuset',Ynuiter,Ynulocal
       end if
 
 
@@ -2155,6 +2161,10 @@ c     Outputs not used (at all!) if whichdatatype==4 (i.e. whichhcmmethod==0)
      1     ,Qphoton,Qm,graddotrhouye,Tthermaltot,Tdifftot,rho_nu,p_nu,s_nu,Ynulocal,Ynuthermal ! outputs
      1     ,Enuglobal,Enueglobal,Enuebarglobal ! more outputs
      1     )
+
+
+c     Assign outputted Ynu from 2-stream approximation.  Should be same result as from prior 2-stream calls.  Not sure why do both -- why not just use function if want to test it?
+      Ynu = Ynulocal
 
 
 c     DEBUG:

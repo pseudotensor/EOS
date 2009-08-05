@@ -66,12 +66,12 @@ c     5) out of primary data, how many "extra" variables
 c     8 original values (5 indeps and 3 vars)
       if(whichynumethod.eq.0) then
          if(whichrnpmethod.eq.0) then
-            write(50,*) '1 4 9 78 1'
+            write(50,*) '1 4 9 80 1'
          else if(whichrnpmethod.eq.1) then
             if(whichhcmmethod.eq.0) then
-               write(50,*) '2 3 24 78 16'
+               write(50,*) '2 3 24 80 16'
             else 
-               write(50,*) '3 4 19 78 11'
+               write(50,*) '3 4 21 80 11'
             end if
          end if
       else if(whichynumethod.eq.1 .OR. whichynumethod.eq.2) then
@@ -80,9 +80,9 @@ c     8 original values (5 indeps and 3 vars)
          else if(whichrnpmethod.eq.1) then
             if(whichhcmmethod.eq.0) then ! present default method and most tested
 c     GODMARK: 23 not all really extras since need derivatives of them
-               write(50,*) '4 4 32 78 24'
+               write(50,*) '4 4 32 80 24'
             else
-               write(50,*) '3 5 19 78 11'
+               write(50,*) '3 5 21 80 11'
             end if
          end if
       end if
@@ -295,7 +295,7 @@ c     In this case HCM is assumed fully in calculations and HCM will be extra di
      |              ,Qphoton, Qm, graddotrhouye, Tthermaltot, Tdifftot
      |              ,lambdatot,lambdaintot
      |              ,Enuglobal,Enueglobal,Enuebarglobal
-     |              ,Ynuthermal
+     |              ,Ynuthermal,Ynu,Ynu0
 
             end if
          end if
@@ -335,7 +335,7 @@ c     In this case HCM is assumed fully in calculations and HCM will be extra di
      |              ,Qphoton, Qm, graddotrhouye, Tthermaltot, Tdifftot
      |              ,lambdatot,lambdaintot
      |              ,Enuglobal,Enueglobal,Enuebarglobal
-     |              ,Ynuthermal
+     |              ,Ynuthermal,Ynu,Ynu0
 
             end if
          end if
@@ -371,7 +371,7 @@ c     npratiofree is n_n/n_p for only free nucleons
      |     ,Qm,Nm,Tdifftot,Tthermaltot,lambdatot
      |     ,Enuglobal,Enueglobal,Enuebarglobal
      |     ,RufNm,RufQm,Rufgraddotrhouye
-     |     ,Ynu ! if whichdatatype==4, then this is actually Ynu0
+     |     ,Ynu,Ynu0
 
 
 c     JCM: without E5 a very small number like 1E-100 will print out as 1-100

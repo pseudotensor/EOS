@@ -46,6 +46,8 @@ C======================================================================
       real*8 kazaheav,kazzheav ! a,z for heavy nuclei (A>4, not alphas)
       real*8 kazxneut,kazxprot,kazxalfa,kazxheav,abarbound
       real*8 Ynu,Ynuthermal ! electron neutrino fraction
+      real*8 Ynu0 !non-suppressed Ynu
+      real*8 Ynuiter !iterated Ynu
       real*8 yetot              !n_p/n_b total (not just free particles)
       real*8 yefree		!Y_e for free particles only
       real*8 yebound		!Y_e for bound particles only
@@ -107,7 +109,9 @@ cc      common/xnucstuff/xnuc
 
 
 
-      common/variable6/ Ynu,Ynuthermal,yetot,yefree,yebound,yeheav,dyedt,dyedtthin,graddotrhouye,graddotrhouyenonthermal,thermalye
+      common/variable6/ Ynu,Ynuthermal,Ynu0,Ynuiter
+     | 		,yetot,yefree,yebound,yeheav,dyedt,dyedtthin
+     |		,graddotrhouye,graddotrhouyenonthermal,thermalye
      |  	,kazabar,kazzbar,kazaheav,kazzheav
      |          ,kazxneut,kazxprot,kazxalfa,kazxheav,abarbound
      |      	,nptotal,nntotal,npfree,nnfree,npbound,nnbound,npheav,nnheav

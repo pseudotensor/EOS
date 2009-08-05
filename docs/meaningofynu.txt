@@ -1,22 +1,16 @@
 4) Notes about meaning of Ynu variable
 Version 1 Updated by Jonathan M. on 30 Jul 2009.
-I checked the Ynu0 computation. It makes sense. The code is:
+Ynu0 is obtained using Newton's method, where the Newton derivative is obtained after two iterations.
 
-/////////////////
-//
-// Iterate Ynu0 for table lookup
-// Will use below to compute Ynu0[new] = Ynu[new][Ynu0,rho,du,Ye,H] + dYnu, where dYnu = -Ynu[old][Ynu0,rho,du,Ye,H] + Ynu0[old]
-// Recall that ynulocal = Ynu after table lookup (i.e. not Ynu0, but radiative transfer version of Ynu just computed)
-// Recall that ynu=pr[YNU] that is updated (i.e. new) Ynu from last evolution step of Ynu.
-// Recall that EOSextra[YNUGLOBAL] = Ynu0 used for table lookup
-// Recall that ynulocal is estimate of Ynu using last Ynu0 but current rho,u,Ye. So it corresponds to OLD value of Ynu
-// EOSextra[YNUGLOBAL] = EOSextra[YNUGLOBAL] + (ynu - ynulocal);
-EOSextra[YNUGLOBAL] += (ynu - ynulocal);
+R = -Ynu + Ynu[Ynu0old]
 
+dR/dYnu0 = dYnu[Ynu0old]/dYnu0 \approx (Ynuold[Ynu0old] - Ynuolder[Ynu0older])
 
-So I have: Ynu0 = Ynu0[old] + (Ynu[new] - Ynu[old])
+Ynu0 = Ynu0[old] - damp*R/(dR/dYnu0)
 
-So I'm iterating Ynu0 by using the difference between the full Ynu's. That assumes that the only reason Ynu[old] and Ynu[new] are different is because of Ynu0 difference. This isn't exactly true after only 1 iteration. However, if I were to iterate this many times it would converge to the true result that Ynu[old]-Ynu[new]->0, so it would make sense. As I argued, all the neutrino stuff is iterated on a hydro-wave speed substep already, which is excessive. So it should be close to accurate.
+where damp=1.0 unless drops out of table, in which case we restrict Ynu0 to within the table.
+
+If I were to iterate this many times it would converge to the true result that Ynu[old]-Ynu[new]->0, so it would make sense. As I argued, all the neutrino stuff is iterated on a hydro-wave speed substep already, which is excessive. So it should be close to accurate.
 
 Now, it's true that pr[YNU] (primitive) is full Ynu. I input that from the stellar model, which again is the full Ynu. So that is consistently read-in and used. However, I assign this Ynu to EOSextra[YNUGLOBAL] that is Ynu0. So at t=0, I assume Ynu0 and Ynu are about the same. Another way to put it is that I've yet to do any iterations so they are assumed as same as required to start the iterations.
 
@@ -32,10 +26,3 @@ Finally, that "YNU" from jrdpeos is actually from EOSextra[YNUGLOBAL], so that's
 So #1 and #4 agree very closely! So that confirms the value of Ynu is the same in the dump file and the stellar model. This has to be true because Ynu has not yet been evolved. The value of #2 is not available in the stellar model, but it looks like Ynu but shifted upwards. This means that Ynu is smaller than Ynu0, which is as it should be since Ynu always involves optical-depth supression factors on the number densities. It would be more contrivted to have Ynu>Ynu0 since it would require supression of one number density much more than the other (neutrinos vs. anti-neutrinos). So that all makes sense.
 
 The value of #3 is the post-iterative processed value of Ynu. Note that currently the pr[YNU] read-in is forced every metric/neutrino iteration step during initialization. If I really wanted neutrinos to be iterated, I should only assign Ynu on the first read-in of the stellar model file, with later iterations evolving Ynu. Anyways, #3 is very rough, as expected after only really doing 1 iteration with an unresolved Ynu table.
-
-At least all makes sense and it appears that the code is doing the right thing already!
-
-I plan to implement:
-1) MINM for init.readdata.c
-2) MINM for table lookup result
-3) full parabolic interpolation for table (already coded long ago, but now has some bug)
