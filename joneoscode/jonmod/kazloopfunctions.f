@@ -71,7 +71,7 @@ c     8 original values (5 indeps and 3 vars)
             if(whichhcmmethod.eq.0) then
                write(50,*) '2 3 24 80 16'
             else 
-               write(50,*) '3 4 21 80 11'
+               write(50,*) '3 4 21 80 13'
             end if
          end if
       else if(whichynumethod.eq.1 .OR. whichynumethod.eq.2) then
@@ -82,7 +82,7 @@ c     8 original values (5 indeps and 3 vars)
 c     GODMARK: 23 not all really extras since need derivatives of them
                write(50,*) '4 4 32 80 24'
             else
-               write(50,*) '3 5 21 80 11'
+               write(50,*) '3 5 21 80 13'
             end if
          end if
       end if
