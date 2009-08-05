@@ -17,14 +17,14 @@ c  2 = Assume complete thermalization (so no hcm dependence)
       integer whichynumethod
 c      parameter (whichynumethod = 0)
 c 	Must be careful with below option if whichhcmmethod==1 since can converge to another solution at large absolute \eta_nu
-      parameter (whichynumethod = 1)
-c      parameter (whichynumethod = 2)
+c      parameter (whichynumethod = 1)
+      parameter (whichynumethod = 2)
 
 
 c..Sets which method to use to deal with hcm
 c  0 = assume scaling out hcm so set hcm=1 (previously done by setting nhcm=0)
 c  1 = treat hcm as independent variable
       integer whichhcmmethod
-      parameter (whichhcmmethod = 0)
-c      parameter (whichhcmmethod = 1)
+c      parameter (whichhcmmethod = 0)
+      parameter (whichhcmmethod = 1)
 

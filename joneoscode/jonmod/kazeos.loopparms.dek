@@ -17,6 +17,10 @@ ccccccccc
 ccccccccc
 c TOTAL:
 ccccccccc
-      parameter(ntdynorynu=2)       !number of doloop steps, 5 in 1 order of mag.
-      parameter(tdynorynumin=1D-15)  !minimum value of tdynorynu in sec 
-      parameter(tdynorynumax=1.D0)   !maximum value of tdynorynu in sec 
+c      parameter(ntdynorynu=10)       !number of doloop steps, 5 in 1 order of mag.
+c      parameter(tdynorynumin=1D-7)  !minimum value of tdynorynu in sec 
+c      parameter(tdynorynumax=10.D0)   !maximum value of tdynorynu in sec 
+
+      parameter(ntdynorynu=1)       !number of doloop steps, 5 in 1 order of mag.
+      parameter(tdynorynumin=1.0D0)  !minimum value of tdynorynu in sec 
+      parameter(tdynorynumax=1.0D0)   !maximum value of tdynorynu in sec 
