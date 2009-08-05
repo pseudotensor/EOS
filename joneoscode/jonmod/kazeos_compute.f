@@ -512,6 +512,7 @@ c      real*8 gammanint          !rate n --> p + e ^- + nuebar in /sec
 C======================================================================
       real*8 dyedtcalc ! function to compute dY_e/dt [total Y_e]
 
+      real*8 nq,mion,nion
 
 
 
@@ -613,7 +614,20 @@ c     if(s_photon<1E-30) s_photon=1E-30
       tmp(63)=etae*ne(T11,etaev)
       s_eleposi = dim(tmp(61)+tmp(62)-tmp(63),0.d0)*mev3ergKcc/kerg !1/cc
 
+c     Below does not account for other quantum term
       s_N= 2.50*p_N/mev4toecc/tmev*mev3ergKcc/kerg !in erg/K/kb/cc
+c     JCM: Added below
+c     See Shen EOS user's guide:
+      nq = ((mb*clight*clight)*(kerg*tk)/(2.0d0*PI*(hbarcgs*clight)**2))**(3.0d0/2.0d0)
+c     JCM: Below rho_N/mb should really be rho_N/m_N
+c     Assuem kazabar already set
+      mion = mb*kazabar
+      nion = rho_N/mion
+      s_N= S_N + rho_N*dlog(2.0d0*nq/nion)
+c     JCM: Below scales correctly per baryon, but entropy density has different constant offset compared to Shen/LS, so using above
+c      gammaindex=5.0d0/3.0d0
+c      nindex=1.0d0/(gammaindex-1.0d0)
+c      s_N= S_N + rho_N*dlog(p_N**nindex/rho_N**(nindex+1.0d0))
 
 c     TOTAL:
       s_tot = s_photon + s_eleposi + s_nu + s_N !in erg/K/cc
@@ -621,7 +635,6 @@ c     s_ergKcc = s_tot*mev3ergKcc
 
 c     DEBUG:
 c      write(*,*) etae,tmev,T11,xnuc,npratiofree,rho10
-
 
 
 
