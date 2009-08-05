@@ -19,7 +19,7 @@ c     Note that when finding rho,T,Y_e,Y_\nu table, only things computed here ch
 
 c     ynumethod=0 : quasi-thermalization (must have hcm dep)
 c     ynumethod=1 : Y_nu dependence (so no hcm dep)
-c     ynumethod=2 : Y_nu thermal (so no hcm dep) [Does not exist anymore]
+c     ynumethod=2 : Y_nu thermal (so no hcm dep)
 
 
 C======================================================================
@@ -285,8 +285,10 @@ c     Assume complete thermalization (if ynumethod.eq.2, then first get to Ynuth
 c
 cccccccccccccccccccccccccccc
 
-c      if(ynumethod.eq.2) then
-c      end if
+      if(ynumethod.eq.2) then
+         Ynu=Ynuthermal
+         tdynorynu =  Ynuthermal
+      end if
 
 
 
