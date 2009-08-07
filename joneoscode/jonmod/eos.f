@@ -26,11 +26,14 @@ c      integer computespecies
 
 cccccccccccccccccccccccccccccccccc
 c
-c     Open files for first time
+c     Open files for first time (to be appended to later)
 c
 cccccccccccccccccccccccccccccccccc
+
       open(11,file='eos.dat',status='unknown')
       open(17,file='eosother.dat',status='unknown')
+      close(11)
+      close(17)
 
 
 c     Below uses vars set by kazeos.loop*.dek (not globals)
