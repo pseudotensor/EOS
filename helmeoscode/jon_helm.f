@@ -65,6 +65,11 @@ c     Open data files first time, to be append to later
       open(18,file='eoscoulomb.dat',status='unknown')
       open(19,file='eosazbar.dat',status='unknown')
       open(20,file='eosdetails.dat',status='unknown')
+      close(11)
+      close(17)
+      close(18)
+      close(19)
+      close(20)
 
 
 c     Setup true and fake nuclear offset
