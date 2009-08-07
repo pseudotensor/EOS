@@ -2,13 +2,17 @@
 # example script to run many EOS jobs on Orange cluster at KIPAC
 
 ########## 1 ##############
-# First run install0.sh
-# sh ./install0.sh
+# Enter some HEAD directory
+# First run install0.sh .
+# sh ./install0.sh .
+# this creates an eosfull directory.
 
 ########## 2 ##############
-# get this file either from repository or copy from a known location:
+# Enter directory: eosfull/datadir/
 #
-# scp jon@ki-rh42:/data/jon/svneostest/helmeoscode/scripts/chunkbunch.sh jon@ki-rh42:/data/jon/svneostest/helmeoscode/scripts/runchunkone.sh .
+# Then get these files either from repository or copy from a known location:
+#
+# scp -rp jon@ki-rh42.slac.stanford.edu:"/data/jon/svneostest/helmeoscode/scripts/chunkbunch.sh /data/jon/svneostest/helmeoscode/scripts/runchunkone.sh /data/jon/svneostest/helmeoscode/scripts/runchunkn.sh" .
 # 
 
 ########## 3 ##############
@@ -16,63 +20,116 @@
 # rm -rf eoschunkc*
 
 ########## 4 ##############
+# choose system/batch type
+useorange=0
+uselonestar=1
+
+########## 5 ##############
 # run this script by doing:
 # sh chunkbunch.sh <DATADIR> <TOTALCHUNKS>
 #e.g. 
 # sh chunkbunch.sh /lustre/ki/orange/jmckinne/eosfull/datadir/ 100
+# sh chunkbunch.sh . 100
 #
 # for 25,000 chunks, at 1 chunk per minute and 400 chunks will take 1 hour.  Doing 100 chunks will take about 4 hours if cluster free.
 
 
 
+###########################
 # Now begin to chunk
 
-export DATADIR=$1
+
+
+# Check that arguments given
+# http://tldp.org/LDP/abs/html/testconstructs.html
+if test -z "$1"
+then
+    echo "No directory given."
+    echo "sh chunkbunch.sh <DATADIR> <TOTALCHUNKS>"
+    exit 1
+else
+    echo "Directory is $1"
+fi
+
+if test -z "$2"
+then
+    echo "No TOTALCHUNKS given."
+    echo "sh chunkbunch.sh <DATADIR> <TOTALCHUNKS>"
+    exit 1
+else
+    echo "TOTALCHUNKS is $2"
+fi
+
+
+
+
+if [ $useorange -eq 1 ]
+then
+    truenumprocs=1
+fi
+if [ $uselonestar -eq 1 ]
+then
+    truenumprocs=4
+fi
+
+cd $1
+export DATADIR=`pwd`
 export HELMDIR=$DATADIR/../svneos/helmeoscode/
+export SAFESTARTDIR=~/chunkdump/
 export TOTALCHUNKS=$2
 
 # BSUB commands
 # constant commands over chunks
-truenumprocs=1
 jobprefix="eoschunk"
 outputfile="stdout.out"
 errorfile="stderr.err"
 
 
 ### LOOP OVER CHUNKS and start jobs
-for CHUNK in `seq 1 $TOTALCHUNKS`
+for CHUNK in `seq 1 $truenumprocs $TOTALCHUNKS`
 do
-    ###############
-    # Setup job number/name/directory
-    jobnumber=$CHUNK
-    jobname=${jobprefix}c${jobnumber}tc${TOTALCHUNKS}
-    JOBDIR=${DATADIR}/${jobname}
-
-    # Create new directory
-    rm -rf $JOBDIR
-    mkdir -p $JOBDIR
-    
-    ################
-    #   Copy/link relevant files (must be in "source" directory where previously used copyjonhelm.sh in install0.sh).  So this creates links to links except binary is copied
-    sh $HELMDIR/copyjonhelm.sh $JOBDIR
-
-    # change to job directory
-    cd $JOBDIR
-
-    # Setup binary input parameters
-    echo "$CHUNK $TOTALCHUNKS" > eoschunk.dat
 
     ##############
-    # run eos code
+    # Setup safe directory to start from
     #
     # enter valid LSF directory
-    mkdir -p ~/chunkdump/
-    cd ~/chunkdump/
-    bsub -n 1 -x -R span[ptile=$truenumprocs] -q kipac-ibq -J $jobname -o $outputfile -e $errorfile -a openmpi $DATADIR/runchunkone.sh $JOBDIR
+    mkdir -p $SAFESTARTDIR
+    cd $SAFESTARTDIR
+    chmod ug+x $DATADIR/runchunkone.sh
+    chmod ug+x $DATADIR/runchunkn.sh
+
+    # then jobnumber indicates starting chunk when doing multiple subchunks
+    jobnumber=$CHUNK
+    jobname=${jobprefix}c${jobnumber}tc${TOTALCHUNKS}
+
+    #############
+    # Start run
+    #
+    if [ $useorange -eq 1 ]
+    then
+        ###############
+        # Setup job number/name/directory
+	JOBDIR=${DATADIR}/${jobname}
+	#
+	bsub -n 1 -x -R span[ptile=$truenumprocs] -q kipac-ibq -J $jobname -o $outputfile -e $errorfile -a openmpi $DATADIR/runchunkone.sh $JOBDIR
+    fi
+    if [ $uselonestar -eq 1 ]
+    then
+	# http://www.tacc.utexas.edu/services/userguides/lonestar/
+	# run with script using: bsub < bsub.batch
+        # run on command line: (e.g.)  bsub -I -n 4 -W 0:05 -q development ibrun ./a.out 
+        # to check jobs: showq -u or bjobs
+	# 4 cores at a time
+        # queues are: serial,normal,high,hero,development
+	# Program to run is: "ibrun ./a.out" for MPI/parallel run
+	bsub -B -N -u jmckinne@stanford.edu -P TG-AST080025N -x -W 24:00 -n $truenumprocs -x -o $outputfile -e $errorfile -R span[ptile=$truenumprocs] -q normal -J $jobname $DATADIR/runchunkn.sh  $CHUNK $truenumprocs $jobprefix $jobnumber $TOTALCHUNKS $DATADIR $jobname $HELMDIR
+    fi
+
+    ############
     # go back to data directory
     cd $DATADIR
     # report that done with submitting job
-    echo "Done with CHUNK=$CHUNK out of $TOTALCHUNKS with jobname=$jobname and jobnumber=$jobnumber"
+    echo "Done with CHUNK=$CHUNK out of $TOTALCHUNKS"
 done
 
 # report done with submitting all jobs
