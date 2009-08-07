@@ -76,8 +76,10 @@ c     Do not iterate, just solve
      1        )
 c     Assign from one global to another
 c     Ynuthermal for method that includes H in table
+c     AND Ynuthermal is used to set blocking factor as relative to Ynu0 *always*.  Never use optical depth version.
+         Ynuthermal0=Ynu0
          Ynuthermal=Ynu
-c     Need 0 version of number densities to compute Ynuthermal in HARM
+c     Need 0 version of number densities to compute Ynuthermal in HARM and below recomputation of Ynuthermal
          nnueth0=nnue0
          nnuebarth0=nnuebar0
 
@@ -85,6 +87,19 @@ c     Need 0 version of number densities to compute Ynuthermal in HARM
          
 c         write(*,*) 'Ynuthermal',rho10,T11,etae,etap,etan,etanu,Ynuthermal
 
+
+
+cccccccccccccccccccccccccccc
+c
+c     Assume complete thermalization (if ynumethod.eq.2, then first get to Ynuthermal is sufficient)
+c
+cccccccccccccccccccccccccccc
+
+      if(ynumethod.eq.2) then
+c     Uses optical depth dupressed Ynuthermal
+         Ynu = Ynuthermal
+         tdynorynu = Ynuthermal
+      end if
 
 
 cccccccccccccccccccccccccccc
@@ -279,16 +294,6 @@ c     Check if converged if gone through at least one full iteration:
 
 
 
-cccccccccccccccccccccccccccc
-c
-c     Assume complete thermalization (if ynumethod.eq.2, then first get to Ynuthermal is sufficient)
-c
-cccccccccccccccccccccccccccc
-
-      if(ynumethod.eq.2) then
-         Ynu=Ynuthermal
-         tdynorynu =  Ynuthermal
-      end if
 
 
 
@@ -543,7 +548,7 @@ c     Perfect thermalization calculation
       else
 c     Setup Fermi blocking correction to estimate blocking factor better
 c     in regimes where neutrinos are (and are not) part of collisional system
-         extrablock = dmax1(0.0,dmin1(1.0d0,tdynorynu/Ynuthermal))
+         extrablock = dmax1(0.0,dmin1(1.0d0,Ynu0/Ynuthermal0))
       end if
 
 
