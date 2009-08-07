@@ -3,9 +3,47 @@
 #
 # NOW follow (basic things done below after http line):
 # http://harm.unfuddle.com/projects/5/notebooks/8/pages/37/latest
+
+########## 1 ##########
 #
+# scp -rp jon@ki-rh42.slac.stanford.edu:"/data/jon/svneostest/helmeoscode/scripts/install0.sh" .
+#
+
+########### 2 ############
+# Decide whether can use svn or have to use wget to get a potentially older copy of the source.  See below "svn checkout"
+
+# whether to use svn or wget from old copy on Jon's website
+usesvn=0
+
+########### 3 ############
+# Note that you can avoid installing GRB stellar model stuff if only want to generate HARM table.  Not bad idea if on (say) cluster where only generating table because that file is 1GB in size and takes 1 hour to download on Lonestar.
+# This is compared to Shen/LS table stuff that only takes 6 minutes on Lonestar.
+
+# whether to get and setup use of stellar model generation.  Not required for generating HARM table.
+dostellarmodel=0
+
+########### 4 ############
+# run like: sh install0.sh  /lustre/ki/orange/jmckinne/
+# can also just run like: sh install0.sh .
+#
+
+
 # 1) First, Change to directory with lots of space
-cd /lustre/ki/orange/jmckinne/
+
+# http://tldp.org/LDP/abs/html/testconstructs.html
+if test -z "$1"
+then
+    echo "No directory given."
+    exit 1
+else
+    echo "Directory is $1"
+fi
+
+
+
+cd $1
+HEADDIR=`pwd`
+
 mkdir eosfull
 cd eosfull
 BASEDIR=`pwd`
@@ -17,11 +55,15 @@ DATADIR=`pwd`
 cd $BASEDIR
 mkdir svneos ; cd svneos
 SVNEOSDIR=`pwd`
-#svn checkout https://harm.unfuddle.com/svn/harm_joneos/ .
-# or use below if no SVN and believe the below source is updated enough
-wget http://www.slac.stanford.edu/~jmckinne/svneostest.tgz
-tar xvzf svneostest.tgz
-rm -rf svneostest.tgz
+if [ $usesvn -eq 1 ]
+then
+    svn checkout https://harm.unfuddle.com/svn/harm_joneos/ .
+else
+    # or use below if no SVN and believe the below source is updated enough
+    wget http://www.slac.stanford.edu/~jmckinne/svneostest.tgz
+    tar xvzf svneostest.tgz
+    rm -rf svneostest.tgz
+fi
 
 cd joneoscode/jonmod
 export JONEOSDIR=`pwd`
@@ -63,16 +105,19 @@ ln -s $JONEOSDIR/const.dek
 
 make clean ; make
 
-# GRBMODEL STUFF
-mkdir $BASEDIR/svngrbmodel
-sh copy2grbmodel.sh $BASEDIR/svngrbmodel
-cd $BASEDIR/svngrbmodel
-SVNGRBMODELDIR=`pwd`
-wget http://www.slac.stanford.edu/~jmckinne/grb_stellarmodels.tgz
-tar xvzf grb_stellarmodels.tgz
-rm -rf grb_stellarmodels.tgz
-cp u/ki/jmckinne/research/ww95_stars/www.supersci.org/data/pre_sn_models/sol_metal/s251s7b\@14233.gz .
-gunzip s251s7b\@14233.gz
+if [ $dostellarmodel -eq 1 ]
+then
+    # GRBMODEL STUFF
+    mkdir $BASEDIR/svngrbmodel
+    sh copy2grbmodel.sh $BASEDIR/svngrbmodel
+    cd $BASEDIR/svngrbmodel
+    SVNGRBMODELDIR=`pwd`
+    wget http://www.slac.stanford.edu/~jmckinne/grb_stellarmodels.tgz
+    tar xvzf grb_stellarmodels.tgz
+    rm -rf grb_stellarmodels.tgz
+    cp u/ki/jmckinne/research/ww95_stars/www.supersci.org/data/pre_sn_models/sol_metal/s251s7b\@14233.gz .
+    gunzip s251s7b\@14233.gz
+fi
 
 # NOW follow (basic things done below after http line):
 # http://harm.unfuddle.com/projects/5/notebooks/8/pages/40/latest
