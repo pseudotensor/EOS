@@ -72,7 +72,8 @@ do
     #killall helmeos.exe.$subjobname
 
     cd $SUBJOBDIR
-    ./helmeos.exe
+    # run in background, so other subchunks can get started.
+    nohup ./helmeos.exe &
     cd $OLDDIR
 done
 
