@@ -19,6 +19,9 @@
 # might want to remove old eoschunk directories:
 # rm -rf eoschunkc*
 
+# to kill lots of jobs:
+# bkill -q normal 0
+
 ########## 4 ##############
 # choose system/batch type
 useorange=0
@@ -29,7 +32,7 @@ uselonestar=1
 # sh chunkbunch.sh <DATADIR> <TOTALCHUNKS>
 #e.g. 
 # sh chunkbunch.sh /lustre/ki/orange/jmckinne/eosfull/datadir/ 100
-# sh chunkbunch.sh . 100
+# sh chunkbunch.sh . 160
 #
 # for 25,000 chunks, at 1 chunk per minute and 400 chunks will take 1 hour.  Doing 100 chunks will take about 4 hours if cluster free.
 
@@ -61,22 +64,32 @@ else
 fi
 
 
-
-
-if [ $useorange -eq 1 ]
-then
-    truenumprocs=1
-fi
-if [ $uselonestar -eq 1 ]
-then
-    truenumprocs=4
-fi
-
 cd $1
 export DATADIR=`pwd`
 export HELMDIR=$DATADIR/../svneos/helmeoscode/
 export SAFESTARTDIR=~/chunkdump/
 export TOTALCHUNKS=$2
+
+
+if [ $useorange -eq 1 ]
+then
+    truenumprocs=1
+    MAXJOBS=200
+fi
+if [ $uselonestar -eq 1 ]
+then
+    truenumprocs=4
+    # Note that lonestar has maximum of 40 queued jobs
+    MAXJOBS=40
+    # So TOTALCHUNKS/truenumprocs<40 has to be true
+fi
+
+numjobs=$(($TOTALCHUNKS/$truenumprocs))
+if [ $numjobs -gt $MAXJOBS ]
+then
+    echo "Exceeded $MAXJOBS jobs with requesting of $numjobs jobs"
+    exit 1
+fi
 
 # BSUB commands
 # constant commands over chunks
@@ -111,7 +124,7 @@ do
         # Setup job number/name/directory
 	JOBDIR=${DATADIR}/${jobname}
 	#
-	bsub -n 1 -x -R span[ptile=$truenumprocs] -q kipac-ibq -J $jobname -o $outputfile -e $errorfile -a openmpi $DATADIR/runchunkone.sh $JOBDIR
+	bsub -n 1 -x -R span[ptile=1] -q kipac-ibq -J $jobname -o $outputfile -e $errorfile -a openmpi $DATADIR/runchunkone.sh $JOBDIR
     fi
     if [ $uselonestar -eq 1 ]
     then
@@ -122,7 +135,8 @@ do
 	# 4 cores at a time
         # queues are: serial,normal,high,hero,development
 	# Program to run is: "ibrun ./a.out" for MPI/parallel run
-	bsub -B -N -u jmckinne@stanford.edu -P TG-AST080025N -x -W 24:00 -n $truenumprocs -x -o $outputfile -e $errorfile -R span[ptile=$truenumprocs] -q normal -J $jobname $DATADIR/runchunkn.sh  $CHUNK $truenumprocs $jobprefix $jobnumber $TOTALCHUNKS $DATADIR $jobname $HELMDIR
+	# ptile=1 always so only 1 job started, but with exclusive (-x) access to node.
+	bsub -B -N -u jmckinne@stanford.edu -P TG-AST080025N -x -W 24:00 -n $truenumprocs -x -o $outputfile -e $errorfile -R span[ptile=1] -q normal -J $jobname $DATADIR/runchunkn.sh  $CHUNK $truenumprocs $jobprefix $jobnumber $TOTALCHUNKS $DATADIR $jobname $HELMDIR
     fi
 
     ############
