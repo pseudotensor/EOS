@@ -20,6 +20,7 @@ c     Note that when finding rho,T,Y_e,Y_\nu table, only things computed here ch
 c     ynumethod=0 : quasi-thermalization (must have hcm dep)
 c     ynumethod=1 : Y_nu dependence (so no hcm dep)
 c     ynumethod=2 : Y_nu thermal (so no hcm dep)
+c     ynumethod=3 : like ynumethod==0, except eta_nue = - eta_nuebar and E_nu's are determined like ynumethod.eq.1
 
 
 C======================================================================
@@ -38,13 +39,16 @@ c     Passed:
       real*8 xnuc
 
 c     Locals:
+      integer tempynumethod
+      real*8 etanuthermal
       real*8 SMALL
       integer NUMTAUITER
-      real*8 ETAERROR,YNUERROR
-      real*8 etanuold
+      real*8 ETAERROR,ETASUPERSMALL,YNUERROR
+      real*8 MINETA,MINYNU
+      real*8 etanuold,Ynu0old,Ynuold,error1,error2,error3
       real*8 eta_nuemin,eta_nuemax,ferr,fmin,fmax
       real*8 eps1,eps2
-c     Locals:
+c     Locals: (now use save in sub function)
 c      real*8 eta_nue,eta_nuebar
 c      real*8 qtaut_nue,qtaut_nuebar,qtautmu,qtauttau
 c      real*8 ntaut_nue,ntaut_nuebar,ntautmu,ntauttau
@@ -68,30 +72,35 @@ c     First get completely thermalized Ynu
 c     Below is fake way to set extrablock->1
       Ynuthermal=tdynorynu
 c     \beta-equilibrium
-         etanu = etae + etap - etan
-c     Do not iterate, just solve
-         tauiter=0
-         call tau_calc_sub(tauiter,ynumethod
-     1        ,rho10,T11,xnuc,etae,etap,etan,etanu
-     1        )
+      etanuthermal = etae + etap - etan
+      etanu = etanuthermal
+c     Must tell tau_calc_sub() that not ymumethod==0 where etanu depends upon H and so would get reset near end of its call.  Doesn't happen to currently affect this calculation, but affects what etanu is fed into rest of calculations.
+      tempynumethod=2
+c     Do not iterate, just solve and force tauiter==0 so pure thermalization
+      tauiter=0
+      call tau_calc_sub(tauiter,tempynumethod
+     1     ,rho10,T11,xnuc,etae,etap,etan,etanu
+     1     )
 c     Assign from one global to another
 c     Ynuthermal for method that includes H in table
 c     AND Ynuthermal is used to set blocking factor as relative to Ynu0 *always*.  Never use optical depth version.
-         Ynuthermal0=Ynu0
-         Ynuthermal=Ynu
+      Ynuthermal0=Ynu0
+      Ynuthermal=Ynu
 c     Need 0 version of number densities to compute Ynuthermal in HARM and below recomputation of Ynuthermal
-         nnueth0=nnue0
-         nnuebarth0=nnuebar0
+      nnueth0=nnue0
+      nnuebarth0=nnuebar0
 
 
-         
-c         write(*,*) 'Ynuthermal',rho10,T11,etae,etap,etan,etanu,Ynuthermal
+      
+c      write(*,*) 'Ynuthermal',rho10,T11,etae,etap,etan,etanu,Ynuthermal
 
 
 
 cccccccccccccccccccccccccccc
 c
 c     Assume complete thermalization (if ynumethod.eq.2, then first get to Ynuthermal is sufficient)
+c
+c     ynumethod.eq.2
 c
 cccccccccccccccccccccccccccc
 
@@ -106,26 +115,46 @@ cccccccccccccccccccccccccccc
 c
 c     Iterate to obtain converged solution for \eta_\nu for neutrinos
 c
+c     ynumethod.eq.0  .OR. ynumethod.eq.3
+c
 cccccccccccccccccccccccccccc
-      if(ynumethod.eq.0) then
+      if(ynumethod.eq.0 .OR. ynumethod.eq.3) then
 
 c     Set number of iterations (if ==1, then input etanu only used)
 c     NUMTAUITER=1
 c     Don't need many iterations to get reasonable result
-         NUMTAUITER=5
+         NUMTAUITER=10
 c     Generally not more accurate than 10% anyways, so ok to seek error of 1%
          ETAERROR=1D-2
-
-
+         ETASUPERSMALL=SMALL
+c     Don't worry as much about relative error if quantities are below the following values:
+         MINETA=1D-5
+         MINYNU=SMALL
+c     Start out with thermal as guess
+         etanu=etanuthermal
+         Ynu0=Ynuthermal0
+         Ynu=Ynuthermal
+c     Iterate
+c     NOTE that iteration really iterates over not only etanu but also Ynu,Ynu0 because of blocking factor.
          do tauiter=1,NUMTAUITER
             etanuold=etanu
+            Ynu0old=Ynu0
+            Ynuold=Ynu
             call tau_calc_sub(tauiter,ynumethod
      1           ,rho10,T11,xnuc,etae,etap,etan,etanu
      1           )
 
+
+c     DEBUG:
+c            write(*,*) 'iter etanu',tauiter,rho10,T11,etae,etap,etan,etanu,etanuold,Ynu,Ynu0,Ynuiter
+
+
 c     Check if converged if gone through at least one full iteration:
             if(tauiter.gt.1) then
-               if(dabs(etanu-etanuold)<ETAERROR) then
+               error1=dabs(etanu-etanuold)/(MINETA + dabs(etanu)+dabs(etanuold)+ETASUPERSMALL)
+               error2=dabs(Ynu0-Ynu0old)/(MINYNU + dabs(Ynu0)+dabs(Ynu0old)+ETASUPERSMALL)
+               error3=dabs(Ynu-Ynuold)/(MINYNU + dabs(Ynu)+dabs(Ynuold)+ETASUPERSMALL)
+               if(error1<ETAERROR .AND. error2<ETAERROR .AND. error3<ETAERROR) then
                   goto 777
                end if
             end if
@@ -133,6 +162,7 @@ c     Check if converged if gone through at least one full iteration:
             if(tauiter.eq.NUMTAUITER) then
                write(*,*) 'Never found solution to etanu',rho10,T11,etae,etap,etan,etanu
             end if
+
 
 
          end do
@@ -150,6 +180,8 @@ cccccccccccccccccccccccccccc
 c
 c     Bisect to obtain converged solution for \eta_\nu for given fixed Y_\nu for neutrinos
 c     Notice that tau_calc_sub() sets Ynu globally
+c
+c     ynumethod.eq.1
 c
 cccccccccccccccccccccccccccc
 
@@ -173,6 +205,7 @@ c     Determine fmin and fmax (inside tau_calc_sub())
 
 c         write(*,*) 'getting fmin'
 
+ccccccccccccccccccccccccccccccccccccc
 c     Determine fmin
          etanu = eta_nuemin
          tauiter=1
@@ -209,6 +242,7 @@ c     So just use the smallest anti-thermal value obtained rather than stopping 
          
 c         write(*,*) 'getting fmax'
             
+ccccccccccccccccccccccccccccccccccccc
 c     Determine fmax
          etanu = eta_nuemax
          tauiter=1
@@ -236,6 +270,9 @@ c          fmin is >0.0   1.00000000000000       9.999999999999999E-021
 c     61  fminmax  9.999999999999999E-021   1.00000000000000       1.000000000000000E+020
 c     62  -4.394342758031380E+025
 
+
+
+ccccccccccccccccccccccccccccccccccccc
 c     Now bisect
          do tauiter=1,NUMTAUITER
 
@@ -267,7 +304,7 @@ c     Normally want Ynuiter to be close to desired answer
                eps1=dabs(ferr)
                eps2=dabs(log10(eta_nuemax/eta_nuemin))/dabs(log10(eta_nuemin))
 
-               if(eps1<YNUERROR .OR. eps2<ETAERROR) then
+               if(eps1<YNUERROR .AND. eps2<ETAERROR) then
                   goto 778
                end if
             else
@@ -409,7 +446,7 @@ c     Below now passed/returned
       real*8 qtaus_enue,qtaus_enuebar,qtauseel,qtausemu,qtausetau
       real*8 qtaustot_nue,qtaustot_nuebar,qtaustotel,qtaustotmu,qtaustottau
       real*8 qtautel
-c     just outside function now
+c     just outside function now (No: now use save in sub function)
       real*8 qtaut_nue,qtaut_nuebar,qtautmu,qtauttau
       real*8 qtaut_numutau,ntaut_numutau ! temp vars
 
@@ -561,6 +598,8 @@ c     If first-time call, then use input etanu, which is probably 0, which is in
 c
 c     if ynumethod.eq.1, then always reset eta_nue and eta_nuebar to input values
 c
+c     These iterated-like quantities are saved using the "save" Fortran keyword for the current function call
+c
 cccccccccccccccccccccccccccc
       if(tauiter.eq.0 .OR. tauiter.eq.1 .OR. ynumethod.eq.1 .OR. ynumethod.eq.2) then
          eta_nue=etanu
@@ -576,6 +615,12 @@ c     GODMARK: below requires fast reactions once thermalized (used by ynumethod
          ntauttau=SMALL
       end if
 
+      if(ynumethod.eq.3) then
+         eta_nue=etanu
+c     GODMARK: below requires fast reactions once thermalized (used by ynumethod.eq.1 and 2 to determine \eta_\nu)
+         eta_nuebar=-eta_nue
+      end if
+
 
 
 
@@ -588,6 +633,10 @@ cccccccccccccccccccccccccccc
 c     Test of integrals at high eta
 c      eta_nue=.66701606536848172545D+00007
 c      eta_nuebar=-eta_nue
+
+c     DEBUG:
+c      write(*,*) 'etanus',tauiter,eta_nue,eta_nuebar
+
 
 
 c     we often form the ratios fd5/fd3 or fd4/fd2 or use fd2 and fd3 multiplicatively for number/energy densities
@@ -1201,7 +1250,8 @@ c     Assume blocking factor similar for ne and n
      1     ,fd4_eneg,fd4_epos,fd5_eneg,fd5_epos
      1     )
 
-      if(ynumethod.eq.1 .OR. ynumethod.eq.2) then
+      if(ynumethod.eq.1 .OR. ynumethod.eq.2 .OR. ynumethod.eq.3) then
+c     ynumethod.eq.3 here so result as close to ynumethod.1 as possible
          Elocalnue = qEth_nue*kbtk
          Elocalnuebar = qEth_nuebar*kbtk
          Elocalnumutau = qEth_numutau*kbtk
@@ -1375,9 +1425,10 @@ c     <E_\nu>/kbtk
          nE_numutau = ntaulocal_numutau*nEth_numutau + (1.0-ntaulocal_numutau)*nEnt_numutau
 
 
-      else if(ynumethod.eq.1 .OR. ynumethod.eq.2) then
+      else if(ynumethod.eq.1 .OR. ynumethod.eq.2 .OR. ynumethod.eq.3) then
 
 c     Then assume FD distribution is accurate
+c     ynumethod.eq.3 is here because need to be as close to final HARM table as possible that uses ynumethod.eq.1.  Elocal is very different for _nue that changes lambdatot that changes everything else if I don't keep this consistent
 
          qEsq_nue = qEsqth_nue
          qEsq_nuebar = qEsqth_nuebar
@@ -1706,6 +1757,9 @@ c     Compute true dyedt with optical depth and neutrino chemical potential effe
 c     Use generalized treatment of optical depth
       gamman2pglobal = Nm_nuebar/nntotal
       gammap2nglobal = Nm_nue/nptotal
+
+c      DEBUG:
+c      write(*,*) 'gamma',gamman2pglobal,gammap2nglobal,Nm_nuebar,nntotal,Nm_nue,nptotal
 c     Per volume change in Y_e for optically thick case
       dyedt = gamman2pglobal - (gamman2pglobal + gammap2nglobal)*yetot
 
@@ -1762,7 +1816,8 @@ c     NOTE THAT THE BELOW DEPENDS UPON H, so Y_\nu depends on H.
 c      Ynulocal = dmax1((n_nue-n_nuebar)/nb,SMALL)
       Ynulocal = (n_nue-n_nuebar)/nb ! can be negative or positive due to optical depth supression
 
-c      write(*,*) 'ns',etanu,n_nue,n_nuebar,nb,n_nue0,n_nuebar0
+c     DEBUG:
+c      write(*,*) 'ns',eta_nue,eta_nuebar,n_nue,n_nuebar,nb,n_nue0,n_nuebar0
 
 
 c     rho_nu,p_nu,s_nu assume thermalized neutrinos so is consistent with full thermalization choice for \eta_\nu.  So don't have separate "non-thermal" values.
@@ -1812,6 +1867,20 @@ c     Compute scattering+absorption diffusion time of dominant neutrino species
      1     +nminusmu/nlambda_numu
      1     +nminustau/nlambda_nutau
      1     )/(nminus_nue + nminus_nuebar + nminusmu + nminustau+SMALL)
+
+c     DEBUG:
+c      write(*,*) 'NH',Elocal,rho10,T11,etae,etap,etan,xnuc,H,yeheav,kazaheav,nHnondeg
+c      write(*,*) 'ntausN',ntausNP_nue,ntausNH_nue,ntausNALPHA_nue
+c      write(*,*) 'taus',ntausN_nue,ntaus_enue
+c      write(*,*) 'ntau',ntaua_nue,ntaustot_nue
+c      write(*,*) 'lambdatot',inlambdatot,nminus_nue,nlambda_nue
+c     1     ,nminus_nuebar,nlambda_nuebar
+c     1     ,nminusmu,nlambda_numu
+c     1     ,nminustau,nlambda_nutau
+
+      
+
+
 
       nlambdatot = 1.0/inlambdatot
       nTdifftot = dmax1(3.0*H**2/(1.0*clight*nlambdatot),H/clight)
@@ -2067,14 +2136,23 @@ c      eta_nuebar=eta_nuebar_eq*(1.0-dexp(-ntautin_nuebar))
       eta_nue=eta_nue_eq*eta_nue_factor
       eta_nuebar=eta_nuebar_eq*eta_nuebar_factor
 
-      if(ynumethod.eq.0) then
-c     Below used to pass to outside function whether convergent
-         etanu=eta_nue
 c     mu and tau are assumed to have 0 chemical potentials
+
+c     Below used to pass to outside function whether convergent
+      if(ynumethod.eq.0) then
+         etanu=eta_nue
+      end if
+      if(ynumethod.eq.3) then
+         etanu=eta_nue
+c     Enforce behavior to be like ynumetod.eq.1
+         eta_nuebar = - eta_nue
       end if
 
 c     DEBUG:
 c      write(*,*) 'ntaut=',ntaut_nue,ntaut_nuebar
+
+c     DEBUG:
+c      write(*,*) 'eta_nue,eta_nuebar=',tauiter,eta_nue,eta_nuebar
 
 
 
@@ -2180,6 +2258,40 @@ c     1     ,nminus_nuebar,nlambda_nuebar
 c     1     ,nminusmu,nlambda_numu
 c     1     ,nminustau,nlambda_nutau
 
+
+
+
+c     DEBUG: (compare to harm extras/processed)
+c     Both should be in the same order as in HARM table/output
+c      write(*,*) 'extras'
+c     1	,qtautnueohcm
+c     1	,qtauanueohcm
+c     1	,qtautnuebarohcm
+c     1	,qtauanuebarohcm
+c     1	,qtautmuohcm
+c     1	,qtauamuohcm
+c     1	,ntautnueohcm
+c     1	,ntauanueohcm
+c     1	,ntautnuebarohcm
+c     1	,ntauanuebarohcm
+c     1	,ntautmuohcm
+c     1	,ntauamuohcm
+c     1	,unue0
+c     1	,unuebar0
+c     1	,unumu0
+c     1	,nnue0
+c     1	,nnuebar0
+c     1	,nnumu0
+c     1	,lambdatot
+c     1	,lambdaintot
+c     1	,tauphotonohcm
+c     1	,tauphotonabsohcm
+c     1	,nnueth0
+c     1	,nnuebarth0
+c
+c      write(*,*) 'processed'
+c     1     ,Qphoton,Qm,graddotrhouye,Tthermaltot,Tdifftot,rho_nu,p_nu,s_nu,Ynulocal,Ynuthermal
+c     1     ,Enuglobal,Enueglobal,Enuebarglobal
 
 
       return
