@@ -17,8 +17,8 @@ C======================================================================
 
 c     Note that if ntdynorynu==1 or ntdynorye==1 then chosen value ignored, while for hcm to be ignored one must choose whichhcmmethod==0
 c     Some checks
-      if( (whichynumethod.eq.0).AND.(ntdynorynu.gt.1)) then
-         write(*,*) 'whichynumethod==0 and ntdynorynu>1 makes no sense'
+      if( (whichynumethod.eq.0 .OR. whichynumethod.eq.3).AND.(ntdynorynu.gt.1)) then
+         write(*,*) 'whichynumethod==0/3 and ntdynorynu>1 makes no sense'
          stop
       end if
 
@@ -44,12 +44,12 @@ c      end if
 
 
       if( (whichrnpmethod.eq.0).AND.(ntdynorye.gt.1)) then
-         write(*,*) 'whichynumethod==1 and ntdynorye>1 makes no sense'
+         write(*,*) 'whichrnpmethod==0 and ntdynorye>1 makes no sense'
          stop
       end if
 
       if( (whichhcmmethod.eq.0).AND.(nhcm.gt.1)) then
-         write(*,*) 'whichhcmmethod==1 and nhcm>1 makes no sense'
+         write(*,*) 'whichhcmmethod==0 and nhcm>1 makes no sense'
          stop
       end if
 
@@ -64,7 +64,7 @@ c     3) number of primary data columns
 c     4) number of auxillary data columns
 c     5) out of primary data, how many "extra" variables
 c     8 original values (5 indeps and 3 vars)
-      if(whichynumethod.eq.0) then
+      if(whichynumethod.eq.0 .OR. whichynumethod.eq.3) then
          if(whichrnpmethod.eq.0) then
             write(50,*) '1 4 9 80 1'
          else if(whichrnpmethod.eq.1) then
@@ -202,7 +202,7 @@ c      end if
 
 c     These choices can be overrided by a calling code that doesn't use setkazindeps() or uses it but changes values before rest of code called
 
-      if(whichynumethod.eq.0 .OR. whichynumethod.eq.2) then
+      if(whichynumethod.eq.0 .OR. whichynumethod.eq.3 .OR. whichynumethod.eq.2) then
 c     Choose dummy hcm of 1 since hcm scales out of problem
          tdynorynu = 1.0
       else
@@ -221,7 +221,11 @@ c      write(15,105) tdynoryemin,inttdynorye,itdynorye,tdynorye
       
       if(whichhcmmethod.eq.0) then
 c     Choose dummy hcm of 1 since hcm scales out of problem
-         hcm = 1.0
+
+c     DEBUG:
+c         hcm = 36497750.345734d0
+
+         hcm = 1.0d0
       else
          hcm=hcmmin*10.d0**(inthcm*dble(ihcm-1))
       end if
@@ -263,7 +267,7 @@ c     first opened it
 
 
 
-      if(whichynumethod.eq.0) then
+      if(whichynumethod.eq.0 .OR. whichynumethod.eq.3) then
          if(whichrnpmethod.eq.0) then
 c     Here tdynorye is TDYN
             
