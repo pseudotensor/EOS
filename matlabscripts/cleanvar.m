@@ -177,7 +177,8 @@ end
 
 function out = idealUofSdiff(rho0, Sdiff)
 
-out = 0.0;
+OUTBOUNDSVALUE=1E-20;
+out = OUTBOUNDSVALUE;
 
 end
 
@@ -208,7 +209,8 @@ end
 
 function out = idealSSofCHI(rho0, CHI)
 
-  out = 0.0;
+OUTBOUNDSVALUE=1E-20;
+out = OUTBOUNDSVALUE;
   
 end
 
