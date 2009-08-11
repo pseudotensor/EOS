@@ -1,5 +1,30 @@
 function eos_extract()
 
+  
+% TODO:
+% 1) Perhaps use 2D instead of 1D interpolation
+% 2) Figure out how to use higher-than-linear order (what's wrong with v5cubic or spline
+% 3) For temp's, can still use linear or whatever required for good NaN behavior to define boundary of valid EOS
+% 4) Sure Stot(T) should be monotonic?  Appears highly non-monotonic in a large portion of rho,T space.  Perhaps reconsider monotonization at end rather than at beginning.
+%    Then would ensure monotonic functions (e.g.) for P(rho0,chi), so final result would be reasonable for inversion.  Monotonizing in T-space might lead (after all interpolations) to non-monotonic result in chi-space.
+% 5) gradient should be fine as long as done on super-sampled higher-order interpolated quantities!
+% 6) Use 2D interpolation for downsampling as well as supersampling
+% 7) Perhaps fill-in cs2 drop-outs with ideal gas versions?
+% 8) In HARM and Matlab, define ideal gas as ideal but gamma=4/3 or 5/3 depending upon if beyond where nuclear density ensures definitely 5/3.
+%    Switch in HARM based upon rhonuccode = rhonuccgs*c*c/rhounit
+
+  
+% OLD TODO that isn't important for now:
+% 1) Need to specify base and log-offset for each variable
+% 2) Then need to output a table for each (rho(X)Tdynorye(X)Hcm) the umin, umax, pmin, pmax, chimin, chimax.  This way I can get high accuracy for T~0Kelvin by starting the table near T~0 and resolving the space near T~0.
+%  ACTUALLY: data is already really there.  I just need to use MATLAB to find min/max of each and make sure to have that as first and last data point for each rho,H,T.  Then in HARM I use 0 and N-1 values as min/max.  Only issue is amount of computation using logs and pow's to process that raw data.
+% Should probably still store it separately, but can be done in HARM instead of MATLAB
+% In matlab each N points should range from the min/max found for EACH rho,H,T instead of globally
+%%%%%%%%%%%%%%%%%
+% Aassume for now offset is 0 and base is 10
+% For now use functional offset
+
+      
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
 % SOME PARAMETERS
@@ -7,12 +32,17 @@ function eos_extract()
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
   
-  interptype='linear';
-  interptype2='linear';
+%  interptype='linear';
+%  interptype2='linear';
+
+  interptype='spline';
+  interptype2='spline';
 
   % reaches "out of bounds" and uses to get local values
   %  interptype='v5cubic';
   %  interptype2='v5cubic';
+  % http://www.mathworks.com/access/helpdesk/help/techdoc/index.html?/access/helpdesk/help/techdoc/ref/interp2.html&http://www.google.com/search?q=interp2&ie=utf-8&oe=utf-8&aq=t&rls=org.mozilla:en-US:official&client=firefox-a
+
   
   % whether to smooth input quantities that will be used as independent variables
   % makes utot and so utotdiff less accurate (weights to larger values, so final HARM estimate of temperature is systematiclaly lower)
@@ -27,8 +57,8 @@ function eos_extract()
   % whether to use log derivative type or not
   logdertype=0;
   
-  % set whether on laptop (interactive) or relativity (matlab script)
-  onrelativity=1;
+  % set whether on windows laptop (interactive) or in linux (matlab script)
+  matlabscript=1;
 
   
   
@@ -63,15 +93,6 @@ function eos_extract()
   preinterpsoundspeed=0;
 
 
-  %%%%%%%%%%%% TODO:
-  % 1) Need to specify base and log-offset for each variable
-  % 2) Then need to output a table for each (rho(X)Tdynorye(X)Hcm) the umin, umax, pmin, pmax, chimin, chimax.  This way I can get high accuracy for T~0Kelvin by starting the table near T~0 and resolving the space near T~0.
-  %  ACTUALLY: data is already really there.  I just need to use MATLAB to find min/max of each and make sure to have that as first and last data point for each rho,H,T.  Then in HARM I use 0 and N-1 values as min/max.  Only issue is amount of computation using logs and pow's to process that raw data.
-  % Should probably still store it separately, but can be done in HARM instead of MATLAB
-  % In matlab each N points should range from the min/max found for EACH rho,H,T instead of globally
-
-  % assume for now offset is 0 and base is 10
-  % for now use functional offset
 
 
   %CONTOL=1E-13;
@@ -92,13 +113,13 @@ function eos_extract()
   %dir='/home/jondata/grmhd-a.9375-rout400new/';
   %dir='f:\\matlabscripts\\matlabscripts\\';
   %dir='C:\\Documents and Settings\\jon\\My Documents\\';
-  if onrelativity==0
+  if matlabscript==0
     % BELOW USED ON laptop
     %dir='C:\\Documents and Settings\\jon\\My Documents\\grbjet\\eoslarge\\';
     dir='C:\\Documents and Settings\\jon\\My Documents\\grbjet\\eoslargesimple\\';
   end
-  if onrelativity==1
-    % BELOW USED ON relativity
+  if matlabscript==1
+    % BELOW USED in linux
     dir='./';
   end
   %dir='C:\\Documents and Settings\\jon\\My Documents\\eossmall\\';
@@ -310,6 +331,8 @@ function eos_extract()
   
   
   
+
+  
   
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   % loop over 2 passes
@@ -321,6 +344,7 @@ function eos_extract()
     fprintf(fiddebug,'pass %d\n',passiter);
 
     
+    
     % Open all files
     fid2=fopen(file2,'rt');
     fid8=fopen(file8,'w');
@@ -331,6 +355,9 @@ function eos_extract()
     fid3=fopen(file3,'w');
     fid6=fopen(file6,'w');
 
+
+    
+    
     
     % consistent order for loops as output and read-in into HARM
     % must also be consistent with how jon_helm.f writes order so read-in in correct order
@@ -430,12 +457,16 @@ function eos_extract()
 
 
         
+        
+        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %
         %
         % Perform some smoothing of native input functions
         %
         % Helps with accuracy on derivatives esp. d/dlrho0 at high temperatures and low densities
+        %
+        % But, problem since the average systematically lowers value average log-log averaging
         %
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -460,6 +491,10 @@ function eos_extract()
         end
         
 
+        
+        
+        
+        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %
         %
@@ -494,7 +529,7 @@ function eos_extract()
 
                 % entropy should be monotonic so that can be used as independent variable, but only needs to be monotonic for P(S) and U(S), not T(S).
                 % montonizing stot means sspec will be monotonic as required for entropy evolution
-                stot(p,:,q,r)=monotonize(stot(p,:,q,r));
+                %stot(p,:,q,r)=monotonize(stot(p,:,q,r));
                 
 
                 if 0
@@ -507,6 +542,7 @@ function eos_extract()
 
                 if 1
                   ptot(p,:,q,r)=monotonize(ptot(p,:,q,r));
+                  % Re-compute chi using monotonized versions of u and p
                   chi(p,:,q,r) = utot(p,:,q,r) + ptot(p,:,q,r);
                 end
               end
@@ -519,6 +555,8 @@ function eos_extract()
 
 
 
+        
+        
 
         if utotfix==1
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -540,6 +578,8 @@ function eos_extract()
         end
 
 
+        
+        
         
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -576,8 +616,6 @@ function eos_extract()
           stotoffset = (utotoffset+ptotoffset)./(kb.*tk)
 
         end
-
-
 
         if utotdegenanalytic==0
 
@@ -691,6 +729,8 @@ function eos_extract()
 
 
 
+        
+        
         if utotdegencut==1
 
           utotdiff = utot - utotoffset; % used for grid of data
@@ -711,13 +751,24 @@ function eos_extract()
 
 
 
-
+        
+        
+        
+        
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %
+        % If passiter==2, then really do computations.  Otherwise, if passiter==1, then just reading in and setting up independent variables so can get global min/max over all independent varaibles
+        %
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         
         if(passiter==2)
           
 
 
+          
+          
           %%%%%%%%%%%%%%%%%%%%%%%%
           %
           % Compute sound speed from temperature-based data.  This is taken from HELM TM EOS
@@ -915,11 +966,13 @@ function eos_extract()
 
 
         
+
+        
         
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %
-        % some computed things
+        % some computed things as related to also temporary independent variables needed for passiter==1
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%
         rhobcsq		= rhob.*c.*c;
@@ -942,7 +995,18 @@ function eos_extract()
         %z=log10(npratio(:,:,:,8)+1);
         %figure; contour(x,y,z);
 
+
         
+        
+        
+
+        
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %
+        % Continue passiter==2 for real computations
+        %
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         if(passiter==2)
 
@@ -1005,10 +1069,22 @@ function eos_extract()
 
 
           
-        end % end if passiter==2
-        
+        end %%%%%%%%% end if passiter==2
         
 
+        
+        
+        
+        %%%%%%%%%%%%%%%%%
+        %
+        % Continue passiter=1 or 2
+        %
+        %%%%%%%%%%%%%%%%%
+
+        
+        
+        
+        
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %
         % First construct 1-D grid of new dependent quantities
@@ -1155,7 +1231,7 @@ function eos_extract()
           %
           % Now interpolate to obtain desired functions
           %
-          % interpolate in log10
+          % interpolate in log10 if makes sense
           %
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -1176,6 +1252,13 @@ function eos_extract()
 
                 
                 if consolid==1
+                  
+                  %%%%%%%%%%%%%%%%%%%%
+                  %
+                  % Ensure can later do interpolation by here enforcing values of independent variable vs. Tk to be unique and monotonically increasing
+                  %
+                  %%%%%%%%%%%%%%%%%%%%
+
                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                   %
                   % BEGIN OLD CODE
@@ -1209,10 +1292,12 @@ function eos_extract()
                   %
                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+                  
                   %Consolidator: http://www.mathworks.com/matlabcentral/fileexchange/8354
 
                   % make sure things interpolating are unique
-                  % Here x = utotdiff,ptotdiff,chidiff,sspec and y = ptot, hspec, utot, ptot, stot, Tk, extra?, etc.
+                  % Here x = utotdiff,ptotdiff,chidiff,stotdiff,sspec
+                  % Here y = ptot, hspec, utot, ptot, stot, Tk, extra?, etc.
                   
                   % below 4 are used for change of variable
                   [lutotdiffutotx,lutotdiffutoty] = consolidator(log10(utotdiff(p,:,q,r)),log10(utot(p,:,q,r)),'mean',CONTOL2);
@@ -1423,7 +1508,7 @@ function eos_extract()
                   
                   
                   
-                end
+                end %%%%% end "else if" not using consididation method
                 
                 
                 
@@ -1449,15 +1534,22 @@ function eos_extract()
                 
 
 
-                %%%%%%%%%%%%%%%% Interpolate F(rho0,?)
+                
+                
+                
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 %
+                % Interpolate F(rho0,?)
+                %
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
                 % below 4 are used for change of variable:
                 % These 4 are actually stored now to check degen offset method in HARM tables (not actually read-in there, just a test)
-                UofUdiff(p,:,q,r) = 10.^(myinterp1(200,lutotdiffutotx, lutotdiffutoty, lutotdiffgrid',interptype));
-                PofPdiff(p,:,q,r) = 10.^(myinterp1(201,lptotdiffptotx, lptotdiffptoty, lptotdiffgrid',interptype));
+                UofUdiff(p,:,q,r) =     10.^(myinterp1(200,lutotdiffutotx, lutotdiffutoty, lutotdiffgrid',interptype));
+                PofPdiff(p,:,q,r) =     10.^(myinterp1(201,lptotdiffptotx, lptotdiffptoty, lptotdiffgrid',interptype));
                 CHIofCHIdiff(p,:,q,r) = 10.^(myinterp1(201,lchidiffchix, lchidiffchiy, lchidiffgrid',interptype));
-                SofSdiff(p,:,q,r) = 10.^(myinterp1(201,lstotdiffstotx, lstotdiffstoty, lstotdiffgrid',interptype));
+                SofSdiff(p,:,q,r) =     10.^(myinterp1(201,lstotdiffstotx, lstotdiffstoty, lstotdiffgrid',interptype));
 
                 
                 % BELOW dependent variables are actually differenced (offsetted) versions
@@ -1533,9 +1625,13 @@ function eos_extract()
 
 
 
-
+          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+          %
           % rhobgrid, utotgrid, ptotgrid, chigrid, and sspecgrid need to be turned into full 4-D quantity for cleanvar
           % these are super-sampled versions so far
+          %
+          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+          
           for p=1:nutotdiff
             for q=1:ntdynorye
               for r=1:nhcm
@@ -1565,6 +1661,11 @@ function eos_extract()
           end
 
 
+
+
+          
+          
+          
 
           
           if doclean
@@ -1628,9 +1729,14 @@ function eos_extract()
               for ei=1:numextras
                 extraofUdiff(:,:,:,:,ei) = cleanvar(7, extraofUdiff(:,:,:,:,ei), rhobgrid4d(:,:,:,:), utotgrid4d(:,:,:,:));
               end
+              
+              
+              
 
               
-            else
+            else %%%%%% else if not using cleanvar() function
+              
+              
 
               
               if 1
@@ -1762,6 +1868,10 @@ function eos_extract()
 
 
 
+          
+          
+          
+          
 
 
 
@@ -1995,6 +2105,9 @@ function eos_extract()
                 % dPofSdrho0(:,:,q,r)
 
                 % GODMARK: Should below be utot(rho0,T) -> UofS(rho0,S) ?  Seems so.
+                
+                % HACK
+                UdiffofS(p,:,q,r) = UdiffofS(p,:,q,r) + OUTBOUNDSVALUE;
 
                 %[lutotdpx,lutotdpy] = consolidator(log10(UofS(p,:,q,r)),dPofSdrho0(p,:,q,r),'mean',CONTOL);
                 [lutotdiffdpx,lutotdiffdpy] = consolidator(log10(UdiffofS(p,:,q,r)),dPofSdrho0(p,:,q,r),'mean',CONTOL);
@@ -2034,7 +2147,7 @@ function eos_extract()
           
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
           %
-          % Now compute things that don't involve derivatives
+          % Now compute things that don't involve taking more derivatives
           %
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -2079,9 +2192,16 @@ function eos_extract()
           end
 
 
+          %%%%%%%%%%%%%%%%%%%%%%%%%%
           % do in any case
+          %%%%%%%%%%%%%%%%%%%%%%%%%%
           cs2ofUdiffcgs = cs2ofUdiff.*c.*c;
 
+          
+          
+          
+          
+          
 
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
           %
@@ -2111,6 +2231,12 @@ function eos_extract()
           % tkofUdiff(rho0,u,H)
 
 
+          
+          
+          
+          
+          
+          
 
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
           %
@@ -2234,6 +2360,9 @@ function eos_extract()
 
 
 
+          
+          
+          
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
           %
           % Adjust quantities to be physical in case of numerical error
@@ -2309,6 +2438,8 @@ function eos_extract()
 
           %                HofUout(m,n,o,p) , cs2out(m,n,o,p), ...
           % %21.15g %21.15g 
+          
+
           
           
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2461,6 +2592,15 @@ function eos_extract()
           end
 
 
+          
+          
+          
+          
+          
+          
+          
+          
+          
           %%%%%%%%%%%%%%%%%%%%%%%%
           %
           % Notice that below indicies are in C-order and C-style (start with 0 instead of 1)
@@ -2511,6 +2651,8 @@ function eos_extract()
 
 
 
+          
+          
           %%%%%%%%%%%%%%%%%%%%%%%%
           %
           %
@@ -2674,18 +2816,24 @@ function eos_extract()
     end
 
   
-    % end over passes
-  end
+    
+  end   %%%%%%%% end over passes
   
 
 
+  
+  %%%%%%%%%%%%%%%%%%
+  %
+  % Close files
+  %
+  %%%%%%%%%%%%%%%%%%
+  
   fclose(fiddebug);
-
 
   fclose('all');
 
-  % BELOW FOR relativity
-  if onrelativity
+  % BELOW FOR in linux
+  if matlabscript
     quit;
   end
 

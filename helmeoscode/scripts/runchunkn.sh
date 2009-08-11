@@ -6,17 +6,11 @@
 OLDDIR=`pwd`
 
 # read-in arguments
-CHUNK=$1
-truenumprocs=$2
-jobprefix=$3
-jobnumber=$4
-TOTALCHUNKS=$5
-DATADIR=$6
-jobname=$7
-HELMDIR=$8
+CHUNKLIST=$1
+TOTALCHUNKS=$2
+DATADIR=$3
+jobprefix=$4
 
-# determine last chunk number
-LASTCHUNK=$(($CHUNK+$truenumprocs-1))
 
 
 # check that all old processes have died
@@ -45,20 +39,11 @@ fi
 
 
 # Loop over subchunks
-for SUBCHUNK in `seq $CHUNK $LASTCHUNK`
+for SUBCHUNK in ${CHUNKLIST}
 do
     subjobnumber=$SUBCHUNK
     subjobname=${jobprefix}c${subjobnumber}tc${TOTALCHUNKS}
     SUBJOBDIR=${DATADIR}/${subjobname}
-
-    # Create new directory
-    rm -rf $SUBJOBDIR
-    mkdir -p $SUBJOBDIR
-
-    ################
-    #   Copy/link relevant files (must be in "source" directory where previously used copyjonhelm.sh in install0.sh).  So this creates links to links except binary is copied
-    cd $DATADIR
-    sh $HELMDIR/copyjonhelm.sh $SUBJOBDIR
 
     # change to subjob directory
     cd $SUBJOBDIR
@@ -72,6 +57,8 @@ do
     #killall helmeos.exe.$subjobname
 
     cd $SUBJOBDIR
+    # in case didn't remove old directory, remove old files
+    rm -rf eos.head eosdetails.dat eosother.dat eos.dat eoscoulomb.dat eosazbar.dat
     # run in background, so other subchunks can get started.
     nohup ./helmeos.exe &
     cd $OLDDIR

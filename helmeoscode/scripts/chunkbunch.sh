@@ -12,7 +12,7 @@
 #
 # Then get these files either from repository or copy from a known location:
 #
-# scp -rp jon@ki-rh42.slac.stanford.edu:"/data/jon/svneostest/helmeoscode/scripts/chunkbunch.sh /data/jon/svneostest/helmeoscode/scripts/runchunkone.sh /data/jon/svneostest/helmeoscode/scripts/runchunkn.sh" .
+# scp -rp jon@ki-rh42.slac.stanford.edu:"/data/jon/svneostest/helmeoscode/scripts/chunkbunch.sh /data/jon/svneostest/helmeoscode/scripts/chunkn.sh /data/jon/svneostest/helmeoscode/scripts/runchunkone.sh /data/jon/svneostest/helmeoscode/scripts/runchunkn.sh" .
 # 
 
 ########## 3 ##############
@@ -33,6 +33,8 @@ uselonestar=1
 #e.g. 
 # sh chunkbunch.sh /lustre/ki/orange/jmckinne/eosfull/datadir/ 100
 # sh chunkbunch.sh . 160
+#
+# sh chunkbunch.sh . 160 "1 13 14 15 16 17 33 49 53 54 55 56 65 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160"
 #
 # for 25,000 chunks, at 1 chunk per minute and 400 chunks will take 1 hour.  Doing 100 chunks will take about 4 hours if cluster free.
 
@@ -64,12 +66,12 @@ else
 fi
 
 
+
 cd $1
 export DATADIR=`pwd`
 export HELMDIR=$DATADIR/../svneos/helmeoscode/
 export SAFESTARTDIR=~/chunkdump/
 export TOTALCHUNKS=$2
-
 
 if [ $useorange -eq 1 ]
 then
@@ -84,69 +86,81 @@ then
     # So TOTALCHUNKS/truenumprocs<40 has to be true
 fi
 
-numjobs=$(($TOTALCHUNKS/$truenumprocs))
-if [ $numjobs -gt $MAXJOBS ]
+
+if test -z "$3"
 then
-    echo "Exceeded $MAXJOBS jobs with requesting of $numjobs jobs"
-    exit 1
+    #COUNTFAKECHUNKLIST=`seq 1 $truenumprocs $TOTALCHUNKS`
+    echo "No MAINCHUNKLIST given, so generating chunks from 1 to TOTALCHUNKS=$TOTALCHUNKS in SUBCHUNKS of size truenumprocs=$trunumprocs comprising of $numjobs jobs"
+    CHUNKPOOL=`seq 1 $TOTALCHUNKS`
+else
+    CHUNKPOOL=$3
+    echo "Using TOTALCHUNKS=$TOTALCHUNKS but with arbitrary pool of CHUNKS rather than direct sequence"
 fi
+
+
+
+
+
 
 # BSUB commands
 # constant commands over chunks
 jobprefix="eoschunk"
-outputfile="stdout.out"
-errorfile="stderr.err"
+
+# set execute permissions
+chmod ug+x chunkn.sh
+
+## get number of chunks and number of groups of chunks to do
+echo "$CHUNKPOOL" > poollist.txt
+numchunks=`wc -w poollist.txt | awk '{print $1}'`
+numgroups=$(( ($numchunks / $truenumprocs)+1))
+
+
+# check that number of jobs does not exceed maximum for this system
+if [ $numgroups -gt $MAXJOBS ]
+then
+    echo "Exceeded $MAXJOBS jobs with requesting of $numgroups jobs"
+    exit 1
+fi
+
+
+## setup array of pool of chunks to do
+i=1
+for fil in $CHUNKPOOL
+do
+    chunkarray[$i]=$fil
+    i=$(($i+1))
+done
 
 
 ### LOOP OVER CHUNKS and start jobs
-for CHUNK in `seq 1 $truenumprocs $TOTALCHUNKS`
+ii=1
+for CHUNK in `seq 1 $numgroups`
 do
 
-    ##############
-    # Setup safe directory to start from
-    #
-    # enter valid LSF directory
-    mkdir -p $SAFESTARTDIR
-    cd $SAFESTARTDIR
-    chmod ug+x $DATADIR/runchunkone.sh
-    chmod ug+x $DATADIR/runchunkn.sh
-
-    # then jobnumber indicates starting chunk when doing multiple subchunks
+    # for name:
     jobnumber=$CHUNK
-    jobname=${jobprefix}c${jobnumber}tc${TOTALCHUNKS}
 
-    #############
-    # Start run
-    #
-    if [ $useorange -eq 1 ]
-    then
-        ###############
-        # Setup job number/name/directory
-	JOBDIR=${DATADIR}/${jobname}
-	#
-	bsub -n 1 -x -R span[ptile=1] -q kipac-ibq -J $jobname -o $outputfile -e $errorfile -a openmpi $DATADIR/runchunkone.sh $JOBDIR
-    fi
-    if [ $uselonestar -eq 1 ]
-    then
-	# http://www.tacc.utexas.edu/services/userguides/lonestar/
-	# run with script using: bsub < bsub.batch
-        # run on command line: (e.g.)  bsub -I -n 4 -W 0:05 -q development ibrun ./a.out 
-        # to check jobs: showq -u or bjobs
-	# 4 cores at a time
-        # queues are: serial,normal,high,hero,development
-	# Program to run is: "ibrun ./a.out" for MPI/parallel run
-	# ptile=1 always so only 1 job started, but with exclusive (-x) access to node.
-	bsub -B -N -u jmckinne@stanford.edu -P TG-AST080025N -x -W 24:00 -n $truenumprocs -x -o $outputfile -e $errorfile -R span[ptile=1] -q normal -J $jobname $DATADIR/runchunkn.sh  $CHUNK $truenumprocs $jobprefix $jobnumber $TOTALCHUNKS $DATADIR $jobname $HELMDIR
-    fi
+    # determine last chunk number
+    #LASTCHUNK=$(($CHUNK+$truenumprocs-1))
+    #CHUNKLIST=`seq $CHUNK $LASTCHUNK`
 
-    ############
-    # go back to data directory
-    cd $DATADIR
+    # determine CHUNKLIST
+    start=$ii
+    finish=$(($start+$truenumprocs))
+    CHUNKLIST=`awk '{for(j='$start';j<'$finish';j++)printf "%s ",$j;print ""}' poollist.txt`
+    # increment $ii
+    ii=$finish
+
+    # run
+    sh chunkn.sh "$CHUNKLIST" $TOTALCHUNKS $DATADIR $HELMDIR $SAFESTARTDIR $jobprefix $jobnumber $useorange $uselonestar $truenumprocs
+
     # report that done with submitting job
-    echo "Done with CHUNK=$CHUNK out of $TOTALCHUNKS"
+    echo "Done with CHUNK=$CHUNK out of $numgroups groups"
 done
 
 # report done with submitting all jobs
-echo "Done with $TOTALCHUNKS chunks"
+echo "Done with $numgroups groups in up to $TOTALCHUNKS chunks"
 
 
+
+# "1 13 14 15 16 17 33 49 53 54 55 56 65 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160"
