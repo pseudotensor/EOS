@@ -31,75 +31,95 @@
 % input is full 4-D quantities
 function funout = cleanvar(whichvar, funin, X, Y)
 
+  % check if nan and fix if so
   myisnan=isnan(funin);
+  % check if log10() is not finite and fix if so and if should be able to have finite log10() value
+  myisnotfinite=~isfinite(log10(funin));
 
   if whichvar==1
     funin(myisnan) = idealPofU(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealPofU(X(myisnotfinite),Y(myisnotfinite));
   end
   if whichvar==2
     funin(myisnan) = idealHofU(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealHofU(X(myisnotfinite),Y(myisnotfinite));
   end
   if whichvar==3
     funin(myisnan) = idealUofP(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealUofP(X(myisnotfinite),Y(myisnotfinite));
   end
   if whichvar==65
     funin(myisnan) = idealUofSdiff(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealUofSdiff(X(myisnotfinite),Y(myisnotfinite));
   end
   if whichvar==4
     funin(myisnan) = idealPofCHI(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealPofCHI(X(myisnotfinite),Y(myisnotfinite));
   end
   if whichvar==400
     funin(myisnan) = idealSSofCHI(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealSSofCHI(X(myisnotfinite),Y(myisnotfinite));
   end
   if whichvar==5
     funin(myisnan) = idealPofS(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealPofS(X(myisnotfinite),Y(myisnotfinite));
   end
   if whichvar==6
     funin(myisnan) = idealUofS(X(myisnan),Y(myisnan));
-  end
-  if whichvar==6
-    funin(myisnan) = idealUofS(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealUofS(X(myisnotfinite),Y(myisnotfinite));
   end
   if whichvar==7
     funin(myisnan) = idealextraofU(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealextraofU(X(myisnotfinite),Y(myisnotfinite));
   end
   if whichvar==8
     funin(myisnan) = idealSdenofU(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealSdenofU(X(myisnotfinite),Y(myisnotfinite));
   end
   if whichvar==9
     funin(myisnan) = idealdPofUdrho0cS(X(myisnan),Y(myisnan));
+    % should be positive because eventually comes into sound speed with all other positive terms
+    funin(myisnotfinite) = idealdPofUdrho0cS(X(myisnotfinite),Y(myisnotfinite));
   end
 
   if whichvar==29
     funin(myisnan) = idealtkofU(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealtkofU(X(myisnotfinite),Y(myisnotfinite));
   end
 
   if whichvar==30
     funin(myisnan) = idealtkofP(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealtkofP(X(myisnotfinite),Y(myisnotfinite));
   end
 
   if whichvar==31
     funin(myisnan) = idealtkofCHI(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealtkofCHI(X(myisnotfinite),Y(myisnotfinite));
   end
 
   if whichvar==40
     funin(myisnan) = idealcs2ofU(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealcs2ofU(X(myisnotfinite),Y(myisnotfinite));
   end
 
   if whichvar==200
     funin(myisnan) = idealUofU(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealUofU(X(myisnotfinite),Y(myisnotfinite));
   end
 
   if whichvar==201
     funin(myisnan) = idealUofU(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealUofU(X(myisnotfinite),Y(myisnotfinite));
   end
 
   if whichvar==202
     funin(myisnan) = idealUofU(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealUofU(X(myisnotfinite),Y(myisnotfinite));
   end
 
   if whichvar==203
     funin(myisnan) = idealSofS(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealSofS(X(myisnotfinite),Y(myisnotfinite));
   end
 
   % assume rest are derivative quantities (i.e. derived from the above)

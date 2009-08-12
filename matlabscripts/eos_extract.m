@@ -2,19 +2,19 @@ function eos_extract()
 
   
 % TODO:
-% 1) Perhaps use 2D instead of 1D interpolation
-% 2) Figure out how to use higher-than-linear order (what's wrong with v5cubic or spline
-% 3) For temp's, can still use linear or whatever required for good NaN behavior to define boundary of valid EOS
+% 1) Perhaps use 2D instead of 1D interpolation : No, because not changing density, just remapping T or U,P,CHI,S
+% 2) Figure out how to use higher-than-linear order (what's wrong with v5cubic or spline) : Done, just need to take more care with crazy extrapolations and how to avoid them using faketkof? and tkof? quantities.
+% 3) For temp's, can still use linear or whatever required for good NaN behavior to define boundary of valid EOS : Done as per #2 above.
 % 4) Sure Stot(T) should be monotonic?  Appears highly non-monotonic in a large portion of rho,T space.  Perhaps reconsider monotonization at end rather than at beginning.
 %    Then would ensure monotonic functions (e.g.) for P(rho0,chi), so final result would be reasonable for inversion.  Monotonizing in T-space might lead (after all interpolations) to non-monotonic result in chi-space.
-% 5) gradient should be fine as long as done on super-sampled higher-order interpolated quantities!
-% 6) Use 2D interpolation for downsampling as well as supersampling
-% 7) Perhaps fill-in cs2 drop-outs with ideal gas versions?
+% 5) gradient should be fine as long as done on super-sampled higher-order interpolated quantities! : Yes.
+% 6) Use 2D interpolation for downsampling as well as supersampling : No, as #1.
+% 7) Perhaps fill-in cs2 drop-outs with ideal gas versions? : drop-outs probably related to entropy issue -- how does cs2helm compare to my cs2?
 % 8) In HARM and Matlab, define ideal gas as ideal but gamma=4/3 or 5/3 depending upon if beyond where nuclear density ensures definitely 5/3.
 %    Switch in HARM based upon rhonuccode = rhonuccgs*c*c/rhounit
 
   
-% OLD TODO that isn't important for now:
+% OLD TODO (that isn't important for now):
 % 1) Need to specify base and log-offset for each variable
 % 2) Then need to output a table for each (rho(X)Tdynorye(X)Hcm) the umin, umax, pmin, pmax, chimin, chimax.  This way I can get high accuracy for T~0Kelvin by starting the table near T~0 and resolving the space near T~0.
 %  ACTUALLY: data is already really there.  I just need to use MATLAB to find min/max of each and make sure to have that as first and last data point for each rho,H,T.  Then in HARM I use 0 and N-1 values as min/max.  Only issue is amount of computation using logs and pow's to process that raw data.
@@ -37,7 +37,10 @@ function eos_extract()
 
   interptype='spline';
   interptype2='spline';
-
+  % force linear for fake temperature variable interpolation so can put in NaN in correct place inside spline interpolation temperature variables
+  interptypefaketemp='line';
+  
+  
   % reaches "out of bounds" and uses to get local values
   %  interptype='v5cubic';
   %  interptype2='v5cubic';
@@ -364,7 +367,7 @@ function eos_extract()
     for hiter=1:truenhcm
     for ynuiter=1:truentdynorynu
       for titer=1:truentdynorye
-        
+
         
 
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -514,6 +517,11 @@ function eos_extract()
         % Need EOS to be convex.
         %
         if forcemonotk==1
+          
+          % will use sspec to process stot's montonicity
+          rhobcsq = rhob.*c.*c;
+          sspec = stot./(rhobcsq);
+
 
           for p=1:nrhob
             for q=1:ntdynorye
@@ -529,8 +537,8 @@ function eos_extract()
 
                 % entropy should be monotonic so that can be used as independent variable, but only needs to be monotonic for P(S) and U(S), not T(S).
                 % montonizing stot means sspec will be monotonic as required for entropy evolution
-                %stot(p,:,q,r)=monotonize(stot(p,:,q,r));
-                
+                sspec(p,:,q,r)=monotonize(sspec(p,:,q,r));
+
 
                 if 0
                   % monotonize chi and recompute ptot from monotonized chi and utot
@@ -548,6 +556,9 @@ function eos_extract()
               end
             end
           end
+
+          % recover stot as correctly monotonic (should really see why stot/rhob so non-monotonic due to nuclear terms and how I extrapolate it)
+          stot=(sspec).*(rhobcsq);
 
           
         end
@@ -904,7 +915,10 @@ function eos_extract()
             % enforce not negative
             cs2rhoT=abs(cs2rhoT)+1E-20;
 
-          end
+            
+            
+            
+          end % end passiter==2 section
 
 
           
@@ -1600,6 +1614,15 @@ function eos_extract()
                 % Below is T(rho0,Sden)
                 tkofSdiff(p,:,q,r) = 10.^(myinterp1(32,lstotdifftkx, lstotdifftky, lstotdiffgrid',interptype));
 
+                % Below is T(rho0,u)
+                faketkofUdiff(p,:,q,r) = 10.^(interp1(lutotdifftkx, lutotdifftky, lutotdiffgrid',interptypefaketemp));
+                % Below is T(rho0,p)
+                faketkofPdiff(p,:,q,r) = 10.^(interp1(lptotdifftkx, lptotdifftky, lptotdiffgrid',interptypefaketemp));
+                % Below is T(rho0,chi)
+                faketkofCHIdiff(p,:,q,r) = 10.^(interp1(lchidifftkx, lchidifftky, lchidiffgrid',interptypefaketemp));
+                % Below is T(rho0,Sden)
+                faketkofSdiff(p,:,q,r) = 10.^(interp1(lstotdifftkx, lstotdifftky, lstotdiffgrid',interptypefaketemp));
+
                 % Below is extra1ofU(rho0,u,H)
                 % mynewdata(:,:,:,:,ei)
                 % so far all these things are positive definite, so log interpolate ok
@@ -1614,6 +1637,9 @@ function eos_extract()
             end
           end
 
+
+          
+          
 
           fprintf(fiddebug,'End Interpolate %d %d %d\n',hiter,titer,ynuiter);
 
@@ -1686,6 +1712,7 @@ function eos_extract()
 
             %%%%%%%%%%% Clean F(rho0,?)
             
+            
             if usecleanvar==1
               % GODMARK: something is apparently wrong with how I'm accessing memory in cleanvar
               
@@ -1710,14 +1737,15 @@ function eos_extract()
               UdiffofS = cleanvar(6, UdiffofS, rhobcsqgrid4d, sspecgrid4d); % here S is specific entropy and uses rhobcsq
               SofUdiff = cleanvar(8, SofUdiff, rhobcsqgrid4d, utotgrid4d); % here S is entropy density and uses rhobcsq
 
-              %size(tkofU)
-              %size(rhobgrid4d)
-              %size(utotdiffgrid4d)
-
               tkofUdiff = cleanvar(29, tkofUdiff, rhobgrid4d, utotgrid4d);
               tkofPdiff = cleanvar(30, tkofPdiff, rhobgrid4d, ptotgrid4d);
               tkofCHIdiff = cleanvar(31, tkofCHIdiff, rhobgrid4d, chigrid4d);
               tkofSdiff = cleanvar(30, tkofSdiff, rhobgrid4d, stotgrid4d);
+
+              %size(tkofU)
+              %size(rhobgrid4d)
+              %size(utotdiffgrid4d)
+
 
               cs2ofUdiff = cleanvar(40, cs2ofUdiff, rhobcsqgrid4d, utotgrid4d); % here cs2 is dimensionless
               
@@ -1739,36 +1767,41 @@ function eos_extract()
               
 
               
-              if 1
-                UofUdiff(~isfinite(UofUdiff))=OUTBOUNDSVALUE;
-                PofPdiff(~isfinite(PofPdiff))=OUTBOUNDSVALUE;
-                CHIofCHIdiff(~isfinite(CHIofCHIdiff))=OUTBOUNDSVALUE;
-                SofSdiff(~isfinite(SofSdiff))=OUTBOUNDSVALUE;
-
-                PofUdiff(~isfinite(PofUdiff))=OUTBOUNDSVALUE;
-                HofUdiff(~isfinite(HofUdiff))=OUTBOUNDSVALUE;
-
-                UofPdiff(~isfinite(UofPdiff))=OUTBOUNDSVALUE;
-                UofSdiff(~isfinite(UofSdiff))=OUTBOUNDSVALUE;
-
-                PofCHIdiff(~isfinite(PofCHIdiff))=OUTBOUNDSVALUE;
-                SSofCHIdiff(~isfinite(SSofCHIdiff))=OUTBOUNDSVALUE;
-
-                PofS(~isfinite(PofS))=OUTBOUNDSVALUE;
-                UofS(~isfinite(UofS))=OUTBOUNDSVALUE;
-
-                UdiffofS(~isfinite(UdiffofS))=OUTBOUNDSVALUE;
-                SofUdiff(~isfinite(SofUdiff))=OUTBOUNDSVALUE;
-
-                tkofUdiff(~isfinite(tkofUdiff))=OUTBOUNDSVALUE;
-                tkofPdiff(~isfinite(tkofPdiff))=OUTBOUNDSVALUE;
-                tkofCHIdiff(~isfinite(tkofCHIdiff))=OUTBOUNDSVALUE;
-                tkofSdiff(~isfinite(tkofSdiff))=OUTBOUNDSVALUE;
-
-                cs2ofUdiff(~isfinite(cs2ofUdiff))=OUTBOUNDSVALUE;
-                extraofUdiff(~isfinite(extraofUdiff))=OUTBOUNDSVALUE;
+              if 1 % CURRENTLY USED METHOD:
                 
-              else
+                % go ahead and check finiteness of log10(var) for var's that should be >0.0 and never <=0.0
+                % OK to get log10(0) warnings from the below -- just means extrapolation went a bit nuts -- won't use that data since faketkof? will save us.
+                UofUdiff(~isfinite(log10(UofUdiff)))=OUTBOUNDSVALUE;
+                PofPdiff(~isfinite(log10(PofPdiff)))=OUTBOUNDSVALUE;
+                CHIofCHIdiff(~isfinite(log10(CHIofCHIdiff)))=OUTBOUNDSVALUE;
+                SofSdiff(~isfinite(log10(SofSdiff)))=OUTBOUNDSVALUE;
+
+                PofUdiff(~isfinite(log10(PofUdiff)))=OUTBOUNDSVALUE;
+                HofUdiff(~isfinite(log10(HofUdiff)))=OUTBOUNDSVALUE;
+
+                UofPdiff(~isfinite(log10(UofPdiff)))=OUTBOUNDSVALUE;
+                UofSdiff(~isfinite(log10(UofSdiff)))=OUTBOUNDSVALUE;
+
+                PofCHIdiff(~isfinite(log10(PofCHIdiff)))=OUTBOUNDSVALUE;
+                SSofCHIdiff(~isfinite(log10(SSofCHIdiff)))=OUTBOUNDSVALUE;
+
+                PofS(~isfinite(log10(PofS)))=OUTBOUNDSVALUE;
+                UofS(~isfinite(log10(UofS)))=OUTBOUNDSVALUE;
+
+                UdiffofS(~isfinite(log10(UdiffofS)))=OUTBOUNDSVALUE;
+                SofUdiff(~isfinite(log10(SofUdiff)))=OUTBOUNDSVALUE;
+
+                tkofUdiff(~isfinite(log10(tkofUdiff)))=OUTBOUNDSVALUE;
+                tkofPdiff(~isfinite(log10(tkofPdiff)))=OUTBOUNDSVALUE;
+                tkofCHIdiff(~isfinite(log10(tkofCHIdiff)))=OUTBOUNDSVALUE;
+                tkofSdiff(~isfinite(log10(tkofSdiff)))=OUTBOUNDSVALUE;
+
+                cs2ofUdiff(~isfinite(log10(cs2ofUdiff)))=OUTBOUNDSVALUE;
+                extraofUdiff(~isfinite(log10(extraofUdiff)))=OUTBOUNDSVALUE;
+                
+              
+              
+              else % not used currently
                 
                 for p=1:nrhob
                   for q=1:nutotdiff
@@ -2107,7 +2140,43 @@ function eos_extract()
                 % GODMARK: Should below be utot(rho0,T) -> UofS(rho0,S) ?  Seems so.
                 
                 % HACK
-                UdiffofS(p,:,q,r) = UdiffofS(p,:,q,r) + OUTBOUNDSVALUE;
+                %UdiffofS(p,:,q,r) = UdiffofS(p,:,q,r) + OUTBOUNDSVALUE;
+                
+                
+                % BEGIN DEBUG:
+                %hiter
+                %truenhcm
+
+                %ynuiter
+                %truentdynorynu
+
+                %titer
+                %truentdynorye
+
+                %x(1,:)=log10(UdiffofS(p,:,q,r));
+                %sumit = sum(log10(UdiffofS(p,:,q,r)));
+                %if ~isfinite(sumit)
+
+                %  nsspec
+                %  lsspecmin
+                %  lsspecmax
+                %  steplsspec
+                %  lsspecgrid
+                %  sspecgrid
+
+                %p
+                %  q
+                %  r
+                  
+                  
+                %  sspecgrid4d(p,:,q,r)
+                
+                %  log10(UdiffofS(p,:,q,r))
+                  
+                %  dPofSdrho0(p,:,q,r)
+                %end
+                % END DEBUG:
+                
 
                 %[lutotdpx,lutotdpy] = consolidator(log10(UofS(p,:,q,r)),dPofSdrho0(p,:,q,r),'mean',CONTOL);
                 [lutotdiffdpx,lutotdiffdpy] = consolidator(log10(UdiffofS(p,:,q,r)),dPofSdrho0(p,:,q,r),'mean',CONTOL);
@@ -2137,7 +2206,12 @@ function eos_extract()
             %
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-            dPofUdiffdrho0cS = cleanvar(9, dPofUdiffdrho0cS, rhobcsqgrid4d, utotgrid4d);
+            if(usecleanvar)
+              dPofUdiffdrho0cS = cleanvar(9, dPofUdiffdrho0cS, rhobcsqgrid4d, utotgrid4d);
+            else
+              % this derivative should be checked for being positive definite since comes into sound speed that has otherwise positive definite contributions to a final positive definite quantity
+              dPofUdiffdrho0cS(~isfinite(log10(dPofUdiffdrho0cS)))=OUTBOUNDSVALUE;
+            end
 
           end
 
@@ -2301,6 +2375,12 @@ function eos_extract()
                 tkofCHIdiffout(p,:,q,r)       = 10.^(myinterp1(31,lchidiffgrid, log10(tkofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptype));
                 tkofSdiffout(p,:,q,r)         = 10.^(myinterp1(30,lstotdiffgrid, log10(tkofSdiff(p,:,q,r)), lstotdiffoutgrid',interptype));
 
+                % NOTE: Below will produce warning's about NaN found in interp1, but that's correct behavior since we use those NaN's to decide if really within reasonable part of table rather than using the extrapolation
+                faketkofUdiffout(p,:,q,r)         = 10.^(interp1(lutotdiffgrid, log10(faketkofUdiff(p,:,q,r)), lutotdiffoutgrid',interptypefaketemp));
+                faketkofPdiffout(p,:,q,r)         = 10.^(interp1(lptotdiffgrid, log10(faketkofPdiff(p,:,q,r)), lptotdiffoutgrid',interptypefaketemp));
+                faketkofCHIdiffout(p,:,q,r)       = 10.^(interp1(lchidiffgrid, log10(faketkofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptypefaketemp));
+                faketkofSdiffout(p,:,q,r)         = 10.^(interp1(lstotdiffgrid, log10(faketkofSdiff(p,:,q,r)), lstotdiffoutgrid',interptypefaketemp));
+
                 % extras:
                 % mynewdata(:,:,:,:,ei)
                 for ei=1:numextras
@@ -2317,6 +2397,77 @@ function eos_extract()
 
           fprintf(fiddebug,'End Downsample %d %d %d\n',hiter,titer,ynuiter);
 
+          
+          
+          
+          
+          
+          
+          
+          
+          %%%%%%%%%%%%%%%%%%
+          %
+          % Force higher-order temperature variable to be NaN when linear (non-extrapolated) temperature variable is a NaN
+          %
+          %%%%%%%%%%%%%%%%%%
+          myisnan=isnan(faketkofUdiffout);
+          tkofUdiffout(myisnan)=NaN;
+
+          myisnan=isnan(faketkofPdiffout);
+          tkofPdiffout(myisnan)=NaN;
+
+          myisnan=isnan(faketkofCHIdiffout);
+          tkofCHIdiffout(myisnan)=NaN;
+
+          myisnan=isnan(faketkofSdiffout);
+          tkofSdiffout(myisnan)=NaN;
+
+          % generate down-sampled rho
+          for p=1:nutotdiffout
+            for q=1:ntdynorye
+              for r=1:nhcm
+                % using 1 instead of p because of size of p is different
+                rhobgrid4dout(:,p,q,r)    = rhob(:,1,q,r);
+                rhobcsqgrid4dout(:,p,q,r) = rhobcsq(:,1,q,r);
+              end
+            end
+          end
+          for p=1:nrhob
+            for q=1:ntdynorye
+              for r=1:nhcm
+                % diff values
+                utotdiffgrid4dout(p,:,q,r)  = utotdiffoutgrid(:);
+                ptotdiffgrid4dout(p,:,q,r)  = ptotdiffoutgrid(:);
+                chidiffgrid4dout(p,:,q,r)   = chidiffoutgrid(:);
+                stotdiffgrid4dout(p,:,q,r)  = stotdiffoutgrid(:);
+                %sspecgrid4dout(p,:,q,r) = sspecoutgrid(:);
+
+                % actual values (just different label)
+                utotgrid4dout(p,:,q,r)  = UofUdiffout(p,:,q,r);
+                ptotgrid4dout(p,:,q,r)  = PofPdiffout(p,:,q,r);
+                chigrid4dout(p,:,q,r)   = CHIofCHIdiffout(p,:,q,r);
+                stotgrid4dout(p,:,q,r)  = SofSdiffout(p,:,q,r);
+              end
+            end
+          end
+
+          
+          if(usecleanvar)
+            tkofUdiffout = cleanvar(29, tkofUdiffout, rhobgrid4dout, utotgrid4dout);
+            tkofPdiffout = cleanvar(30, tkofPdiffout, rhobgrid4dout, ptotgrid4dout);
+            tkofCHIdiffout = cleanvar(31, tkofCHIdiffout, rhobgrid4dout, chigrid4dout);
+            tkofSdiffout = cleanvar(30, tkofSdiffout, rhobgrid4dout, stotgrid4dout);
+          else
+            tkofUdiffout(~isfinite(log10(tkofUdiffout)))=OUTBOUNDSVALUE;
+            tkofPdiffout(~isfinite(log10(tkofPdiffout)))=OUTBOUNDSVALUE;
+            tkofCHIdiffout(~isfinite(log10(tkofCHIdiffout)))=OUTBOUNDSVALUE;
+            tkofSdiffout(~isfinite(log10(tkofSdiffout)))=OUTBOUNDSVALUE;
+          end
+          
+          
+          
+          
+          
           
           %          stot(p,:,q,r)=monotonize(stot(p,:,q,r));
           % Below is done because S(T) need not be monotonic, but U(S) and U(T) should be.  So can't force monotonicity of S(T) like did at top of this file with U(T) and P(T) and CHI(T)

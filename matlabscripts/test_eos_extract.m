@@ -35,8 +35,8 @@ issorted(ygmono)
 
 % assume already monotonic, deal with later
 x=0:0.01:3.14;
-y1=x.^(1/2);
-y2=cos(x);
+y1=x.^(1/2); % like U(T)
+y2=cos(x);   % like P(T)
 
 figure;
 plot(y1,y2);
@@ -50,7 +50,8 @@ CONTOL2=1E-17;
 figure;
 plot(y1x,y2y);
 
-newy1=-2:0.01:2;
+%newy1=-2:0.01:2; % like U
+newy1=-2:0.1:2; % like U
 
 % linear produces NaN at edges where plotting shows good fit!
 y2ofy1 = interp1(y1x,y2y,newy1','linear');
