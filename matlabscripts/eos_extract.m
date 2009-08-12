@@ -31,14 +31,21 @@ function eos_extract()
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-  
+  % linear ruins benefit of supersampling and truncates values near edges (i.e. doesn't extrapolate)
 %  interptype='linear';
 %  interptype2='linear';
 
-  interptype='spline';
-  interptype2='spline';
+%    interptype='cubic';
+%    interptype2='cubic';
+
+    interptype='pchip';
+    interptype2='pchip';
+
+  % Can't use spline since too oscillatory and introduces sometimes crazy deviant values (e.g. 28 orders of magnitude oscillation near temperature edges)
+%  interptype='spline';
+%  interptype2='spline';
   % force linear for fake temperature variable interpolation so can put in NaN in correct place inside spline interpolation temperature variables
-  interptypefaketemp='line';
+  interptypefaketemp='linear';
   
   
   % reaches "out of bounds" and uses to get local values
@@ -68,6 +75,9 @@ function eos_extract()
   % whether to fix utot if using old Kaz code result where I didn't subtract
   % off rhob c^2
   utotfix = 0;
+
+  % whether to fix stot if using old HELM/TIMMES code where forgot to add entropy of rest-mass of electrons
+  stotfix = 1;
 
   % whether to use analytical fit or numerical values to set degenerate (offset) values
   utotdegenanalytic=0;
@@ -136,14 +146,18 @@ function eos_extract()
   suf2='.dat';
   suf3='.debug';
 
-
+  % BELOW are from const.dek -- should really read these in
   % speed of light (cm/s)
   c = 2.99792458E10;
   % Boltzmann's constant in erg/K
   kb = 1.380658E-16;
   % Planck's constant
   % hbar = 1.054592483915517E-27;
-
+  % below 3 only used for stotfix==1
+  me      = 9.10938215E-28;
+  avoreal = 6.02214179d23;
+  mb      = (1.0D0/avoreal);
+  
   
   file1=strcat(dir,prefix,suf1);
   file2=strcat(dir,prefix,suf2);
@@ -445,6 +459,12 @@ function eos_extract()
         utot = mynewdata(:,:,:,:,ii); ii=ii+1;
         stot = mynewdata(:,:,:,:,ii); ii=ii+1;
         
+        if stotfix==1
+          % Temporary fix for stot since in HELM/TIMMES forgot to add rest-mass of e+/e- to entropy
+          % Recall stot in [1/cc]
+          stot = stot + ((me.*c.*c./mb)*tdynorye.*rhob)./(kb.*tk);
+
+        end
         
         %stot = stot/kb; % TEMPORARILY CONVERT ENTROPY TO 1/cc form for table that was in erg/K/cc form
 
@@ -588,6 +608,7 @@ function eos_extract()
 
         end
 
+        
 
         
         

@@ -3074,7 +3074,7 @@ c     Local index
       
 c     Need to add-in rest-mass so consistent with LSEOS and Kaz EOS
       real*8 rhoblocal,nb,neleposi
-      real*8 yelocal,yesumlocal,eele_rest
+      real*8 yelocal,yesumlocal,eele_rest,sele_rest
       real*8 betatemp
       real*8 xnuccalc !function
       real*8 nbtotal ! tempvar
@@ -3125,23 +3125,31 @@ c     JCM: When outputting, make (LSEOS/Kaz)-like (no subtraction)
 
 
 
-c     electron rest-mass NOT negligible!
+c     JCM: electron rest-mass NOT negligible!
       yelocal = zbar_row(loci)/abarnum_row(loci)
       rhoblocal = den_row(loci)
       nb = (rhoblocal/mb)
 c     yesumlocal=(xne_row(loci)+xnp_row(loci))/nb
       eele_rest=mecc/mb*yelocal
 c     eele_rest=mecc/mb*yesumlocal
-
+c     specific entropy of e-/e+:
+      sele_rest = eele_rest/(kerg*temp_row(loci))
 
 c     Add rest-mass of electrons back into chemical potential
 c     GODMARK: NOTE THAT the RHS should only have non-loci things unless inputs (den,temp,abar,abarnum,zbar)
       etaele = etaele+1.0/betatemp
       etapos = etapos+1.0/betatemp
 
+c     Add rest-mass of electrons back into internal energy
       eele = eele + epos + eele_rest
       epos = 0.0
       ener = ener + eele_rest
+
+c     Add rest-mass of electrons back into entropy
+      sele = sele + spos + sele_rest
+      spos = 0.0
+      entr = entr + sele_rest
+
 
       deepdz = deepdz + mecc*avo/(abar_row(loci)*yelocal)
 
