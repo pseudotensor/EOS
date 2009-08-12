@@ -226,6 +226,7 @@ c     Constants
       double precision taunse,taunselimit
       integer resettmin1,resettmin2,resettmin3
 
+      double precision NUMEPSILON
 
 
 c     defaults:
@@ -337,10 +338,31 @@ ccccccccccccccccccccc
 c     Control Y_p
 ccccccccccccccccccccc
 
+c     Allow double precision out of range by relative error of below
+      NUMEPSILON=1.0D-13
+
 c     Just don't allow ye to go out of range
-      if(ye_inp.lt.ypmin .OR. ye_inp.gt.ypmax) then
-         write(*,*) 'ye_inp out of range',ye_inp
-         stop
+      if(ye_inp.lt.ypmin) then
+
+         if(abs(ye_inp-ypmin)/ypmin .lt. NUMEPSILON) then
+            ye_inp = ypmin
+            write(*,*) 'ye_inp was a bit out of range',ye_inp,ypmin,ypmax
+         else
+            write(*,*) 'ye_inp out of range',ye_inp
+            stop
+         end if
+
+      end if
+
+      if(ye_inp.gt.ypmax) then
+
+         if(abs(ye_inp-ypmax)/ypmax .lt. NUMEPSILON) then
+            ye_inp = ypmax
+            write(*,*) 'ye_inp was a bit out of range',ye_inp,ypmin,ypmax
+         else
+            write(*,*) 'ye_inp out of range',ye_inp
+            stop
+         end if
       end if
 
 

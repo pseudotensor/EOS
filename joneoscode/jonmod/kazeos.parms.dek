@@ -2,7 +2,7 @@ c This affects loop strcutures and what's written out
 c For stellar models, need 0/1, 0/1/2, 1 so full result not per unit H
 c For normal H-indep model, need 1, 1, 0
 c
-c Normal stellar model: 1,0,1
+c Normal stellar model: 1,0,1 or 1,3,1
 c Normal HARM table: 1,1,0
 
 c..Sets which method to use to set n_n/n_p
@@ -21,15 +21,15 @@ c  2 = Assume complete thermalization (so no hcm dependence)
 c  3 = Like #0, but eta_nuebar = -eta_nue
       integer whichynumethod
 c      parameter (whichynumethod = 0)
-c      parameter (whichynumethod = 1)
+      parameter (whichynumethod = 1)
 c      parameter (whichynumethod = 2)
-      parameter (whichynumethod = 3)
+c      parameter (whichynumethod = 3)
 
 
 c..Sets which method to use to deal with hcm
 c  0 = assume scaling out hcm so set hcm=1 (previously done by setting nhcm=0)
 c  1 = treat hcm as independent variable
       integer whichhcmmethod
-c      parameter (whichhcmmethod = 0)
-      parameter (whichhcmmethod = 1)
+      parameter (whichhcmmethod = 0)
+c      parameter (whichhcmmethod = 1)
 
