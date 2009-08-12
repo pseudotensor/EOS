@@ -62,17 +62,17 @@ do
     cd $DATADIR
     sh $HELMDIR/copyjonhelm.sh $SUBJOBDIR
 
-    # copy over runtime scripts
-    cp $DATADIR/runchunkone.sh $SUBJOBDIR
-    cp $DATADIR/runchunkn.sh $SUBJOBDIR
+    # copy over runtime scripts (NOTE: bsub job submitted for many SUBJOBDIR's)
+    #cp $DATADIR/runchunkone.sh $SUBJOBDIR
+    #cp $DATADIR/runchunkn.sh $SUBJOBDIR
 
 done
 
 
 # back to datadir before start job with everything in $SUBJOBDIR necessary to start job without anymore copying of general files
-# No: have bsub called in SUBJOBDIR so stderr/stdout are there instead of in $DATADIR
-#cd $DATADIR
-cd $SUBJOBDIR
+# Can't have bsub called in SUBJOBDIR so stderr/stdout are there instead of in $DATADIR since bsub called on behalf of multiple directories
+cd $DATADIR
+#cd $SUBJOBDIR
 
 
     #############
@@ -97,7 +97,7 @@ then
 	# Program to run is: "ibrun ./a.out" for MPI/parallel run
 	# ptile=1 always so only 1 job started, but with exclusive (-x) access to node.
         # "$CHUNKLIST" has to be in quotes to preserve fact that single argument, otherwise gets expanded
-    bsub -B -N -u jmckinne@stanford.edu -P TG-AST080025N -x -W 47:59 -n $truenumprocs -x -o $outputfile -e $errorfile -R span[ptile=1] -q normal -J $jobname $SUBJOBDIR/runchunkn.sh "$CHUNKLIST" $TOTALCHUNKS $DATADIR $jobprefix
+    bsub -B -N -u jmckinne@stanford.edu -P TG-AST080025N -x -W 47:59 -n $truenumprocs -x -o $outputfile -e $errorfile -R span[ptile=1] -q normal -J $jobname $DATADIR/runchunkn.sh "$CHUNKLIST" $TOTALCHUNKS $DATADIR $jobprefix
 fi
 
     ############
