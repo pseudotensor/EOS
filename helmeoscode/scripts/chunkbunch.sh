@@ -112,7 +112,13 @@ chmod ug+x chunkn.sh
 ## get number of chunks and number of groups of chunks to do
 echo "$CHUNKPOOL" > poollist.txt
 numchunks=`wc -w poollist.txt | awk '{print $1}'`
-numgroups=$(( ($numchunks / $truenumprocs)+1))
+# below is my version of ceil() for bash
+numgroups=$(( $numchunks / $truenumprocs ))
+testvar=$(( $numgroups*$truenumprocs ))
+if [ $testvar -lt $numchunks ]
+then
+    numgroups=$(( $numgroups+1))
+fi
 
 
 # check that number of jobs does not exceed maximum for this system
