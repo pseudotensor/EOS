@@ -12,7 +12,8 @@ c
 c                               ! already computed
 C======================================================================
       real*8 lsoffset           !nuclear offset to get correct total energy
-      real*8 fakelsoffset       !fake nuclear offset to avoid negative energies
+      real*8 fakelsoffset       !fake nuclear offset to avoid negative energy per baryon
+      real*8 fakeentropylsoffset !fake nuclear offset to avoid negative entropy per baryon
 C======================================================================
       real*8 tdynorye               !dynamical timescale in sec or Y_e
       real*8 tdynorynu              !dynamical timescale in sec or Y_\nu
@@ -101,7 +102,7 @@ c     |  ,ntaustotel,ntaustotmu,ntaustottau
 
 
 cc      common/xnucstuff/xnuc
-      common /lsoffsetvars/ lsoffset,fakelsoffset
+      common /lsoffsetvars/ lsoffset,fakelsoffset,fakeentropylsoffset
       common /variable1/ tdynorye,tdynorynu,hcm,rhob,tk
       common /variable4/ p_tot, u_tot, s_tot, p_photon, p_eleposi, p_N, u_N, p_nu , 
      1	                 rho_tot, 

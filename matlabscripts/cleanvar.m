@@ -25,6 +25,7 @@
 % 201: log10(PofPdiff)
 % 202: log10(CHIofCHIdiff)
 % 203: log10(SofSdiff)
+% 204: log10(SSofSSdiff)
 % 65 : UofSdiff
 
 
@@ -120,6 +121,11 @@ function funout = cleanvar(whichvar, funin, X, Y)
   if whichvar==203
     funin(myisnan) = idealSofS(X(myisnan),Y(myisnan));
     funin(myisnotfinite) = idealSofS(X(myisnotfinite),Y(myisnotfinite));
+  end
+
+  if whichvar==204
+    funin(myisnan) = idealSSofSS(X(myisnan),Y(myisnan));
+    funin(myisnotfinite) = idealSSofSS(X(myisnotfinite),Y(myisnotfinite));
   end
 
   % assume rest are derivative quantities (i.e. derived from the above)
@@ -366,6 +372,12 @@ end
 function out = idealSofS(rho0, S)
 
   out = S;
+
+end
+
+function out = idealSSofSS(rho0, SS)
+
+  out = SS;
 
 end
 
