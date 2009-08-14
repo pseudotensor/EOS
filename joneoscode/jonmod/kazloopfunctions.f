@@ -5,7 +5,7 @@ C======================================================================
 
 c     Bring-in Kaz single global quantities
 
-c     only  need below for lsoffset,fakelsoffset:
+c     only  need below for lsoffset,fakelsoffset,fakeentropylsoffset:
       include 'kazeos.dek'
 c     Parms:
       include 'kazeos.parms.dek'
@@ -95,12 +95,12 @@ c     Ranges of quantities outputted
       write(50,102) nhcm,hcmmin,hcmmax
 
 c     Output other quantities
-      write(50,103) lsoffset,fakelsoffset
+      write(50,103) lsoffset,fakelsoffset,fakeentropylsoffset
       close(50)
 
 
  102  format(I4,1x,1pe30.20E5,1x,1pe30.20E5,1x,1pe30.20E5,1x)
- 103  format(1pe30.20E5,1x,1pe30.20E5)
+ 103  format(1pe30.20E5,1x,1pe30.20E5,1x,1pe30.20E5)
 
       return
       end

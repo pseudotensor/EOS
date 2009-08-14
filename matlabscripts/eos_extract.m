@@ -1,5 +1,9 @@
 function eos_extract()
 
+%TODO:
+% 1) In principle, should use fakelsoffset and fakeentropylsoffset in functions that don't involve independent variables, but corrections extremely small.
+  
+  
   
 % TODO:
 % 1) Perhaps use 2D instead of 1D interpolation : No, because not changing density, just remapping T or U,P,CHI,S
@@ -16,7 +20,7 @@ function eos_extract()
   
 % OLD TODO (that isn't important for now):
 % 1) Need to specify base and log-offset for each variable
-% 2) Then need to output a table for each (rho(X)Tdynorye(X)Hcm) the umin, umax, pmin, pmax, chimin, chimax.  This way I can get high accuracy for T~0Kelvin by starting the table near T~0 and resolving the space near T~0.
+% 2) Then need to output a table for each (rho(X)Tdynorye(X)Hcm) the umin, utotmax, ptotmin, ptotmax, chimin, chimax.  This way I can get high accuracy for T~0Kelvin by starting the table near T~0 and resolving the space near T~0.
 %  ACTUALLY: data is already really there.  I just need to use MATLAB to find min/max of each and make sure to have that as first and last data point for each rho,H,T.  Then in HARM I use 0 and N-1 values as min/max.  Only issue is amount of computation using logs and pow's to process that raw data.
 % Should probably still store it separately, but can be done in HARM instead of MATLAB
 % In matlab each N points should range from the min/max found for EACH rho,H,T instead of globally
@@ -57,6 +61,11 @@ function eos_extract()
   % whether to smooth input quantities that will be used as independent variables
   % makes utot and so utotdiff less accurate (weights to larger values, so final HARM estimate of temperature is systematiclaly lower)
   smoothinputs=0; 
+  
+  % whether to smooth before doing derivatives
+  smoothbeforederivativestep1=1;
+  smoothbeforederivativestep2=1;
+
 
   % whether to use consolidate to ensure unique functions (no longer needed if monotonic enforced)
   consolid=1;
@@ -64,8 +73,6 @@ function eos_extract()
   % whether to use cleanvar method (1) or simple isfinite method (0)
   usecleanvar=0;
   
-  % whether to use log derivative type or not
-  logdertype=0;
   
   % set whether on windows laptop (interactive) or in linux (matlab script)
   matlabscript=1;
@@ -77,14 +84,18 @@ function eos_extract()
   utotfix = 0;
 
   % whether to fix stot if using old HELM/TIMMES code where forgot to add entropy of rest-mass of electrons
+  % or general fix
   stotfix = 1;
 
   % whether to use analytical fit or numerical values to set degenerate (offset) values
   utotdegenanalytic=0;
 
+  % 0 = log but "0" is u=0.0
+  % 1 = log but "0" is utotoffset
+  % 2 = log with "0" as utotoffset, but choosen lower and upper "u" as well
   % whether to set "0" for log output as degeneracy fitting formula (to be added by in when inside HARM)
   % trying to get better temperature resolution for the low-temperature domain
-  utotdegencut = 1;
+  utotdegencut = 2;
 
 
   % whether to force functions to be monotonic as functions of tk
@@ -153,10 +164,11 @@ function eos_extract()
   kb = 1.380658E-16;
   % Planck's constant
   % hbar = 1.054592483915517E-27;
-  % below 3 only used for stotfix==1
+  % below 4 only used for stotfix==1
   me      = 9.10938215E-28;
   avoreal = 6.02214179d23;
   mb      = (1.0D0/avoreal);
+  ergPmev = 1.782661758E-30*1.0E3*c*c;
   
   
   file1=strcat(dir,prefix,suf1);
@@ -294,14 +306,19 @@ function eos_extract()
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   % Read parameter information
   %
+  % E.g., eosparms.head contains:
+  % 1E-8 1E-8 1E-8 1E-3 1E-13 1E-13 1E-13 1E-6
+  % 1E-16 1E-16 1E-16 1E-16 1E-1 1E-1 1E-1 1E-1
   %
-  numparms=8;
+  %
+  numparms=16;
   
   fid=fopen(file7);
   [myhead,count]=fscanf(fid,'%g',[numparms]);
   fclose(fid);
 
   ii=1;
+  % for degenfit
   UTOT0=myhead(ii); ii=ii+1;
   PTOT0=myhead(ii); ii=ii+1;
   CHI0=myhead(ii); ii=ii+1;
@@ -312,6 +329,27 @@ function eos_extract()
   CHIF=myhead(ii); ii=ii+1;
   STOTF=myhead(ii); ii=ii+1;
 
+  % for Rin
+  UTOTIN0=myhead(ii); ii=ii+1;
+  PTOTIN0=myhead(ii); ii=ii+1;
+  CHIIN0=myhead(ii); ii=ii+1;
+  STOTIN0=myhead(ii); ii=ii+1;
+  
+  UTOTINF=myhead(ii); ii=ii+1;
+  PTOTINF=myhead(ii); ii=ii+1;
+  CHIINF=myhead(ii); ii=ii+1;
+  STOTINF=myhead(ii); ii=ii+1;
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   % 
@@ -331,19 +369,30 @@ function eos_extract()
 
   
   
-  % number of total passes, used to get min/max of independent variables
-  numpasses = 2;
-  % initialize for first pass for every hcm and tdynorye
-  % initially choose very non-min and non-max to always gets overwritten
-  lutotdiffoutmin=1E50;
-  lutotdiffoutmax=-1E50;
-  lptotdiffoutmin=1E50;
-  lptotdiffoutmax=-1E50;
-  lchidiffoutmin=1E50;
-  lchidiffoutmax=-1E50;
-  lstotdiffoutmin=1E50;
-  lstotdiffoutmax=-1E50;
+  if utotdegencut==2
+    % this method doesn't require 2 passes since min/max of grid are setup for *each* \rho_0, Y_e, Y_\nu, H
+    numpasses = 1;
+    require2passes = 0;
+  end
   
+  if utotdegencut==1 || utotdegencut==0
+    % number of total passes, used to get min/max of independent variables
+    numpasses = 2;
+    require2passes = 1;
+
+  % initialize for first pass for every hcm and tdynorye
+    % initially choose very non-min and non-max to always gets overwritten
+    lutotdiffoutmin=1E50;
+    lutotdiffoutmax=-1E50;
+    lptotdiffoutmin=1E50;
+    lptotdiffoutmax=-1E50;
+    lchidiffoutmin=1E50;
+    lchidiffoutmax=-1E50;
+    lstotdiffoutmin=1E50;
+    lstotdiffoutmax=-1E50;
+    lsspecdiffoutmin=1E50;
+    lsspecdiffoutmax=-1E50;
+  end
 
   
   
@@ -358,7 +407,7 @@ function eos_extract()
   for passiter=1:numpasses
 
     
-    fprintf(fiddebug,'pass %d\n',passiter);
+    fprintf(fiddebug,'pass: %d require2passes: %d\n',passiter,require2passes);
 
     
     
@@ -458,15 +507,83 @@ function eos_extract()
         ptot = mynewdata(:,:,:,:,ii); ii=ii+1;
         utot = mynewdata(:,:,:,:,ii); ii=ii+1;
         stot = mynewdata(:,:,:,:,ii); ii=ii+1;
+
+        
+        
         
         if stotfix==1
+
+          % BEGIN DEBUG:
+          % will use sspec to check stot
+          %sspecdimless = stot./(rhob./mb);
+%          for p=1:nhcm
+%            for o=1:ntdynorye
+%              for n=1:ntk
+%                for m=1:nrhob
+%                  blob=(lsoffset*ergPmev/mb)/(kb);
+%                  blob2=(lsoffset*ergPmev*rhob(m,n,o,p)/mb)/(kb*tk(m,n,o,p));
+%                  fprintf(fiddebug,'BEFORE: %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g\n',stot(m,n,o,p),sspecdimless(m,n,o,p),rhob(m,n,o,p),tk(m,n,o,p),blob,blob2);
+%                end
+%              end
+%            end
+%          end
+          % END DEBUG:
+
           % Temporary fix for stot since in HELM/TIMMES forgot to add rest-mass of e+/e- to entropy
           % Recall stot in [1/cc]
-          stot = stot + ((me.*c.*c./mb)*tdynorye.*rhob)./(kb.*tk);
+          % no longer so this since was stupid:
+          %stot = stot + ((me.*c.*c./mb)*tdynorye.*rhob)./(kb.*tk);
+          
+          % Remove lsoffset term since shouldn't have been there in way it was introduced
+          stot = stot - (lsoffset.*ergPmev.*rhob./mb)./(kb.*tk);
+          
+          % add-in fake entropy offset since not yet in table.  Ensure use in HARM still!
+          %fakeentropylsoffset=8.921;
+          % minimum in data file is -12.94 for the dimensionless entropy
+          %fakeentropylsoffset=14.0;
+          % machine-error occurs with subtraction
+          fakeentropylsoffset=1E2;
+          stot = stot + fakeentropylsoffset.*(rhob./mb);
+          
+          % recompute sspecdimless
+          % will use sspec to check stot
+          sspecdimless = stot./(rhob./mb);
+
+          % Note that entropy offset at nuclear-to-nonnuclear EOS boundary is unchanged, so above accounts for all new EOS changes
+
+          % BEGIN DEBUG:
+%          for p=1:nhcm
+%            for o=1:ntdynorye
+%              for n=1:ntk
+%                for m=1:nrhob
+%                  fprintf(fiddebug,'AFTER: %21.15g %21.15g\n',stot(m,n,o,p),sspecdimless(m,n,o,p));
+%                end
+%              end
+%            end
+%          end
+          % END DEBUG:
+
+          stotmin=min(min(min(min(stot))));
+          stotmax=max(max(max(max(stot))));
+          if(stotmin<=0.0)
+            fprintf(fiddebug,'stot must be positive %21.15g %21.15g\n',stotmin,stotmax);
+            quit
+          end
+
+
+          sspecdimlessmin=min(min(min(min(sspecdimless))));
+          sspecdimlessmax=max(max(max(max(sspecdimless))));
+          if(sspecdimlessmin<=0.0)
+            fprintf(fiddebug,'sspecdimless must be positive %21.15g %21.15g\n',sspecdimlessmin,sspecdimlessmax);
+            quit
+          end
+
+          %stot = stot/kb; % TEMPORARILY CONVERT ENTROPY TO 1/cc form for table that was in erg/K/cc form
 
         end
         
-        %stot = stot/kb; % TEMPORARILY CONVERT ENTROPY TO 1/cc form for table that was in erg/K/cc form
+        
+        
 
         % rest of below don't come into detailed calculations and are just
         % other quantities to interpolate from T to UTOT
@@ -477,6 +594,9 @@ function eos_extract()
         % COMPUTE CHI (from now on have to deal with chi separately)
         chi = utot + ptot;
 
+        % COMPUTE sspec (from now on have to deal with sspec separately from stot) [as an independent variable only]
+        rhobcsq = rhob.*c.*c;
+        sspec = stot./(rhobcsq);
 
 
         
@@ -511,6 +631,11 @@ function eos_extract()
 
             end
           end
+          
+          % recomptue for independents still
+          chi = utot+ptot;
+          sspec = stot./(rhobcsq);
+          
         end
         
 
@@ -539,9 +664,6 @@ function eos_extract()
         if forcemonotk==1
           
           % will use sspec to process stot's montonicity
-          rhobcsq = rhob.*c.*c;
-          sspec = stot./(rhobcsq);
-
 
           for p=1:nrhob
             for q=1:ntdynorye
@@ -571,17 +693,19 @@ function eos_extract()
                 if 1
                   ptot(p,:,q,r)=monotonize(ptot(p,:,q,r));
                   % Re-compute chi using monotonized versions of u and p
-                  chi(p,:,q,r) = utot(p,:,q,r) + ptot(p,:,q,r);
+                  %chi(p,:,q,r) = utot(p,:,q,r) + ptot(p,:,q,r);
                 end
               end
             end
           end
 
+          % recompute chi
+          chi=utot+ptot;
           % recover stot as correctly monotonic (should really see why stot/rhob so non-monotonic due to nuclear terms and how I extrapolate it)
           stot=(sspec).*(rhobcsq);
 
           
-        end
+        end %%%%% end if forcemonotk==1
 
 
 
@@ -605,6 +729,9 @@ function eos_extract()
           isneg = (utotnew<=0);
           myfloor = utotnew.*0 + 1E-20;
           utot(isneg) = myfloor(isneg);
+          
+          % recompute chi
+          chi=utot+ptot;
 
         end
 
@@ -646,10 +773,15 @@ function eos_extract()
           % fake:
           % note that stot is in 1/cc form
           stotoffset = (utotoffset+ptotoffset)./(kb.*tk)
+          
+          sspecoffset = stotoffset./rhob;
 
-        end
+        end %%%%%if utotdegenanalytic==1
 
-        if utotdegenanalytic==0
+
+        
+        
+        if  utotdegenanalytic==0
 
           %%%%%%%%%%%%%%%%%%%%%%%%%
           % use numerical 0-point
@@ -660,8 +792,8 @@ function eos_extract()
           if(0)
             for q=1:ntk
 
-              udegenfit(:,q,:,:) = utot(:,1,:,:);
-              pdegenfit(:,q,:,:) = ptot(:,1,:,:);
+              utotdegenfit(:,q,:,:) = utot(:,1,:,:);
+              ptotdegenfit(:,q,:,:) = ptot(:,1,:,:);
               chidegenfit(:,q,:,:) = chi(:,1,:,:); % chi treated independently
             end
           end
@@ -679,8 +811,8 @@ function eos_extract()
                   mytempmin = min(mytemporary);
                   mytempmax = max(mytemporary);
                   for n=1:ntk
-                    udegenfit(m,n,o,p) = mytempmin;
-                    umax(m,n,o,p) = mytempmax;
+                    utotdegenfit(m,n,o,p) = mytempmin;
+                    utotmax(m,n,o,p) = mytempmax;
                   end
 
                   %%%%%%%%%% P
@@ -690,8 +822,8 @@ function eos_extract()
                   mytempmin = min(mytemporary);
                   mytempmax = max(mytemporary);
                   for n=1:ntk
-                    pdegenfit(m,n,o,p) = mytempmin;
-                    pmax(m,n,o,p) = mytempmax;
+                    ptotdegenfit(m,n,o,p) = mytempmin;
+                    ptotmax(m,n,o,p) = mytempmax;
                   end
 
                   %%%%%%%%%% CHI
@@ -713,23 +845,34 @@ function eos_extract()
                   mytempmin = min(mytemporary);
                   mytempmax = max(mytemporary);
                   for n=1:ntk
-                    sdegenfit(m,n,o,p) = mytempmin;
-                    smax(m,n,o,p) = mytempmax;
+                    stotdegenfit(m,n,o,p) = mytempmin;
+                    stotmax(m,n,o,p) = mytempmax;
                   end
 
+                  %%%%%%%%%% SS
+                  for n=1:ntk
+                    mytemporary(n) = sspec(m,n,o,p);
+                  end
+                  mytempmin = min(mytemporary);
+                  mytempmax = max(mytemporary);
+                  for n=1:ntk
+                    sspecdegenfit(m,n,o,p) = mytempmin;
+                    sspecmax(m,n,o,p) = mytempmax;
+                  end
+                
                 end
               end
             end
-          end
+          end %%%%end if 1
 
           % now include multiplicative offset, where offset was chosen ahead of time so that utotdiff,ptotdiff are small and positive for all temperatures for each rhob,hcm,tdynorye,tdynorynu
           % This procedure doesn't make sense if the degen value is near 0, then need to offset by some fraction of (max-min)
           % chi treated independently
 
-          %utotoffset = udegenfit   - abs(udegenfit)*(UTOT0);
-          %ptotoffset = pdegenfit   - abs(udegenfit)*(PTOT0);
-          %chioffset  = chidegenfit - abs(udegenfit)*(CHI0);
-          %stotoffset = stotdegenfit - abs(sdegenfit)*(STOT0);
+          %utotoffset = utotdegenfit   - abs(utotdegenfit)*(UTOT0);
+          %ptotoffset = ptotdegenfit   - abs(utotdegenfit)*(PTOT0);
+          %chioffset  = chidegenfit - abs(utotdegenfit)*(CHI0);
+          %stotoffset = stotdegenfit - abs(stotdegenfit)*(STOT0);
 
           % general approach so log-intervals always equally resolved in log of temperature
           % concept is that minimum sets no scale.  Scale only set by maximum (assumes maximum is not too far from where quantity becomes as degenerate as not degenerate
@@ -751,33 +894,98 @@ function eos_extract()
           %STOTF=STOT0;
           STOTD=10.^(log10(STOT0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(STOTF)-log10(STOT0)));
           
-          utotoffset = udegenfit   - max(10.^(log10(abs(umax))-numshift),abs(udegenfit).*(UTOTD));
-          ptotoffset = pdegenfit   - max(10.^(log10(abs(pmax))-numshift),abs(pdegenfit).*(PTOTD));
+          utotoffset = utotdegenfit   - max(10.^(log10(abs(utotmax))-numshift),abs(utotdegenfit).*(UTOTD));
+          ptotoffset = ptotdegenfit   - max(10.^(log10(abs(ptotmax))-numshift),abs(ptotdegenfit).*(PTOTD));
           chioffset  = chidegenfit - max(10.^(log10(abs(chimax))-numshift),abs(chidegenfit).*(CHID));
-          stotoffset = sdegenfit   - max(10.^(log10(abs(smax))-numshift),abs(sdegenfit).*(STOTD));
+          stotoffset = stotdegenfit   - max(10.^(log10(abs(stotmax))-numshift),abs(stotdegenfit).*(STOTD));
 
+          % could have its own SSTOTD, but should be ok without one.  Below is correct since linear in stot.
+          sspecoffset = stotoffset./(rhobcsq);
+
+        end %%%%% end if utotdegenanalytic==0
+
+
+
+        
+        
+        if utotdegencut==2
+          % More advanced case where grid is chosen such that grid is r = R0 + exp(x1), with r=utot and R0=utotoffset with r-R0 = utotdiff,
+          % but where Rin=chosen separately and Rout=chosen separately
+          % Here grid is U = U0 + (Uin-U0)*pow( (Uout-U0)/(Uin-U0) , i/N ) for N points with "i" as the index
+          % Only have to ensure that Uin>U0 and Uout>Uin.
+          % That is, do NOT have to have all U's in original table such that U>U0.  Those U's missed will deresolve away as NaN's in terms of the new index fraction "i/N"
+          % This means utotoffset does not have to be exactly offsetted from lowest values like done above when setting utotoffset, etc.
+
+          % used for grid of data
+          % meaning of utotdiff or ptotdiff or chidiff or stotdiff is "i/N" or the fraction of the grid from 0 to 1
+
+          % reasonable upper limits -- upper limits haven't been much of a problem except for a 1 zone drop-out at the top.
+          utotout = utotmax;
+          ptotout = ptotmax;
+          chiout = chimax;
+          stotout = stotmax;
+          sspecout = sspecmax;
+
+          UTOTIND=10.^(log10(UTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(UTOTINF)-log10(UTOTIN0)));
+          PTOTIND=10.^(log10(PTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(PTOTINF)-log10(PTOTIN0)));
+          CHIIND=10.^(log10(CHIIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(CHIINF)-log10(CHIIN0)));
+          STOTIND=10.^(log10(STOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(STOTINF)-log10(STOTIN0)));
+
+          % utotdegencut==1 effectively starts with utotin=utotdegenfit
+          % Start with utotdegenfit, but allow offset from that in proportion to utotdegenfit-utotoffset = Rinold - R0
+          utotin = utotdegenfit   + abs(utotoffset).*(UTOTIND);
+          ptotin = ptotdegenfit   + abs(ptotoffset).*(PTOTIND);
+          chiin  = chidegenfit    + abs(chioffset).*(CHIIND);
+          stotin = stotdegenfit   + abs(stotoffset).*(STOTIND);
+          sspecin = stotin./(rhobcsq); % forces consistency to stotin since dont' have SSIND.  Above is linear in stot, so it may be ok to do directly with same STOTIND, but not an issue.
+
+          % finally set "i/N" that always goes from 0 to 1
+          lutotdiff = log10( (utot - utotoffset)./(utotin - utotoffset))./log10( (utotout - utotoffset)./(utotin - utotoffset));
+          lptotdiff = log10( (ptot - ptotoffset)./(ptotin - ptotoffset))./log10( (ptotout - ptotoffset)./(ptotin - ptotoffset));
+          lchidiff = log10( (chi - chioffset)./(chiin - chioffset))./log10( (chiout - chioffset)./(chiin - chioffset));
+          lstotdiff = log10( (stot - stotoffset)./(stotin - stotoffset))./log10( (stotout - stotoffset)./(stotin - stotoffset));
+          % Easier to compute sspecdiff independently rather than inverting stotdiff and then appying relationship and then reobtaining sspecdiff
+          lsspecdiff = log10( (sspec - sspecoffset)./(sspecin - sspecoffset))./log10( (sspecout - sspecoffset)./(sspecin - sspecoffset));
 
         end
 
-
-
         
-        
+        if utotdegencut==1 || utotdegencut==0
+          % Not used, just filler
+          utotout = utotmax;
+          ptotout = ptotmax;
+          chiout = chimax;
+          stotout = stotmax;
+          sspecout = sspecmax;
+          
+          % Not used, just filler
+          utotin = utotdegenfit;
+          ptotin = ptotdegenfit;
+          chiin  = chidegenfit;
+          stotin = stotdegenfit;          
+          sspecin = sspecdegenfit;
+        end
+
         if utotdegencut==1
+          % Simpler case where grid is chosen such that grid is r = R0 + exp(x1), with r=utot and R0=utotoffset with r-R0 = utotdiff, where Rin=min(r-R0) and Rout=max(r-R0) for all existing r's.
 
-          utotdiff = utot - utotoffset; % used for grid of data
-          ptotdiff = ptot - ptotoffset; % used for grid of data
-          chidiff  = chi  - chioffset;  % used for grid of data
-          stotdiff = stot - stotoffset; % used for grid of data
-
+          % used for grid of data:
+          lutotdiff  = log10(utot - utotoffset);
+          lptotdiff  = log10(ptot - ptotoffset);
+          lchidiff   = log10(chi  - chioffset);
+          lstotdiff  = log10(stot - stotoffset);
+          lsspecdiff = log10(sspec - sspecoffset);
         end
 
         if utotdegencut==0
-
-          utotdiff = utot; % used for grid of data
-          ptotdiff = ptot; % used for grid of data
-          chidiff  = chi;  % used for grid of data
-          stotdiff = stot; % used for grid of data
+          % Simplest case where grid is chosen as r=exp(x1) with Rin=min(r) and Rout=max(r-R0) for all existing r's.
+          
+          lutotdiff = log10(utot); % used for grid of data
+          lptotdiff = log10(ptot); % used for grid of data
+          lchidiff  = log10(chi);  % used for grid of data
+          lstotdiff = log10(stot); % used for grid of data
+          % sspecdiff just linear in stot, so below is correct
+          lsspecdiff = log10(sspec);
 
         end
 
@@ -795,7 +1003,7 @@ function eos_extract()
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         
-        if(passiter==2)
+        if(passiter==2 || require2passes==0)
           
 
 
@@ -834,12 +1042,23 @@ function eos_extract()
               for r=1:nhcm
 
 
-                roughptot(:,:)=ptot(:,:,q,r);
-                roughener(:,:)=ener(:,:,q,r);
+                if smoothbeforederivativestep1==1
+                  roughptot(:,:)=ptot(:,:,q,r);
+                  roughener(:,:)=ener(:,:,q,r);
+                  roughtemp(:,:)=temp(:,:,q,r);
+                  roughden(:,:)=den(:,:,q,r);
 
-                % Smooth functions since sharp boundaries cause speed to be artificially large
-                myptot(:,:)=moving_average2(roughptot(:,:),1,1);
-                myener(:,:)=moving_average2(roughener(:,:),1,1);
+                  % Smooth functions since sharp boundaries cause speed to be artificially large
+                  myptot(:,:)=moving_average2(roughptot(:,:),1,1);
+                  myener(:,:)=moving_average2(roughener(:,:),1,1);
+                  mytemp(:,:)=moving_average2(roughtemp(:,:),1,1);
+                  myden(:,:)=moving_average2(roughden(:,:),1,1);
+                else
+                  myptot(:,:)=ptot(:,:,q,r);
+                  myener(:,:)=ener(:,:,q,r);
+                  mytemp(:,:)=temp(:,:,q,r);
+                  myden(:,:)=den(:,:,q,r);
+                end
                 
                 % use rho c^2 so result is dimensionless
                 rhocsqi=den(:,1,q,r)';
@@ -848,7 +1067,7 @@ function eos_extract()
                 %		sizerho=tsize(1);
                 %		irho=1:sizerho;
                 %		irhooffset=0.5:sizerho-0.5;
-                lrhocsqi = log(rhocsqi);
+                lrhocsqi = log10(rhocsqi);
                 %		dlrhocsqi = gradient(lrhocsqi);
 
                 % use kb*T so result is dimensionless
@@ -858,42 +1077,38 @@ function eos_extract()
                 %		sizeT=tsize(1);
                 %		iT=1:sizeT;
                 %		iToffset=0.5:sizeT-0.5;
-                lTi = log(Ti);
+                lTi = log10(Ti);
                 %		dlTi = gradient(lTi);
                 
                 % given PofU(rho0,U,H) then derivative is dU, drho0, dH for independent variable order
                 %
 
-                % log method
-                if logdertype
+                % create things for change of variable
+                [dtdlt(:,:), dtdld(:,:)] = gradient(mytemp(:,:),lTi,lrhocsqi);
+                [dddlt(:,:), dddld(:,:)] = gradient(myden(:,:),lTi,lrhocsqi);
+                
                   
-                  [dpresdlt(:,:), dpresdld(:,:)] = gradient(myptot(:,:),lTi,lrhocsqi);
-                  [denerdlt(:,:), denerdld(:,:)] = gradient(myener(:,:),lTi,lrhocsqi);
+                [dpresdlt(:,:), dpresdld(:,:)] = gradient(myptot(:,:),lTi,lrhocsqi);
+                [denerdlt(:,:), denerdld(:,:)] = gradient(myener(:,:),lTi,lrhocsqi);
 
-                  % correct for gradient position offset
-                  % That is, gradient takes simple difference divided by simple difference of positions
-                  % It does not interpolate back to central location
-                  % GODMARK: Apparently only at edges does it reduce to simple difference.
-                  % Otherwise it does put gradient at function location
-                  %dpresdlt(:)
-                  %dpresdld(:)
-                  %denerdlt(:)
-                  %denerdld(:)
-                  
-
-                  % Get actual derivative
-                  dpresdt(:,:,q,r)=dpresdlt(:,:)./temp(:,:,q,r);
-                  dpresdd(:,:,q,r)=dpresdld(:,:)./den(:,:,q,r);
-
-                  denerdt(:,:,q,r)=denerdlt(:,:)./temp(:,:,q,r);
-                  denerdd(:,:,q,r)=denerdld(:,:)./den(:,:,q,r);
-                end
-                % non-log method
-                if ~logdertype
-                  [dpresdt(:,:,q,r), dpresdd(:,:,q,r)] = gradient(myptot(:,:),Ti,rhocsqi);
-                  [denerdt(:,:,q,r), denerdd(:,:,q,r)] = gradient(myener(:,:),Ti,rhocsqi);
-
-                end
+                % old comment about gradient:
+                % correct for gradient position offset
+                % That is, gradient takes simple difference divided by simple difference of positions
+                % It does not interpolate back to central location
+                % GODMARK: Apparently only at edges does it reduce to simple difference.
+                % Otherwise it does put gradient at function location
+                %dpresdlt(:)
+                %dpresdld(:)
+                %denerdlt(:)
+                %denerdld(:)
+                
+                
+                % Get actual derivative (assume rho and T are independent -- which is true since just took log, didn't mix them)
+                dpresdt(:,:,q,r)=dpresdlt(:,:)./dtdlt(:,:);
+                dpresdd(:,:,q,r)=dpresdld(:,:)./dddld(:,:);
+                
+                denerdt(:,:,q,r)=denerdlt(:,:)./dtdlt(:,:);
+                denerdd(:,:,q,r)=denerdld(:,:)./dddld(:,:);
                 
 
               end
@@ -937,9 +1152,28 @@ function eos_extract()
             cs2rhoT=abs(cs2rhoT)+1E-20;
 
             
+          
+            % adjust speed of sound to be no smaller than 0 and no larger than 1
+            for p=1:nhcm
+              for o=1:ntdynorye
+                for n=1:ntk % really ntk!  Still in T-space
+                  for m=1:nrhob
+                    
+                    if cs2rhoT(m,n,o,p)>1.0
+                      cs2rhoT(m,n,o,p)=1.0-CONTOL;
+                    end
+                    if cs2rhoT(m,n,o,p)<0.0
+                      cs2rhoT(m,n,o,p)=0.0;
+                    end
+
+                  end
+                end
+              end
+            end
+
             
             
-          end % end passiter==2 section
+          end  %%%%%% end if 1
 
 
           
@@ -952,9 +1186,10 @@ function eos_extract()
           %
           % 22 + extras
           %
-          % 
+          % Note that stot (and so its children quantities) may be modified if stotfix==1
           %
           % Treat chi as independent
+          %
           %
           %%%%%%%%%%%%%%%%%%%%%%%
           
@@ -967,14 +1202,16 @@ function eos_extract()
           for o=1:nhcm
             for p=1:ntdynorye
               for n=1:ntk
-                for m=1:nrhob %+0                 +5                                      +5                              +4                              +4                              +4                              +4      +1
-                  fprintf(fid8,'%3d %3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
+                for m=1:nrhob %+0                 +5                                      +5                                      +5                                      +5                                       +5                                      +5                                     +5                                      +5      +1
+                  fprintf(fid8,'%3d %3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
                           m-1, n-1, titer-1, ynuiter-1, hiter-1, ...
                           rhob(m,n,o,p), tk(m,n,o,p), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
-                          ptot(m,n,o,p), utot(m,n,o,p), chi(m,n,o,p), stot(m,n,o,p),  ...
-                          pdegenfit(m,n,o,p), udegenfit(m,n,o,p), chidegenfit(m,n,o,p), sdegenfit(m,n,o,p), ...
-                          ptotoffset(m,n,o,p), utotoffset(m,n,o,p), chioffset(m,n,o,p), stotoffset(m,n,o,p), ...
-                          ptotdiff(m,n,o,p), utotdiff(m,n,o,p), chidiff(m,n,o,p), stotdiff(m,n,o,p), ...
+                          utot(m,n,o,p), ptot(m,n,o,p), chi(m,n,o,p), stot(m,n,o,p), sspec(m,n,o,p), ...
+                          utotdegenfit(m,n,o,p), ptotdegenfit(m,n,o,p), chidegenfit(m,n,o,p), stotdegenfit(m,n,o,p), sspecdegenfit(m,n,o,p), ...
+                          utotoffset(m,n,o,p), ptotoffset(m,n,o,p), chioffset(m,n,o,p), stotoffset(m,n,o,p), sspecoffset(m,n,o,p), ...
+                          utotin(m,n,o,p), ptotin(m,n,o,p), chiin(m,n,o,p), stotin(m,n,o,p), sspecin(m,n,o,p), ...
+                          utotout(m,n,o,p), ptotout(m,n,o,p), chiout(m,n,o,p), stotout(m,n,o,p), sspecout(m,n,o,p), ...
+                          lutotdiff(m,n,o,p), lptotdiff(m,n,o,p), lchidiff(m,n,o,p), lstotdiff(m,n,o,p), lsspecdiff(m,n,o,p), ...
                           cs2rhoT(m,n,o,p) ...
                           );
                   for ei=extraii:extraii+numextras-1
@@ -992,7 +1229,7 @@ function eos_extract()
 
 
 
-        end
+        end % end passiter==2 || require2passes==0 section
 
 
 
@@ -1010,7 +1247,7 @@ function eos_extract()
         % some computed things as related to also temporary independent variables needed for passiter==1
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        rhobcsq		= rhob.*c.*c;
+        %        rhobcsq		= rhob.*c.*c;
 
         wtot = (rhobcsq+chi);
 
@@ -1021,7 +1258,7 @@ function eos_extract()
         % stot is entropy density (erg/K/cc)
         % so compute sound speed using specific entropy (entropy per baryon)
         % below makes no sense with pure photons
-        sspec = stot./(rhobcsq);
+        %sspec = stot./(rhobcsq);
         % can do below, but ideal gas case gets complicated for U[rho0,Sden]
         %sspec = stot./(rhobcsq+utot);
 
@@ -1039,11 +1276,11 @@ function eos_extract()
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %
-        % Continue passiter==2 for real computations
+        % Continue passiter==2 || require2passes==0 for real computations
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
-        if(passiter==2)
+        if(passiter==2 || require2passes==0)
 
 
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1104,7 +1341,7 @@ function eos_extract()
 
 
           
-        end %%%%%%%%% end if passiter==2
+        end %%%%%%%%% end if passiter==2 || require2passes==0
         
 
         
@@ -1112,7 +1349,7 @@ function eos_extract()
         
         %%%%%%%%%%%%%%%%%
         %
-        % Continue passiter=1 or 2
+        % Continue passiter=1 or 2 || require2passes==0
         %
         %%%%%%%%%%%%%%%%%
 
@@ -1126,6 +1363,10 @@ function eos_extract()
         %
         % These are used for internal calculations only, not final output
         %
+        % Generally, gridding is (e.g.) utotdiffgrid = 10^(lutotdiffgrid) where lutotdiffgrid is on a uniform grid from lutotdiffmin to lutotdiffmax.
+        % But note that lutotdiffmin and lutotdiffmax do not have to be min or max of utotdiff.  That would only be desirable if really want to resolve logarithmically right next to the lowest temperature, which can overresolve it sometimes.
+        % This is just like r = R_0 + exp(x1) HARM grid, where R_0~utotoffset and (r-R_0)~10^lutotdiff, but Rin and Rout can be chosen arbitrarily as long as they are larger than R0.  We normally default to choosing Rin=min(10^lutotdiff), but one does not have to.
+        %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
         % factor by which to enhance resolution of internal values before downgrading to output resolution
@@ -1133,131 +1374,180 @@ function eos_extract()
         %factor=1;
 
 
-
-        % grid of internal energy (utot) (used to be also grid for pressure (ptot), and \chi=u+p)
         nutotdiff=ntk*factor;
-        %lutotmin=log10(rhobmin*c*c);
-        %lutotmax=log10(rhobmax*c*c);
-
-        % This shift is ok since this defines new grid as will be used and
-        % original values of utotdiff/ptotdiff/chidiff can extent further than that grid
-        SHIFTU=0.99;
-        %  SHIFTU=1.0;
-
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % grid of utotdiff
-        if utotfix==0
-          lutotdiffmin=log10(min(min(min(min(utotdiff)))));
-          lutotdiffmax=log10(max(max(max(max(utotdiff))))*SHIFTU);
-        end
-        if utotfix==1
-          % presently utot is wrong after fixup when small due to rhob subraction
-          % choose reasonable lower limit
-          lutotdiffmin=15.0;
-          lutotdiffmax=log10(max(max(max(max(utotdiff))))*SHIFTU);
-        end
-
-        steplutotdiff = (lutotdiffmax-lutotdiffmin)/(nutotdiff-1);
-        lutotdiffgrid=lutotdiffmin:steplutotdiff:lutotdiffmax;
-        utotdiffgrid = 10.^lutotdiffgrid;
-
-
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % grid of ptotdiff
         nptotdiff=nutotdiff;
-        lptotdiffmin=log10(min(min(min(min(ptotdiff)))));
-        lptotdiffmax=log10(max(max(max(max(ptotdiff))))*SHIFTU);
-        steplptotdiff = (lptotdiffmax-lptotdiffmin)/(nptotdiff-1);
-        lptotdiffgrid=lptotdiffmin:steplptotdiff:lptotdiffmax;
-        ptotdiffgrid = 10.^lptotdiffgrid;
-
-
-
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % grid of chidiff=utotdiff + ptotdiff
         nchidiff=nutotdiff;
-        lchidiffmin=log10(min(min(min(min(chidiff)))));
-        lchidiffmax=log10(max(max(max(max(chidiff))))*SHIFTU);
-        steplchidiff = (lchidiffmax-lchidiffmin)/(nchidiff-1);
-        lchidiffgrid=lchidiffmin:steplchidiff:lchidiffmax;
-        chidiffgrid = 10.^lchidiffgrid;
-
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % grid of stotdiff
         nstotdiff=nutotdiff;
-        lstotdiffmin=log10(min(min(min(min(stotdiff)))));
-        lstotdiffmax=log10(max(max(max(max(stotdiff))))*SHIFTU);
-        steplstotdiff = (lstotdiffmax-lstotdiffmin)/(nstotdiff-1);
-        lstotdiffgrid=lstotdiffmin:steplstotdiff:lstotdiffmax;
-        stotdiffgrid = 10.^lstotdiffgrid;
-
-
-        % specific entropy as a variable is only used temporarily and not as a
-        % difference with any offset
-        nsspec=nutotdiff;
-        lsspecmin=log10(min(min(min(min(sspec)))));
-        lsspecmax=log10(max(max(max(max(sspec))))*SHIFTU);
-        steplsspec = (lsspecmax-lsspecmin)/(nsspec-1);
-        lsspecgrid=lsspecmin:steplsspec:lsspecmax;
-        sspecgrid = 10.^lsspecgrid;
-
-
+        nsspecdiff=nutotdiff;
         
-        
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %
-        % OUTPUT grid of functions of utotdiff/ptotdiff/chidiff
-        %
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        nutotdiffout=ntk; % anything can be put here, but assume basically same as size of ntk
-                          %lutotdiffmin=log10(rhobmin*c*c);
-                          %lutotdiffmax=log10(rhobmax*c*c);
-        lutotdiffoutmin=min(lutotdiffoutmin,lutotdiffmin);
-        lutotdiffoutmax=max(lutotdiffoutmax,lutotdiffmax);
-        steplutotdiffout = (lutotdiffoutmax-lutotdiffoutmin)/(nutotdiffout-1);
-        lutotdiffoutgrid=lutotdiffoutmin:steplutotdiffout:lutotdiffoutmax;
-        utotdiffoutgrid = 10.^lutotdiffoutgrid;
-        
-        %fprintf(fiddebug,'debug: %21.15g %21.15g\n',utotdiffoutgrid(1),10.0.^lutotdiffoutmin);
-        
-        %if(abs(utotdiffoutgrid(1)-10.0.^lutotdiffoutmin)>1E-13)
-        %  fprintf(fiddebug,'Problem with utotdiffoutgrid %d %d: %21.15g %21.15g\n',hiter,titer,utotdiffoutgrid(1),10.0.^lutotdiffoutmin);
-        %end
-
-        % OUTPUT grid of functions of ptotdiff
+        % anything can be put here, but assume basically same as size of ntk
+        nutotdiffout=ntk;
         nptotdiffout=nutotdiffout;
-        %lptotdiffmin=log10(rhobmin*c*c);
-        %lptotdiffmax=log10(rhobmax*c*c);
-        lptotdiffoutmin=min(lptotdiffoutmin,lptotdiffmin);
-        lptotdiffoutmax=max(lptotdiffoutmax,lptotdiffmax);
-        steplptotdiffout = (lptotdiffoutmax-lptotdiffoutmin)/(nptotdiffout-1);
-        lptotdiffoutgrid=lptotdiffoutmin:steplptotdiffout:lptotdiffoutmax;
-        ptotdiffoutgrid = 10.^lptotdiffoutgrid;
-
-        % OUTPUT grid of functions of chidiff
         nchidiffout=nutotdiffout;
-        %lchidiffmin=log10(rhobmin*c*c);
-        %lchidiffmax=log10(rhobmax*c*c);
-        lchidiffoutmin=min(lchidiffoutmin,lchidiffmin);
-        lchidiffoutmax=max(lchidiffoutmax,lchidiffmax);
-        steplchidiffout = (lchidiffoutmax-lchidiffoutmin)/(nchidiffout-1);
-        lchidiffoutgrid=lchidiffoutmin:steplchidiffout:lchidiffoutmax;
-        chidiffoutgrid = 10.^lchidiffoutgrid;
-
-        % OUTPUT grid of functions of stotdiff
         nstotdiffout=nutotdiffout;
-        %lstotdiffmin=log10(rhobmin*c*c);
-        %lstotdiffmax=log10(rhobmax*c*c);
-        lstotdiffoutmin=min(lstotdiffoutmin,lstotdiffmin);
-        lstotdiffoutmax=max(lstotdiffoutmax,lstotdiffmax);
-        steplstotdiffout = (lstotdiffoutmax-lstotdiffoutmin)/(nstotdiffout-1);
-        lstotdiffoutgrid=lstotdiffoutmin:steplstotdiffout:lstotdiffoutmax;
-        stotdiffoutgrid = 10.^lstotdiffoutgrid;
+        nsspecdiffout=nutotdiffout; % not used really
+        
+        
+        if utotdegencut==2
+          % utotdegencut==2 sets up lutotdiff to already vary from 0 to 1 in a log way
+          
+          [lutotdiffmin lutotdiffmax steplutotdiff lutotdiffgrid] = setupgrid(nutotdiff);
+          [lptotdiffmin lptotdiffmax steplptotdiff lptotdiffgrid] = setupgrid(nptotdiff);
+          [lchidiffmin lchidiffmax steplchidiff lchidiffgrid] = setupgrid(nchidiff);
+          [lstotdiffmin lstotdiffmax steplstotdiff lstotdiffgrid] = setupgrid(nstotdiff);
+          [lsspecdiffmin lsspecdiffmax steplsspecdiff lsspecdiffgrid] = setupgrid(nsspecdiff); % used to be sspecgrid alone without diff
 
+          [lutotdiffoutmin lutotdiffoutmax steplutotdiffout lutotdiffoutgrid] = setupgrid(nutotdiffout);
+          [lptotdiffoutmin lptotdiffoutmax steplptotdiffout lptotdiffoutgrid] = setupgrid(nptotdiffout);
+          [lchidiffoutmin lchidiffoutmax steplchidiffout lchidiffoutgrid] = setupgrid(nchidiffout);
+          [lstotdiffoutmin lstotdiffoutmax steplstotdiffout lstotdiffoutgrid] = setupgrid(nstotdiffout);
+          [lsspecdiffoutmin lsspecdiffoutmax steplsspecdiffout lsspecdiffoutgrid] = setupgrid(nsspecdiffout); % not used really
+          
+          % should never need (e.g.) utotdiffgrid from lutotdiffgrid since there is no real meaning to utotdiffgrid!  Only loginterp stuff used it, probably incorrectly so.
+          % If really need things as functions of utot again, have to change variable using u(utotdiff).
+          % Consider (e.g.) lutotdiff grid as fundamental grid upon which all interpolations are done.
+          
+        end
+
+        
+        
+        if utotdegencut==1 || utotdegencut==0
+
+          % Consider (e.g.) lutotdiff grid as fundamental grid upon which all interpolations are done.
+
+          % grid of internal energy (utot) (used to be also grid for pressure (ptot), and \chi=u+p)
+          %lutotmin=log10(rhobmin*c*c);
+          %lutotmax=log10(rhobmax*c*c);
+
+          % This shift is ok since this defines new grid as will be used and
+          % original values of utotdiff/ptotdiff/chidiff can extent further than that grid
+          SHIFTU=0.99;
+          %  SHIFTU=1.0;
+
+          %%%%%%%%%%%%%%%%%%%%%%%%%%%
+          % grid of lutotdiff
+          if utotfix==0
+            lutotdiffmin=min(min(min(min(lutotdiff))));
+            lutotdiffmax=max(max(max(max(lutotdiff))))*SHIFTU;
+          end
+          if utotfix==1
+            % presently utot is wrong after fixup when small due to rhob subraction
+            % choose reasonable lower limit
+            lutotdiffmin=15.0;
+            lutotdiffmax=max(max(max(max(lutotdiff))))*SHIFTU;
+          end
+
+          steplutotdiff = (lutotdiffmax-lutotdiffmin)/(nutotdiff-1);
+          lutotdiffgrid=lutotdiffmin:steplutotdiff:lutotdiffmax;
+          %utotdiffgrid = 10.^lutotdiffgrid;
+
+
+          %%%%%%%%%%%%%%%%%%%%%%%%%%%
+          % grid of lptotdiff
+          lptotdiffmin=min(min(min(min(lptotdiff))));
+          lptotdiffmax=max(max(max(max(lptotdiff))))*SHIFTU;
+          steplptotdiff = (lptotdiffmax-lptotdiffmin)/(nptotdiff-1);
+          lptotdiffgrid=lptotdiffmin:steplptotdiff:lptotdiffmax;
+          %ptotdiffgrid = 10.^lptotdiffgrid;
+
+
+
+          %%%%%%%%%%%%%%%%%%%%%%%%%%%
+          % grid of lchidiff=log10(chidiff)=log10(utotdiff + ptotdiff)
+          lchidiffmin=min(min(min(min(lchidiff))));
+          lchidiffmax=max(max(max(max(lchidiff))))*SHIFTU;
+          steplchidiff = (lchidiffmax-lchidiffmin)/(nchidiff-1);
+          lchidiffgrid=lchidiffmin:steplchidiff:lchidiffmax;
+          %chidiffgrid = 10.^lchidiffgrid;
+
+          %%%%%%%%%%%%%%%%%%%%%%%%%%%
+          % grid of lstotdiff
+          lstotdiffmin=min(min(min(min(lstotdiff))));
+          lstotdiffmax=max(max(max(max(lstotdiff))))*SHIFTU;
+          steplstotdiff = (lstotdiffmax-lstotdiffmin)/(nstotdiff-1);
+          lstotdiffgrid=lstotdiffmin:steplstotdiff:lstotdiffmax;
+          %stotdiffgrid = 10.^lstotdiffgrid;
+
+
+          %%%%%%%%%%%%%%%%%%%%%%%%%%%
+          % grid of lsspecdiff
+          % specific entropy as a independent variable
+          % Note that could use stot gridding above since if here, stotdiff simply related to sspecdiff, but not necessary since no loss of accuracy here (unlike possible in interpolations farther below)
+          lsspecdiffmin=min(min(min(min(lsspecdiff))));
+          lsspecdiffmax=max(max(max(max(lsspecdiff))))*SHIFTU;
+          steplsspecdiff = (lsspecdiffmax-lsspecdiffmin)/(nsspecdiff-1);
+          lsspecdiffgrid=lsspecdiffmin:steplsspecdiff:lsspecdiffmax;
+          %sspecdiffgrid = 10.^lsspecdiffgrid;
+
+
+          
+          
+          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+          %
+          % OUTPUT grid of functions of utotdiff/ptotdiff/chidiff
+          %
+          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+          %lutotdiffmin=log10(rhobmin*c*c);
+          %lutotdiffmax=log10(rhobmax*c*c);
+          lutotdiffoutmin=min(lutotdiffoutmin,lutotdiffmin);
+          lutotdiffoutmax=max(lutotdiffoutmax,lutotdiffmax);
+          steplutotdiffout = (lutotdiffoutmax-lutotdiffoutmin)/(nutotdiffout-1);
+          lutotdiffoutgrid=lutotdiffoutmin:steplutotdiffout:lutotdiffoutmax;
+          %utotdiffoutgrid = 10.^lutotdiffoutgrid;
+          
+          %fprintf(fiddebug,'debug: %21.15g %21.15g\n',utotdiffoutgrid(1),10.0.^lutotdiffoutmin);
+          
+          %if(abs(utotdiffoutgrid(1)-10.0.^lutotdiffoutmin)>1E-13)
+          %  fprintf(fiddebug,'Problem with utotdiffoutgrid %d %d: %21.15g %21.15g\n',hiter,titer,utotdiffoutgrid(1),10.0.^lutotdiffoutmin);
+          %end
+
+          % OUTPUT grid of functions of ptotdiff
+          %lptotdiffmin=log10(rhobmin*c*c);
+          %lptotdiffmax=log10(rhobmax*c*c);
+          lptotdiffoutmin=min(lptotdiffoutmin,lptotdiffmin);
+          lptotdiffoutmax=max(lptotdiffoutmax,lptotdiffmax);
+          steplptotdiffout = (lptotdiffoutmax-lptotdiffoutmin)/(nptotdiffout-1);
+          lptotdiffoutgrid=lptotdiffoutmin:steplptotdiffout:lptotdiffoutmax;
+          %ptotdiffoutgrid = 10.^lptotdiffoutgrid;
+
+          % OUTPUT grid of functions of chidiff
+          %lchidiffmin=log10(rhobmin*c*c);
+          %lchidiffmax=log10(rhobmax*c*c);
+          lchidiffoutmin=min(lchidiffoutmin,lchidiffmin);
+          lchidiffoutmax=max(lchidiffoutmax,lchidiffmax);
+          steplchidiffout = (lchidiffoutmax-lchidiffoutmin)/(nchidiffout-1);
+          lchidiffoutgrid=lchidiffoutmin:steplchidiffout:lchidiffoutmax;
+          %chidiffoutgrid = 10.^lchidiffoutgrid;
+
+          % OUTPUT grid of functions of stotdiff
+          %lstotdiffmin=log10(rhobmin*c*c);
+          %lstotdiffmax=log10(rhobmax*c*c);
+          lstotdiffoutmin=min(lstotdiffoutmin,lstotdiffmin);
+          lstotdiffoutmax=max(lstotdiffoutmax,lstotdiffmax);
+          steplstotdiffout = (lstotdiffoutmax-lstotdiffoutmin)/(nstotdiffout-1);
+          lstotdiffoutgrid=lstotdiffoutmin:steplstotdiffout:lstotdiffoutmax;
+          %stotdiffoutgrid = 10.^lstotdiffoutgrid;
+
+          % below not really used
+          lsspecdiffoutmin=min(lsspecdiffoutmin,lsspecdiffmin);
+          lsspecdiffoutmax=max(lsspecdiffoutmax,lsspecdiffmax);
+          steplsspecdiffout = (lsspecdiffoutmax-lsspecdiffoutmin)/(nsspecdiffout-1);
+          lsspecdiffoutgrid=lsspecdiffoutmin:steplsspecdiffout:lsspecdiffoutmax;
+          %sspecdiffoutgrid = 10.^lsspecdiffoutgrid;
+          
+        
+        end %%%%%% end if utotdegencut==1 || utotdegencut==0
+
+        
+        
+        
         
 
         
-        if(passiter==2)
+        
+
+        
+        if(passiter==2 || require2passes==0)
 
 
           fprintf(fiddebug,'Begin Interpolate %d %d %d\n',hiter,titer,ynuiter);
@@ -1331,43 +1621,44 @@ function eos_extract()
                   %Consolidator: http://www.mathworks.com/matlabcentral/fileexchange/8354
 
                   % make sure things interpolating are unique
-                  % Here x = utotdiff,ptotdiff,chidiff,stotdiff,sspec
-                  % Here y = ptot, hspec, utot, ptot, stot, Tk, extra?, etc.
+                  % Here x = lutotdiff,lptotdiff,lchidiff,lstotdiff,lsspecdiff
+                  % Here y = ptot, hspec, utot, ptot, stot, sspec, Tk, extra?, etc.
                   
                   % below 4 are used for change of variable
-                  [lutotdiffutotx,lutotdiffutoty] = consolidator(log10(utotdiff(p,:,q,r)),log10(utot(p,:,q,r)),'mean',CONTOL2);
-                  [lptotdiffptotx,lptotdiffptoty] = consolidator(log10(ptotdiff(p,:,q,r)),log10(ptot(p,:,q,r)),'mean',CONTOL2);
-                  [lchidiffchix,lchidiffchiy] = consolidator(log10(chidiff(p,:,q,r)),log10(chi(p,:,q,r)),'mean',CONTOL2);
-                  [lstotdiffstotx,lstotdiffstoty] = consolidator(log10(stotdiff(p,:,q,r)),log10(stot(p,:,q,r)),'mean',CONTOL2);
+                  [lutotdiffutotx,lutotdiffutoty] = consolidator(lutotdiff(p,:,q,r),log10(utot(p,:,q,r)),'mean',CONTOL2);
+                  [lptotdiffptotx,lptotdiffptoty] = consolidator(lptotdiff(p,:,q,r),log10(ptot(p,:,q,r)),'mean',CONTOL2);
+                  [lchidiffchix,lchidiffchiy] = consolidator(lchidiff(p,:,q,r),log10(chi(p,:,q,r)),'mean',CONTOL2);
+                  [lstotdiffstotx,lstotdiffstoty] = consolidator(lstotdiff(p,:,q,r),log10(stot(p,:,q,r)),'mean',CONTOL2);
+                  [lsspecdiffsspecx,lsspecdiffsspecy] = consolidator(lsspecdiff(p,:,q,r),log10(sspec(p,:,q,r)),'mean',CONTOL2);
 
-                  % P(utotdiff)
-                  [lutotdiffptotx,lutotdiffptoty] = consolidator(log10(utotdiff(p,:,q,r)),log10(ptot(p,:,q,r)),'mean',CONTOL);
+                  % P(lutotdiff)
+                  [lutotdiffptotx,lutotdiffptoty] = consolidator(lutotdiff(p,:,q,r),log10(ptot(p,:,q,r)),'mean',CONTOL);
 
-                  % h(utotdiff)
-                  [lhspecx,lhspecy] = consolidator(log10(utotdiff(p,:,q,r)),log10(hspec(p,:,q,r)),'mean',CONTOL);
+                  % h(lutotdiff)
+                  [lhspecx,lhspecy] = consolidator(lutotdiff(p,:,q,r),log10(hspec(p,:,q,r)),'mean',CONTOL);
 
-                  % cs2(utotdiff)
-                  [lcs2rhoTx,lcs2rhoTy] = consolidator(log10(utotdiff(p,:,q,r)),log10(cs2rhoT(p,:,q,r)),'mean',CONTOL);
+                  % cs2(lutotdiff)
+                  [lcs2rhoTx,lcs2rhoTy] = consolidator(lutotdiff(p,:,q,r),log10(cs2rhoT(p,:,q,r)),'mean',CONTOL);
 
-                  % U(ptotdiff)
-                  [lptotdiffutotx,lptotdiffutoty] = consolidator(log10(ptotdiff(p,:,q,r)),log10(utot(p,:,q,r)),'mean',CONTOL);
-                  % U(stotdiff)
-                  [lstotdiffutotx,lstotdiffutoty] = consolidator(log10(stotdiff(p,:,q,r)),log10(utot(p,:,q,r)),'mean',CONTOL);
+                  % U(lptotdiff)
+                  [lptotdiffutotx,lptotdiffutoty] = consolidator(lptotdiff(p,:,q,r),log10(utot(p,:,q,r)),'mean',CONTOL);
+                  % U(lstotdiff)
+                  [lstotdiffutotx,lstotdiffutoty] = consolidator(lstotdiff(p,:,q,r),log10(utot(p,:,q,r)),'mean',CONTOL);
 
-                  % P(chidiff)
-                  [lchidiffptotx,lchidiffptoty] = consolidator(log10(chidiff(p,:,q,r)),log10(ptot(p,:,q,r)),'mean',CONTOL);
-                  % Ss(chidiff)
-                  [lchidiffsspecx,lchidiffsspecy] = consolidator(log10(chidiff(p,:,q,r)),log10(sspec(p,:,q,r)),'mean',CONTOL);
+                  % P(lchidiff)
+                  [lchidiffptotx,lchidiffptoty] = consolidator(lchidiff(p,:,q,r),log10(ptot(p,:,q,r)),'mean',CONTOL);
+                  % Ss(lchidiff)
+                  [lchidiffsspecx,lchidiffsspecy] = consolidator(lchidiff(p,:,q,r),log10(sspec(p,:,q,r)),'mean',CONTOL);
 
-                  % P(Ss)
-                  [lsspecptotx,lsspecptoty] = consolidator(log10(sspec(p,:,q,r)),log10(ptot(p,:,q,r)),'mean',CONTOL);
-                  % U(Ss)
-                  [lsspecutotx,lsspecutoty] = consolidator(log10(sspec(p,:,q,r)),log10(utot(p,:,q,r)),'mean',CONTOL);
-                  % utotdiff(Ss)
-                  [lsspecutotdiffx,lsspecutotdiffy] = consolidator(log10(sspec(p,:,q,r)),log10(utotdiff(p,:,q,r)),'mean',CONTOL);
+                  % P(lsspecdiff)
+                  [lsspecdiffptotx,lsspecdiffptoty] = consolidator(lsspecdiff(p,:,q,r),log10(ptot(p,:,q,r)),'mean',CONTOL);
+                  % U(lsspecdiff)
+                  [lsspecdiffutotx,lsspecdiffutoty] = consolidator(lsspecdiff(p,:,q,r),log10(utot(p,:,q,r)),'mean',CONTOL);
+                  % lutotdiff(lsspecdiff)
+                  [lsspecdifflutotdiffx,lsspecdifflutotdiffy] = consolidator(lsspecdiff(p,:,q,r),lutotdiff(p,:,q,r),'mean',CONTOL);
 
-                  % stot(utotdiff)
-                  [lutotdiffstotx,lutotdiffstoty] = consolidator(log10(utotdiff(p,:,q,r)),log10(stot(p,:,q,r)),'mean',CONTOL);
+                  % stot(lutotdiff)
+                  [lutotdiffstotx,lutotdiffstoty] = consolidator(lutotdiff(p,:,q,r),log10(stot(p,:,q,r)),'mean',CONTOL);
 
 
                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1379,17 +1670,17 @@ function eos_extract()
                   % interpolated/extrapolted/filled-in region
                   %
                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                  % Tk(utotdiff)
-                  [lutotdifftkx,lutotdifftky] = consolidator(log10(utotdiff(p,:,q,r)),log10(tk(p,:,q,r)),'mean',CONTOL);
+                  % Tk(lutotdiff)
+                  [lutotdifftkx,lutotdifftky] = consolidator(lutotdiff(p,:,q,r),log10(tk(p,:,q,r)),'mean',CONTOL);
 
-                  % Tk(ptotdiff)
-                  [lptotdifftkx,lptotdifftky] = consolidator(log10(ptotdiff(p,:,q,r)),log10(tk(p,:,q,r)),'mean',CONTOL);
+                  % Tk(lptotdiff)
+                  [lptotdifftkx,lptotdifftky] = consolidator(lptotdiff(p,:,q,r),log10(tk(p,:,q,r)),'mean',CONTOL);
 
-                  % Tk(chitotdiff)
-                  [lchidifftkx,lchidifftky] = consolidator(log10(chidiff(p,:,q,r)),log10(tk(p,:,q,r)),'mean',CONTOL);
+                  % Tk(lchitotdiff)
+                  [lchidifftkx,lchidifftky] = consolidator(lchidiff(p,:,q,r),log10(tk(p,:,q,r)),'mean',CONTOL);
                   
-                  % Tk(stotdiff)
-                  [lstotdifftkx,lstotdifftky] = consolidator(log10(stotdiff(p,:,q,r)),log10(tk(p,:,q,r)),'mean',CONTOL);
+                  % Tk(lstotdiff)
+                  [lstotdifftkx,lstotdifftky] = consolidator(lstotdiff(p,:,q,r),log10(tk(p,:,q,r)),'mean',CONTOL);
 
                   % EXTRAS
                   % mynewdata(:,:,:,:,ei)
@@ -1409,7 +1700,7 @@ function eos_extract()
                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                   % Setup size of the extra matrix since otherwise Matlab complains
                   % about size
-                  [tempx tempy] = consolidator(log10(utotdiff(p,:,q,r)),log10(abs(mynewdata(p,:,q,r,1))+1E-20),'mean',CONTOL);
+                  [tempx tempy] = consolidator(lutotdiff(p,:,q,r),log10(abs(mynewdata(p,:,q,r,1))+1E-20),'mean',CONTOL);
                   sizex=size(tempx(:,1));
                   sizexx=sizex(1);
                   lutotdiffextrax=zeros(numextras,sizexx);
@@ -1420,7 +1711,7 @@ function eos_extract()
                   for ei=extraii:extraii+numextras-1
                     % for extra : comes second for stupid reason that
                     % size(utotdiff(p,:,q,r)) is 1 200
-                    [lutotdiffextrax(ei-extraii+1,:) lutotdiffextray(ei-extraii+1,:)] = consolidator(log10(utotdiff(p,:,q,r)),log10(abs(mynewdata(p,:,q,r,ei))+1E-20),'mean',CONTOL);
+                    [lutotdiffextrax(ei-extraii+1,:) lutotdiffextray(ei-extraii+1,:)] = consolidator(lutotdiff(p,:,q,r),log10(abs(mynewdata(p,:,q,r,ei))+1E-20),'mean',CONTOL);
                   end
                   % now transpose result so that 200 1
                   temp=lutotdiffextrax';
@@ -1435,86 +1726,91 @@ function eos_extract()
                   
                   
 
-                  lutotdiffutotx=log10(utotdiff(p,:,q,r));
+                  lutotdiffutotx=lutotdiff(p,:,q,r);
                   lutotdiffutoty=log10(utot(p,:,q,r));
 
-                  lptotdiffptotx=log10(ptotdiff(p,:,q,r));
+                  lptotdiffptotx=lptotdiff(p,:,q,r);
                   lptotdiffptoty=log10(ptot(p,:,q,r));
 
-                  lchidiffchix=log10(chidiff(p,:,q,r));
+                  lchidiffchix=lchidiff(p,:,q,r);
                   lchidiffchiy=log10(chi(p,:,q,r));
 
-                  lstotdiffstotx=log10(stotdiff(p,:,q,r));
+                  lstotdiffstotx=lstotdiff(p,:,q,r);
                   lstotdiffstoty=log10(stot(p,:,q,r));
 
+                  lsspecdiffsspecx=lsspecdiff(p,:,q,r);
+                  lsspecdiffsspecy=log10(sspec(p,:,q,r));
                   
-                  % P(utotdiff)
-                  lutotdiffptotx=log10(utotdiff(p,:,q,r));
+                  
+                  % P(lutotdiff)
+                  lutotdiffptotx=lutotdiff(p,:,q,r);
                   lutotdiffptoty=log10(ptot(p,:,q,r));
 
-                  % h(utotdiff)
-                  lhspecx=log10(utotdiff(p,:,q,r));
+                  % h(lutotdiff)
+                  lhspecx=lutotdiff(p,:,q,r);
                   lhspecy=log10(hspec(p,:,q,r));
 
-                  % cs2(utotdiff)
-                  lcs2rhoTx=log10(utotdiff(p,:,q,r));
+                  % cs2(lutotdiff)
+                  lcs2rhoTx=lutotdiff(p,:,q,r);
                   lcs2rhoTy=log10(cs2rhoT(p,:,q,r));
 
 
-                  % U(ptotdiff)
-                  lptotdiffutotx=log10(ptotdiff(p,:,q,r));
+                  % U(lptotdiff)
+                  lptotdiffutotx=lptotdiff(p,:,q,r);
                   lptotdiffutoty=log10(utot(p,:,q,r));
-                  % U(stotdiff)
-                  lstotdiffutotx=log10(stotdiff(p,:,q,r));
+                  % U(lstotdiff)
+                  lstotdiffutotx=lstotdiff(p,:,q,r);
                   lstotdiffutoty=log10(utot(p,:,q,r));
 
                   
-                  % P(chidiff)
-                  lchidiffptotx=log10(chidiff(p,:,q,r));
+                  % P(lchidiff)
+                  lchidiffptotx=lchidiff(p,:,q,r);
                   lchidiffptoty=log10(ptot(p,:,q,r));
 
-                  % Ss(chidiff)
-                  lchidiffsspecx=log10(chidiff(p,:,q,r));
+                  % Ss(lchidiff)
+                  lchidiffsspecx=lchidiff(p,:,q,r);
                   lchidiffsspecy=log10(sspec(p,:,q,r));
 
-                  % P(Ss)
-                  lsspecptotx=log10(sspec(p,:,q,r));
-                  lsspecptoty=log10(ptot(p,:,q,r));
                   
-                  % U(Ss)
-                  lsspecutotx=log10(sspec(p,:,q,r));
-                  lsspecutoty=log10(utot(p,:,q,r));
+                  % P(lsspecdiff)
+                  lsspecdiffptotx=lsspecdiff(p,:,q,r);
+                  lsspecdiffptoty=log10(ptot(p,:,q,r));
                   
-                  % utotdiff(Ss)
-                  lsspecutotdiffx=log10(sspec(p,:,q,r));
-                  lsspecutotdiffy=log10(utotdiff(p,:,q,r));
+                  % U(lsspecdiff)
+                  lsspecdiffutotx=lsspecdiff(p,:,q,r);
+                  lsspecdiffutoty=log10(utot(p,:,q,r));
+                  
+                  % lutotdiff(lsspecdiff)
+                  lsspecdifflutotdiffx=lsspecdiff(p,:,q,r);
+                  lsspecdifflutotdiffy=lutotdiff(p,:,q,r);
 
                   
-                  % stot(utotdiff)
-                  lutotdiffstotx=log10(utotdiff(p,:,q,r));
+                  % stot(lutotdiff)
+                  lutotdiffstotx=lutotdiff(p,:,q,r);
                   lutotdiffstoty=log10(stot(p,:,q,r));
 
                   
-                  % Tk(utotdiff)
-                  lutotdifftkx=log10(utotdiff(p,:,q,r));
+                  % Tk(lutotdiff)
+                  lutotdifftkx=lutotdiff(p,:,q,r);
                   lutotdifftky=log10(tk(p,:,q,r));
 
-                  % Tk(ptotdiff)
-                  lptotdifftkx=log10(ptotdiff(p,:,q,r));
+                  % Tk(lptotdiff)
+                  lptotdifftkx=lptotdiff(p,:,q,r);
                   lptotdifftky=log10(tk(p,:,q,r));
 
-                  % Tk(chitotdiff)
-                  lchidifftkx=log10(chidiff(p,:,q,r));
+                  % Tk(lchidiff)
+                  lchidifftkx=lchidiff(p,:,q,r);
                   lchidifftky=log10(tk(p,:,q,r));
 
-                  % Tk(stotdiff)
-                  lstotdifftkx=log10(stotdiff(p,:,q,r));
+                  % Tk(lstotdiff)
+                  lstotdifftkx=lstotdiff(p,:,q,r);
                   lstotdifftky=log10(tk(p,:,q,r));
 
+                  
                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                   % Setup size of the extra matrix since otherwise Matlab complains
                   % about size
-                  tempx=log10(utotdiff(p,:,q,r));
+                  tempx=lutotdiff(p,:,q,r);
                   sizex=size(tempx(1,:));
                   sizexx=sizex(2);
                   lutotdiffextrax=zeros(numextras,sizexx);
@@ -1526,7 +1822,7 @@ function eos_extract()
                   for ei=extraii:extraii+numextras-1
                     % for extra : comes second for stupid reason that
                     % size(utotdiff(p,:,q,r)) is 1 200
-                    lutotdiffextrax(ei-extraii+1,:)=log10(utotdiff(p,:,q,r));
+                    lutotdiffextrax(ei-extraii+1,:)=lutotdiff(p,:,q,r);
                     lutotdiffextray(ei-extraii+1,:)=log10(abs(mynewdata(p,:,q,r,ei))+1E-20);
                   end
                   % now transpose result so that 200 1
@@ -1575,7 +1871,7 @@ function eos_extract()
                 
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 %
-                % Interpolate F(rho0,?)
+                % Interpolate F(rho0,?).  Note that if capitalized Udiff, Pdiff, CHIdiff, Sdiff, SSdiff, then really related to lutotdiff, lptotdiff, etc.  That is, really are log or some other arbitrary mapping.
                 %
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -1585,6 +1881,7 @@ function eos_extract()
                 PofPdiff(p,:,q,r) =     10.^(myinterp1(201,lptotdiffptotx, lptotdiffptoty, lptotdiffgrid',interptype));
                 CHIofCHIdiff(p,:,q,r) = 10.^(myinterp1(201,lchidiffchix, lchidiffchiy, lchidiffgrid',interptype));
                 SofSdiff(p,:,q,r) =     10.^(myinterp1(201,lstotdiffstotx, lstotdiffstoty, lstotdiffgrid',interptype));
+                SSofSSdiff(p,:,q,r) =   10.^(myinterp1(201,lsspecdiffsspecx, lsspecdiffsspecy, lsspecdiffgrid',interptype));
 
                 
                 % BELOW dependent variables are actually differenced (offsetted) versions
@@ -1593,7 +1890,6 @@ function eos_extract()
                 % dP/du |rho0
                 % dP/drho0 | u
                 PofUdiff(p,:,q,r) = 10.^(myinterp1(1,lutotdiffptotx, lutotdiffptoty, lutotdiffgrid',interptype));
-                
                 HofUdiff(p,:,q,r) = 10.^(myinterp1(2,lhspecx, lhspecy, lutotdiffgrid',interptype));
 
                 % c_s^2 in dimensionless units as function of rhob,U
@@ -1617,13 +1913,13 @@ function eos_extract()
                 % 1/(drho0/dSs)|chi
                 SSofCHIdiff(p,:,q,r) = 10.^(myinterp1(4,lchidiffsspecx, lchidiffsspecy, lchidiffgrid',interptype));
                 
-                % Below is PofS(rho0,S,H)
-                % below used for c_s^2 = 1/h dp/drho0|S
-                PofS(p,:,q,r) = 10.^(myinterp1(5,lsspecptotx, lsspecptoty, lsspecgrid',interptype));
-                UofS(p,:,q,r) = 10.^(myinterp1(6,lsspecutotx, lsspecutoty, lsspecgrid',interptype));
-                UdiffofS(p,:,q,r) = 10.^(myinterp1(6,lsspecutotdiffx, lsspecutotdiffy, lsspecgrid',interptype));
+                % Below is PofSSdiff(rho0,SS,H)
+                % below used for c_s^2 = 1/h dp/drho0|SS
+                PofSSdiff(p,:,q,r) = 10.^(myinterp1(5,lsspecdiffptotx, lsspecdiffptoty, lsspecdiffgrid',interptype));
+                UofSSdiff(p,:,q,r) = 10.^(myinterp1(6,lsspecdiffutotx, lsspecdiffutoty, lsspecdiffgrid',interptype));
+                UdiffofSSdiff(p,:,q,r) = 10.^(myinterp1(6,lsspecdifflutotdiffx, lsspecdifflutotdiffy, lsspecdiffgrid',interptype));
 
-                % Below is SofU(rho0,u,H)
+                % Below is SofU(rho0,u,H) : S = Sden
                 SofUdiff(p,:,q,r) = 10.^(myinterp1(8,lutotdiffstotx, lutotdiffstoty, lutotdiffgrid',interptype));
 
                 % Below is T(rho0,u)
@@ -1692,17 +1988,18 @@ function eos_extract()
             for q=1:ntdynorye
               for r=1:nhcm
                 % diff values
-                utotdiffgrid4d(p,:,q,r)  = utotdiffgrid(:);
-                ptotdiffgrid4d(p,:,q,r)  = ptotdiffgrid(:);
-                chidiffgrid4d(p,:,q,r)   = chidiffgrid(:);
-                stotdiffgrid4d(p,:,q,r)  = stotdiffgrid(:);
-                sspecgrid4d(p,:,q,r) = sspecgrid(:);
+                lutotdiffgrid4d(p,:,q,r)  = lutotdiffgrid(:);
+                lptotdiffgrid4d(p,:,q,r)  = lptotdiffgrid(:);
+                lchidiffgrid4d(p,:,q,r)   = lchidiffgrid(:);
+                lstotdiffgrid4d(p,:,q,r)  = lstotdiffgrid(:);
+                lsspecdiffgrid4d(p,:,q,r) = lsspecdiffgrid(:);
 
                 % actual values (just different label)
                 utotgrid4d(p,:,q,r)  = UofUdiff(p,:,q,r);
                 ptotgrid4d(p,:,q,r)  = PofPdiff(p,:,q,r);
                 chigrid4d(p,:,q,r)   = CHIofCHIdiff(p,:,q,r);
                 stotgrid4d(p,:,q,r)  = SofSdiff(p,:,q,r);
+                sspecgrid4d(p,:,q,r)  = SSofSSdiff(p,:,q,r);
               end
             end
           end
@@ -1742,9 +2039,12 @@ function eos_extract()
               PofPdiff = cleanvar(201, PofPdiff, rhobcsqgrid4d, ptotgrid4d);
               CHIofCHIdiff = cleanvar(202, CHIofCHIdiff, rhobcsqgrid4d, chigrid4d);
               SofSdiff = cleanvar(203, SofSdiff, rhobcsqgrid4d, stotgrid4d);
+              SSofSSdiff = cleanvar(204, SSofSSdiff, rhobcsqgrid4d, sspecgrid4d);
 
               PofUdiff = cleanvar(1, PofUdiff, rhobgrid4d, utotgrid4d);
               HofUdiff = cleanvar(2, HofUdiff, rhobcsqgrid4d, utotgrid4d); % specific enthalpy is dimensionless
+
+              cs2ofUdiff = cleanvar(40, cs2ofUdiff, rhobcsqgrid4d, utotgrid4d); % here cs2 is dimensionless
 
               UofPdiff = cleanvar(3, UofPdiff, rhobgrid4d, ptotgrid4d);
               UofSdiff = cleanvar(65, UofSdiff, rhobgrid4d, stotgrid4d);
@@ -1752,23 +2052,24 @@ function eos_extract()
               PofCHIdiff = cleanvar(4, PofCHIdiff, rhobgrid4d, chigrid4d);
               SSofCHIdiff = cleanvar(400, SSofCHIdiff, rhobgrid4d, chigrid4d);
 
-              PofS = cleanvar(5, PofS, rhobcsqgrid4d, sspecgrid4d); % here S is specific entropy and uses rhobcsq
-              UofS = cleanvar(6, UofS, rhobcsqgrid4d, sspecgrid4d); % here S is specific entropy and uses rhobcsq
+              PofSSdiff = cleanvar(5, PofSSdiff, rhobcsqgrid4d, sspecgrid4d); % here SS is specific entropy and uses rhobcsq
+              UofSSdiff = cleanvar(6, UofSSdiff, rhobcsqgrid4d, sspecgrid4d); % here SS is specific entropy and uses rhobcsq
+              UdiffofSSdiff = cleanvar(6, UdiffofSSdiff, rhobcsqgrid4d, sspecgrid4d); % here SS is specific entropy and uses rhobcsq
               
-              UdiffofS = cleanvar(6, UdiffofS, rhobcsqgrid4d, sspecgrid4d); % here S is specific entropy and uses rhobcsq
               SofUdiff = cleanvar(8, SofUdiff, rhobcsqgrid4d, utotgrid4d); % here S is entropy density and uses rhobcsq
 
               tkofUdiff = cleanvar(29, tkofUdiff, rhobgrid4d, utotgrid4d);
               tkofPdiff = cleanvar(30, tkofPdiff, rhobgrid4d, ptotgrid4d);
               tkofCHIdiff = cleanvar(31, tkofCHIdiff, rhobgrid4d, chigrid4d);
               tkofSdiff = cleanvar(30, tkofSdiff, rhobgrid4d, stotgrid4d);
+              
+              % DO NOT clean faketk's
 
               %size(tkofU)
               %size(rhobgrid4d)
-              %size(utotdiffgrid4d)
+              %size(lutotdiffgrid4d)
 
 
-              cs2ofUdiff = cleanvar(40, cs2ofUdiff, rhobcsqgrid4d, utotgrid4d); % here cs2 is dimensionless
               
               % GODMARK: Something wrong with how using memory?
               % extras:
@@ -1796,9 +2097,12 @@ function eos_extract()
                 PofPdiff(~isfinite(log10(PofPdiff)))=OUTBOUNDSVALUE;
                 CHIofCHIdiff(~isfinite(log10(CHIofCHIdiff)))=OUTBOUNDSVALUE;
                 SofSdiff(~isfinite(log10(SofSdiff)))=OUTBOUNDSVALUE;
+                SSofSSdiff(~isfinite(log10(SSofSSdiff)))=OUTBOUNDSVALUE;
 
                 PofUdiff(~isfinite(log10(PofUdiff)))=OUTBOUNDSVALUE;
                 HofUdiff(~isfinite(log10(HofUdiff)))=OUTBOUNDSVALUE;
+
+                cs2ofUdiff(~isfinite(log10(cs2ofUdiff)))=OUTBOUNDSVALUE;
 
                 UofPdiff(~isfinite(log10(UofPdiff)))=OUTBOUNDSVALUE;
                 UofSdiff(~isfinite(log10(UofSdiff)))=OUTBOUNDSVALUE;
@@ -1806,10 +2110,10 @@ function eos_extract()
                 PofCHIdiff(~isfinite(log10(PofCHIdiff)))=OUTBOUNDSVALUE;
                 SSofCHIdiff(~isfinite(log10(SSofCHIdiff)))=OUTBOUNDSVALUE;
 
-                PofS(~isfinite(log10(PofS)))=OUTBOUNDSVALUE;
-                UofS(~isfinite(log10(UofS)))=OUTBOUNDSVALUE;
+                PofSSdiff(~isfinite(log10(PofSSdiff)))=OUTBOUNDSVALUE;
+                UofSSdiff(~isfinite(log10(UofSSdiff)))=OUTBOUNDSVALUE;
+                UdiffofSSdiff(~isfinite(log10(UdiffofSSdiff)))=OUTBOUNDSVALUE;
 
-                UdiffofS(~isfinite(log10(UdiffofS)))=OUTBOUNDSVALUE;
                 SofUdiff(~isfinite(log10(SofUdiff)))=OUTBOUNDSVALUE;
 
                 tkofUdiff(~isfinite(log10(tkofUdiff)))=OUTBOUNDSVALUE;
@@ -1817,7 +2121,8 @@ function eos_extract()
                 tkofCHIdiff(~isfinite(log10(tkofCHIdiff)))=OUTBOUNDSVALUE;
                 tkofSdiff(~isfinite(log10(tkofSdiff)))=OUTBOUNDSVALUE;
 
-                cs2ofUdiff(~isfinite(log10(cs2ofUdiff)))=OUTBOUNDSVALUE;
+                % DO NOT clean faketk's
+
                 extraofUdiff(~isfinite(log10(extraofUdiff)))=OUTBOUNDSVALUE;
                 
               
@@ -1845,12 +2150,19 @@ function eos_extract()
                         if(~isfinite(SofSdiff(p,q,r,s)))
                           SofSdiff(p,q,r,s)=OUTBOUNDSVALUE;
                         end
+                        if(~isfinite(SSofSSdiff(p,q,r,s)))
+                          SSofSSdiff(p,q,r,s)=OUTBOUNDSVALUE;
+                        end
 
                         if(~isfinite(PofUdiff(p,q,r,s)))
                           PofUdiff(p,q,r,s)=OUTBOUNDSVALUE;
                         end
                         if(~isfinite(HofUdiff(p,q,r,s)))
                           HofUdiff(p,q,r,s)=OUTBOUNDSVALUE;
+                        end
+
+                        if(~isfinite(cs2ofUdiff(p,q,r,s)))
+                          cs2ofUdiff(p,q,r,s)=OUTBOUNDSVALUE;
                         end
 
                         if(~isfinite(UofPdiff(p,q,r,s)))
@@ -1867,16 +2179,16 @@ function eos_extract()
                           SSofCHIdiff(p,q,r,s)=OUTBOUNDSVALUE;
                         end
 
-                        if(~isfinite(PofS(p,q,r,s)))
-                          PofS(p,q,r,s)=OUTBOUNDSVALUE;
+                        if(~isfinite(PofSSdiff(p,q,r,s)))
+                          PofSSdiff(p,q,r,s)=OUTBOUNDSVALUE;
                         end
-                        if(~isfinite(UofS(p,q,r,s)))
-                          UofS(p,q,r,s)=OUTBOUNDSVALUE;
+                        if(~isfinite(UofSSdiff(p,q,r,s)))
+                          UofSSdiff(p,q,r,s)=OUTBOUNDSVALUE;
                         end
-
-                        if(~isfinite(UdiffofS(p,q,r,s)))
-                          UdiffofS(p,q,r,s)=OUTBOUNDSVALUE;
+                        if(~isfinite(UdiffofSSdiff(p,q,r,s)))
+                          UdiffofSSdiff(p,q,r,s)=OUTBOUNDSVALUE;
                         end
+                        
                         if(~isfinite(SofUdiff(p,q,r,s)))
                           SofUdiff(p,q,r,s)=OUTBOUNDSVALUE;
                         end
@@ -1894,9 +2206,7 @@ function eos_extract()
                           tkofSdiff(p,q,r,s)=OUTBOUNDSVALUE;
                         end
 
-                        if(~isfinite(cs2ofUdiff(p,q,r,s)))
-                          cs2ofUdiff(p,q,r,s)=OUTBOUNDSVALUE;
-                        end
+                        % DO NOT clean faketk's
                         
                         for ei=1:numextras
                           if(~isfinite(extraofUdiff(p,q,r,s,ei)))
@@ -1944,8 +2254,8 @@ function eos_extract()
           lrhocsqi = log10(rhocsqi);
           %drhocsqi = gradient(rhocsqi);
 
-          rhoi = rhob(:,1,1,1);
-          lrhoi = log10(rhoi);
+          %rhoi = rhob(:,1,1,1);
+          %lrhoi = log10(rhoi);
           %drhoi = gradient(rhoi);
 
           % entropy density (stot) as independent quantity is setup to be same as ugrid
@@ -1954,8 +2264,8 @@ function eos_extract()
 
           % specific entropy as independent quantity
           % sspeci = utotgrid./rhocsqi;
-          sspeci = sspecgrid';
-          lsspeci = lsspecgrid';
+          %sspeci = sspecgrid';
+          %lsspeci = lsspecgrid';
           %dsspeci=gradient(sspeci);
 
           
@@ -1964,23 +2274,27 @@ function eos_extract()
           % Also setup differenced version of independent variables
           %
           %%%%%%%%%%%%%%%%%%%%%%%
-          utotdiffi = utotdiffgrid';
+          %utotdiffi = utotdiffgrid';
           lutotdiffi = lutotdiffgrid';
           %dutoti=gradient(utoti);
 
-          ptotdiffi = ptotdiffgrid';
+          %ptotdiffi = ptotdiffgrid';
           lptotdiffi = lptotdiffgrid';
           %dptoti=gradient(ptoti);
 
-          chidiffi = chidiffgrid';
+          %chidiffi = chidiffgrid';
           lchidiffi = lchidiffgrid';
           %dchii=gradient(chii);
 
           % note that entropy density not currently used as independent variable for derivatives, only for function U(rho0,S)
-          stotdiffi = stotdiffgrid';
+          %stotdiffi = stotdiffgrid';
           lstotdiffi = lstotdiffgrid';
           %dstoti=gradient(stoti);
 
+          % note that entropy density not currently used as independent variable for derivatives, only for function U(rho0,S)
+          %sspecdiffi = sspecdiffgrid';
+          lsspecdiffi = lsspecdiffgrid';
+          %dsspeci=gradient(sspeci);
 
           
           % say X, Y, Xi and get Yi
@@ -2002,116 +2316,113 @@ function eos_extract()
               % Need UofUdiff, etc. for change of variables since independent variables need
               % to be simple diff version and can't use wildly varying actual utot/etc.
               
-              roughUofUdiff(:,:)=UofUdiff(:,:,q,r);
-              roughPofPdiff(:,:)=PofPdiff(:,:,q,r);
-              roughCHIofCHIdiff(:,:)=CHIofCHIdiff(:,:,q,r);
-              roughSofSdiff(:,:)=SofSdiff(:,:,q,r);
-              
-              roughPofS(:,:)=PofS(:,:,q,r);
-              roughPofUdiff(:,:)=PofUdiff(:,:,q,r);
-
-              roughPofCHIdiff(:,:)=PofCHIdiff(:,:,q,r);
-              roughSSofCHIdiff(:,:)=SSofCHIdiff(:,:,q,r);
-
-              roughSofUdiff(:,:)=SofUdiff(:,:,q,r);
-              
-              % moving average uses 1,1 for size of averaging region
-              myUofUdiff(:,:)=moving_average2(roughUofUdiff(:,:),1,1);
-              myPofPdiff(:,:)=moving_average2(roughPofPdiff(:,:),1,1);
-              myCHIofCHIdiff(:,:)=moving_average2(roughCHIofCHIdiff(:,:),1,1);
-              
-              myPofS(:,:)=moving_average2(roughPofS(:,:),1,1);
-              myPofUdiff(:,:)=moving_average2(roughPofUdiff(:,:),1,1);
-              myPofCHIdiff(:,:)=moving_average2(roughPofCHIdiff(:,:),1,1);
-              mySSofCHIdiff(:,:)=moving_average2(roughSSofCHIdiff(:,:),1,1);
-              mySofUdiff(:,:)=moving_average2(roughSofUdiff(:,:),1,1);
-
-              
-              % log method
-              % Notice that can use log method with differenced independent
-              % variables, but wouldn't have been able to with actual (e.g.) utot
-              % if utot<0.  But using differenced versions we don't care what
-              % offset was
-              
-              % apparently this logdertype is wrong since final result is seen to be incorrect with result offsetted by some log constant
-              if logdertype
-
-                [dUofUdiffdludiff(:,:), dUofUdiffdlrho0(:,:)] = gradient(myUofUdiff(:,:),lutotdiffi,lrhocsqi);
-                [dPofPdiffdlpdiff(:,:), dPofPdiffdlrho0(:,:)] = gradient(myPofPdiff(:,:),lptotdiffi,lrhocsqi);
-                [dCHIofCHIdiffdlchidiff(:,:), dCHIofCHIdiffdlrho0(:,:)] = gradient(myCHIofCHIdiff(:,:),lchidiffi,lrhocsqi);
-
+              if smoothbeforederivativestep2==1
                 
-                dUofUdiffdudiff(:,:,q,r)=dUofUdiffdludiff(:,:)./utotdiffgrid4d(:,:,q,r);
-                dUofUdiffdrho0(:,:,q,r)=dUofUdiffdlrho0(:,:)./rhobcsqgrid4d(:,:,q,r);
-
-                dPofPdiffdpdiff(:,:,q,r)=dPofPdiffdlpdiff(:,:)./ptotdiffgrid4d(:,:,q,r);
-                dPofPdiffdrho0(:,:,q,r)=dPofPdiffdlrho0(:,:)./rhobcsqgrid4d(:,:,q,r);
+                roughUofUdiff(:,:)=UofUdiff(:,:,q,r);
+                roughPofPdiff(:,:)=PofPdiff(:,:,q,r);
+                roughCHIofCHIdiff(:,:)=CHIofCHIdiff(:,:,q,r);
+                roughSofSdiff(:,:)=SofSdiff(:,:,q,r);
+                roughSSofSSdiff(:,:)=SSofSSdiff(:,:,q,r);
                 
-                dCHIofCHIdiffdchidiff(:,:,q,r)=dCHIofCHIdiffdlchidiff(:,:)./chidiffgrid4d(:,:,q,r);
-                dCHIofCHIdiffdrho0(:,:,q,r)=dCHIofCHIdiffdlrho0(:,:)./rhobcsqgrid4d(:,:,q,r);
+                roughPofSSdiff(:,:)=PofSSdiff(:,:,q,r);
+                roughPofUdiff(:,:)=PofUdiff(:,:,q,r);
 
-                
-                
-                [dPofSdlS(:,:), dPofSdlrho0(:,:)] = gradient(myPofS(:,:),lsspeci,lrhocsqi);
-                [dPofUdiffdludiff(:,:), dPofUdiffdlrho0(:,:)] = gradient(myPofUdiff(:,:),lutotdiffi,lrhocsqi);
-                [dPofCHIdiffdlchidiff(:,:), dPofCHIdiffdlrho0(:,:)] = gradient(myPofCHIdiff(:,:),lchidiffi,lrhocsqi);
-                [dSSofCHIdiffdlchidiff(:,:), dSSofCHIdiffdlrho0(:,:)] = gradient(mySSofCHIdiff(:,:),lchidiffi,lrhocsqi);
-                [dSofUdiffdludiff(:,:), dSofUdiffdlrho0(:,:)] = gradient(mySofUdiff(:,:),lutotdiffi,lrhocsqi);
-                
-                dPofSdS(:,:,q,r)=dPofSdlS(:,:)./sspecgrid4d(:,:,q,r);
-                dPofSdrho0(:,:,q,r)=dPofSdlrho0(:,:)./rhobcsqgrid4d(:,:,q,r);
+                roughPofCHIdiff(:,:)=PofCHIdiff(:,:,q,r);
+                roughSSofCHIdiff(:,:)=SSofCHIdiff(:,:,q,r);
 
-                dPofUdiffdudiff(:,:,q,r)=dPofUdiffdludiff(:,:)./utotdiffgrid4d(:,:,q,r);
-                dPofUdiffdrho0(:,:,q,r)=dPofUdiffdlrho0(:,:)./rhobcsqgrid4d(:,:,q,r);
-
-                dPofCHIdiffdchidiff(:,:,q,r)=dPofCHIdiffdlchidiff(:,:)./chidiffgrid4d(:,:,q,r);
-                dPofCHIdiffdrho0(:,:,q,r)=dPofCHIdiffdlrho0(:,:)./rhobcsqgrid4d(:,:,q,r);
-
-                dSSofCHIdiffdchidiff(:,:,q,r)=dSSofCHIdiffdlchidiff(:,:)./chidiffgrid4d(:,:,q,r);
-                dSSofCHIdiffdrho0(:,:,q,r)=dSSofCHIdiffdlrho0(:,:)./rhobcsqgrid4d(:,:,q,r);
-
-                dSofUdiffdudiff(:,:,q,r)=dSofUdiffdludiff(:,:)./utotdiffgrid4d(:,:,q,r);
-                dSofUdiffdrho0(:,:,q,r)=dSofUdiffdlrho0(:,:)./rhobcsqgrid4d(:,:,q,r);
+                roughSofUdiff(:,:)=SofUdiff(:,:,q,r);
                 
-                
+                % moving average uses 1,1 for size of averaging region
+                myUofUdiff(:,:)=moving_average2(roughUofUdiff(:,:),1,1);
+                myPofPdiff(:,:)=moving_average2(roughPofPdiff(:,:),1,1);
+                myCHIofCHIdiff(:,:)=moving_average2(roughCHIofCHIdiff(:,:),1,1);
+                mySofSdiff(:,:)=moving_average2(roughSofSdiff(:,:),1,1);
+                mySSofSSdiff(:,:)=moving_average2(roughSSofSSdiff(:,:),1,1);
+
+                myPofSSdiff(:,:)=moving_average2(roughPofSSdiff(:,:),1,1);
+                myPofUdiff(:,:)=moving_average2(roughPofUdiff(:,:),1,1);
+
+                myPofCHIdiff(:,:)=moving_average2(roughPofCHIdiff(:,:),1,1);
+                mySSofCHIdiff(:,:)=moving_average2(roughSSofCHIdiff(:,:),1,1);
+
+                mySofUdiff(:,:)=moving_average2(roughSofUdiff(:,:),1,1);
               else
+                myUofUdiff(:,:)=UofUdiff(:,:,q,r);
+                myPofPdiff(:,:)=PofPdiff(:,:,q,r);
+                myCHIofCHIdiff(:,:)=CHIofCHIdiff(:,:,q,r);
+                mySofSdiff(:,:)=SofSdiff(:,:,q,r);
+                mySSofSSdiff(:,:)=SSofSSdiff(:,:,q,r);
 
-                % below 3 for change of variable
-                [dUofUdiffdudiff(:,:,q,r), dUofUdiffdrho0(:,:,q,r)] = gradient(myUofUdiff(:,:),utotdiffi,rhocsqi);
-                [dPofPdiffdpdiff(:,:,q,r), dPofPdiffdrho0(:,:,q,r)] = gradient(myPofPdiff(:,:),ptotdiffi,rhocsqi);
-                [dCHIofCHIdiffdchidiff(:,:,q,r), dCHIofCHIdiffdrho0(:,:,q,r)] = gradient(myCHIofCHIdiff(:,:),chidiffi,rhocsqi);
+                myPofSSdiff(:,:)=PofSSdiff(:,:,q,r);
+                myPofUdiff(:,:)=PofUdiff(:,:,q,r);
 
-                
-                [dPofSdS(:,:,q,r), dPofSdrho0(:,:,q,r)] = gradient(myPofS(:,:),sspeci,rhocsqi);
-                
-                % PofU(rho0,U,H) then derivative is dU, drho0, dH
-                [dPofUdiffdudiff(:,:,q,r), dPofUdiffdrho0(:,:,q,r)] = gradient(myPofUdiff(:,:),utotdiffi,rhocsqi);
-                
-                % PofCHI(rho0, chi ,H) then derivative is dchi, drho0, dH
-                [dPofCHIdiffdchidiff(:,:,q,r), dPofCHIdiffdrho0(:,:,q,r)] = gradient(myPofCHIdiff(:,:),chidiffi,rhocsqi);
+                myPofCHIdiff(:,:)=PofCHIdiff(:,:,q,r);
+                mySSofCHIdiff(:,:)=SSofCHIdiff(:,:,q,r);
 
-                % SSofCHI(rho0, chi ,H) then derivative is dchi, drho0, dH
-                [dSSofCHIdiffdchidiff(:,:,q,r), dSSofCHIdiffdrho0(:,:,q,r)] = gradient(mySSofCHIdiff(:,:),chidiffi,rhocsqi);
-
-                % SofU(rho0,U,H) then derivative is dU, drho0, dH
-                [dSofUdiffdudiff(:,:,q,r), dSofUdiffdrho0(:,:,q,r)] = gradient(mySofUdiff(:,:), utotdiffi,rhocsqi);
-                
-                
+                mySofUdiff(:,:)=SofUdiff(:,:,q,r);
               end
               
+
+              % below are change of variable
+              [dUofUdiffdludiff(:,:,q,r), dUofUdiffdlrho0(:,:,q,r)] = gradient(myUofUdiff(:,:),lutotdiffi,lrhocsqi);
+              [dPofPdiffdlpdiff(:,:,q,r), dPofPdiffdlrho0(:,:,q,r)] = gradient(myPofPdiff(:,:),lptotdiffi,lrhocsqi);
+              [dCHIofCHIdiffdlchidiff(:,:,q,r), dCHIofCHIdiffdlrho0(:,:,q,r)] = gradient(myCHIofCHIdiff(:,:),lchidiffi,lrhocsqi);
+              [dSofSdiffdlstotdiff(:,:,q,r), dSofSdiffdlrho0(:,:,q,r)] = gradient(mySofSdiff(:,:),lstotdiffi,lrhocsqi);
+              [dSSofSSdiffdlsspecdiff(:,:,q,r), dSSofSSdiffdlrho0(:,:,q,r)] = gradient(mySSofSSdiff(:,:),lsspecdiffi,lrhocsqi);
+
+              % functions:
+              [dPofSSdiffdlsspecdiff(:,:,q,r), dPofSSdiffdlrho0(:,:,q,r)] = gradient(myPofSSdiff(:,:),lsspecdiffi,lrhocsqi);
               
-              % Now obtain true derivative for those derivatives that used diff
+              % PofU(rho0,U,H) then derivative is dU, drho0, dH
+              [dPofUdiffdludiff(:,:,q,r), dPofUdiffdlrho0(:,:,q,r)] = gradient(myPofUdiff(:,:),lutotdiffi,lrhocsqi);
+              
+              % PofCHI(rho0, chi ,H) then derivative is dchi, drho0, dH
+              [dPofCHIdiffdlchidiff(:,:,q,r), dPofCHIdiffdlrho0(:,:,q,r)] = gradient(myPofCHIdiff(:,:),lchidiffi,lrhocsqi);
+
+              % SSofCHI(rho0, chi ,H) then derivative is dchi, drho0, dH
+              [dSSofCHIdiffdlchidiff(:,:,q,r), dSSofCHIdiffdlrho0(:,:,q,r)] = gradient(mySSofCHIdiff(:,:),lchidiffi,lrhocsqi);
+
+              % SofU(rho0,U,H) then derivative is dU, drho0, dH
+              [dSofUdiffdludiff(:,:,q,r), dSofUdiffdlrho0(:,:,q,r)] = gradient(mySofUdiff(:,:), lutotdiffi,lrhocsqi);
+              
+
+              
+              
+              % Now obtain true derivative for those derivatives that used diff instead of explicit variable
               % versions as independent variables
-              % The below 3 things seem to cause division by 0, so trap below those things making the value out of bounds
-              dPofUdiffdu(:,:,q,r) = dPofUdiffdudiff(:,:,q,r)./dUofUdiffdudiff(:,:,q,r);
-              dPofCHIdiffdchi(:,:,q,r) = dPofCHIdiffdchidiff(:,:,q,r)./dCHIofCHIdiffdchidiff(:,:,q,r);
-              dSSofCHIdiffdchi(:,:,q,r) = dSSofCHIdiffdchidiff(:,:,q,r)./dCHIofCHIdiffdchidiff(:,:,q,r);
-              dSofUdiffdu(:,:,q,r) = dSofUdiffdudiff(:,:,q,r)./dUofUdiffdudiff(:,:,q,r);
+              % Note that we assume no mixing between rho0 and T, so change of variable just relies on one derivative and not the other
+              % The below change of variables seem to cause division by 0, so trap below those things making the value out of bounds
+              dPofSSdiffdsspec(:,:,q,r) = dPofSSdiffdlsspecdiff(:,:,q,r)./dSSofSSdiffdlsspecdiff(:,:,q,r);
+              dPofUdiffdu(:,:,q,r) = dPofUdiffdludiff(:,:,q,r)./dUofUdiffdludiff(:,:,q,r);
+              dPofCHIdiffdchi(:,:,q,r) = dPofCHIdiffdlchidiff(:,:,q,r)./dCHIofCHIdiffdlchidiff(:,:,q,r);
+              dSSofCHIdiffdchi(:,:,q,r) = dSSofCHIdiffdlchidiff(:,:,q,r)./dCHIofCHIdiffdlchidiff(:,:,q,r);
+              dSofUdiffdu(:,:,q,r) = dSofUdiffdludiff(:,:,q,r)./dUofUdiffdludiff(:,:,q,r);
+
+              % since rho is constant vs. SSdiff, Udiff, CHIdiff, then no need to compute derivative using gradient since know it analytically
+              % drho0/dlrho0 = rho0
+              drho0ofSSdiffdlrho0(:,:,q,r) = rhobcsqgrid4d(:,:,q,r); % must use super-sampled version
+              drho0ofUdiffdlrho0(:,:,q,r) = rhobcsqgrid4d(:,:,q,r);
+              drho0ofCHIdiffdlrho0(:,:,q,r) = rhobcsqgrid4d(:,:,q,r);
               
+              % now fix derivatives on density
+              dPofSSdiffdrho0(:,:,q,r) = dPofSSdiffdlrho0(:,:,q,r)./drho0ofSSdiffdlrho0(:,:,q,r);
+              dPofUdiffdrho0(:,:,q,r) = dPofUdiffdlrho0(:,:,q,r)./drho0ofUdiffdlrho0(:,:,q,r);
+              dPofCHIdiffdrho0(:,:,q,r) = dPofCHIdiffdlrho0(:,:,q,r)./drho0ofCHIdiffdlrho0(:,:,q,r);
+              dSSofCHIdiffdrho0(:,:,q,r) = dSSofCHIdiffdlrho0(:,:,q,r)./drho0ofCHIdiffdlrho0(:,:,q,r);
+              dSofUdiffdrho0(:,:,q,r) = dSofUdiffdlrho0(:,:,q,r)./drho0ofUdiffdlrho0(:,:,q,r);
+
+              % check if out of bounds
+              dPofSSdiffdsspec(~isfinite(dPofSSdiffdsspec)) = OUTBOUNDSVALUE;
               dPofUdiffdu(~isfinite(dPofUdiffdu)) = OUTBOUNDSVALUE;
               dPofCHIdiffdchi(~isfinite(dPofCHIdiffdchi)) = OUTBOUNDSVALUE;
               dSSofCHIdiffdchi(~isfinite(dSSofCHIdiffdchi)) = OUTBOUNDSVALUE;
               dSofUdiffdu(~isfinite(dSofUdiffdu)) = OUTBOUNDSVALUE;
+
+              dPofSSdiffdrho0(~isfinite(dPofSSdiffdrho0)) = OUTBOUNDSVALUE;
+              dPofUdiffdrho0(~isfinite(dPofUdiffdrho0)) = OUTBOUNDSVALUE;
+              dPofCHIdiffdrho0(~isfinite(dPofCHIdiffdrho0)) = OUTBOUNDSVALUE;
+              dSSofCHIdiffdrho0(~isfinite(dSSofCHIdiffdrho0)) = OUTBOUNDSVALUE;
+              dSofUdiffdrho0(~isfinite(dSofUdiffdrho0)) = OUTBOUNDSVALUE;
 
               
             end
@@ -2133,7 +2444,9 @@ function eos_extract()
 
           %clear rhocsqi drhocsqi rhoi drhoi sspeci dsspeci utoti dutoti ptoti
           %dptoti chii dchii
-          clear rhocsqi rhoi sspeci
+          clear rhocsqi
+          %rhoi
+          %sspeci
           %utoti ptoti chii
 
 
@@ -2141,7 +2454,7 @@ function eos_extract()
 
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
           %
-          % Some derivatives need to be have a change of variable
+          % Some derivatives need to be have a full change of variable on the grid itself
           %
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -2155,10 +2468,6 @@ function eos_extract()
             for q=1:ntdynorye
               for r=1:nhcm
                 
-                % below is presently dP/drho(rho0,S)|S and need dP/drho(rho0,u)|S so change S->u
-                % dPofSdrho0(:,:,q,r)
-
-                % GODMARK: Should below be utot(rho0,T) -> UofS(rho0,S) ?  Seems so.
                 
                 % HACK
                 %UdiffofS(p,:,q,r) = UdiffofS(p,:,q,r) + OUTBOUNDSVALUE;
@@ -2198,15 +2507,19 @@ function eos_extract()
                 %end
                 % END DEBUG:
                 
+                % below is presently dP/drho(rho0,S)|S and need dP/drho(rho0,u)|SS so change SS->u
+                % dPofSdrho0(:,:,q,r)
 
-                %[lutotdpx,lutotdpy] = consolidator(log10(UofS(p,:,q,r)),dPofSdrho0(p,:,q,r),'mean',CONTOL);
-                [lutotdiffdpx,lutotdiffdpy] = consolidator(log10(UdiffofS(p,:,q,r)),dPofSdrho0(p,:,q,r),'mean',CONTOL);
+                %[lutotdpx,lutotdpy] = consolidator(log10(UofS(p,:,q,r)),dPofSSdiffdrho0(p,:,q,r),'mean',CONTOL);
+                [lutotdiffdpx,lutotdiffdpy] = consolidator(UdiffofSSdiff(p,:,q,r),dPofSSdiffdrho0(p,:,q,r),'mean',CONTOL);
 
-                % Below is dP/drho0(U,rho0,H)|S
-                % below used for c_s^2 = 1/h dp/drho0|S
+                % Below is dP/drho0(U,rho0,H)|SS
+                % below used for c_s^2 = 1/h dp/drho0|SS
                 
-                % Using UdiffofS since interpolation needs to use consistent quantity : diff version
-                dPofUdiffdrho0cS(p,:,q,r) = myinterp1(9,lutotdiffdpx, lutotdiffdpy, lutotdiffgrid',interptype);
+                % Using UdiffofSSdiff since interpolation needs to use consistent quantity : diff version
+                % Below changes from SSdiff to Udiff dependence
+                % This may cause problems since may be more accurate (and avoid chopping off grid sections) by moving from T to U direction for sound speed (i.e. avoid entropy as in other sound speed method)
+                dPofUdiffdrho0cSS(p,:,q,r) = myinterp1(9,lutotdiffdpx, lutotdiffdpy, lutotdiffgrid',interptype);
 
               end
             end
@@ -2228,10 +2541,10 @@ function eos_extract()
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
             if(usecleanvar)
-              dPofUdiffdrho0cS = cleanvar(9, dPofUdiffdrho0cS, rhobcsqgrid4d, utotgrid4d);
+              dPofUdiffdrho0cSS = cleanvar(9, dPofUdiffdrho0cSS, rhobcsqgrid4d, utotgrid4d);
             else
               % this derivative should be checked for being positive definite since comes into sound speed that has otherwise positive definite contributions to a final positive definite quantity
-              dPofUdiffdrho0cS(~isfinite(log10(dPofUdiffdrho0cS)))=OUTBOUNDSVALUE;
+              dPofUdiffdrho0cSS(~isfinite(log10(dPofUdiffdrho0cSS)))=OUTBOUNDSVALUE;
             end
 
           end
@@ -2251,7 +2564,7 @@ function eos_extract()
             % c_s^2 in (cm/s)^2
             % dPofUdrho0cS already has 1/c^2 in it yso below is per unit c^2
             % GODMARK: Note that explicit energy/baryon comes in here, unlike wanted
-            cs2ofUdiffpost = (1.0./HofUdiff).*(dPofUdiffdrho0cS);
+            cs2ofUdiffpost = (1.0./HofUdiff).*(dPofUdiffdrho0cSS);
 
           end
 
@@ -2355,6 +2668,7 @@ function eos_extract()
                 PofPdiffout(p,:,q,r)          = 10.^(myinterp1(2,lptotdiffgrid, log10(PofPdiff(p,:,q,r)), lptotdiffoutgrid',interptype));
                 CHIofCHIdiffout(p,:,q,r)      = 10.^(myinterp1(3,lchidiffgrid, log10(CHIofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptype));
                 SofSdiffout(p,:,q,r)      = 10.^(myinterp1(3,lstotdiffgrid, log10(SofSdiff(p,:,q,r)), lstotdiffoutgrid',interptype));
+                %SSofSSdiffout(p,:,q,r)      = 10.^(myinterp1(3,lsspecdiffgrid, log10(SSofSSdiff(p,:,q,r)), lsspecdiffoutgrid',interptype)); % not needed in output
                 
                 
                 %            [lutotdpx,lutotdpy] = consolidator(log10(UofS(p,:,q,r)),log10(dPofSdrho0(p,:,q,r)),'mean',CONTOL);
@@ -2426,6 +2740,8 @@ function eos_extract()
           
           
           
+          
+          
           %%%%%%%%%%%%%%%%%%
           %
           % Force higher-order temperature variable to be NaN when linear (non-extrapolated) temperature variable is a NaN
@@ -2457,11 +2773,11 @@ function eos_extract()
             for q=1:ntdynorye
               for r=1:nhcm
                 % diff values
-                utotdiffgrid4dout(p,:,q,r)  = utotdiffoutgrid(:);
-                ptotdiffgrid4dout(p,:,q,r)  = ptotdiffoutgrid(:);
-                chidiffgrid4dout(p,:,q,r)   = chidiffoutgrid(:);
-                stotdiffgrid4dout(p,:,q,r)  = stotdiffoutgrid(:);
-                %sspecgrid4dout(p,:,q,r) = sspecoutgrid(:);
+                lutotdiffgrid4dout(p,:,q,r)  = lutotdiffoutgrid(:);
+                lptotdiffgrid4dout(p,:,q,r)  = lptotdiffoutgrid(:);
+                lchidiffgrid4dout(p,:,q,r)   = lchidiffoutgrid(:);
+                lstotdiffgrid4dout(p,:,q,r)  = lstotdiffoutgrid(:);
+                lsspecdiffgrid4dout(p,:,q,r)     = lsspecdiffoutgrid(:); % not really used
 
                 % actual values (just different label)
                 utotgrid4dout(p,:,q,r)  = UofUdiffout(p,:,q,r);
@@ -2484,6 +2800,11 @@ function eos_extract()
             tkofCHIdiffout(~isfinite(log10(tkofCHIdiffout)))=OUTBOUNDSVALUE;
             tkofSdiffout(~isfinite(log10(tkofSdiffout)))=OUTBOUNDSVALUE;
           end
+          
+          
+          
+
+          
           
           
           
@@ -2521,7 +2842,7 @@ function eos_extract()
           %
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-          clear UofUdiff PofPdiff CHIofCHIdiff SofSdiff
+          clear UofUdiff PofPdiff CHIofCHIdiff SofSdiff SSofSSdiff
           clear PofUdiff HofUdiff
           clear UofPdiff UofSdiff
           clear dPofUdiffdrho0 dPofUdiffdu cs2ofUdiff cs2ofUdiffcgs SofUdiff
@@ -2795,7 +3116,7 @@ function eos_extract()
                   %            0                  +5                                                      +8                              +4      +1               +2              +2      +1                     +3                      +3                      +3                              +4 
                   fprintf(fid3,'%3d %3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
                           m-1, n-1, titer-1, ynuiter-1, hiter-1,...
-                          rhob(m,n,o,p), utotdiffoutgrid(n), ptotdiffoutgrid(n), chidiffoutgrid(n), stotdiffoutgrid(n), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
+                          rhob(m,n,o,p), lutotdiffoutgrid(n), lptotdiffoutgrid(n), lchidiffoutgrid(n), lstotdiffoutgrid(n), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
                           UofUdiffout(m,n,o,p), PofPdiffout(m,n,o,p), CHIofCHIdiffout(m,n,o,p), SofSdiffout(m,n,o,p), ...
                           PofUdiffout(m,n,o,p), ...
                           UofPdiffout(m,n,o,p), UofSdiffout(m,n,o,p), ...
@@ -2851,11 +3172,13 @@ function eos_extract()
                   
                 end
                 
-                %           +0              +4                              +4                             +4
-                fprintf(fid6,'%3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
+                %           +0              +4                              +4                              +4                              +4                              +4
+                fprintf(fid6,'%3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
                         m-1, titer-1, ynuiter-1, hiter-1, ...
                         rhob(m,n,o,p), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
-                        utotoffset(m,n,o,p), ptotoffset(m,n,o,p), chioffset(m,n,o,p), stotoffset(m,n,o,p) ...
+                        utotoffset(m,n,o,p), ptotoffset(m,n,o,p), chioffset(m,n,o,p), stotoffset(m,n,o,p), ...
+                        utotin(m,n,o,p), ptotin(m,n,o,p), chiin(m,n,o,p), stotin(m,n,o,p), ...
+                        utotout(m,n,o,p), ptotout(m,n,o,p), chiout(m,n,o,p), stotout(m,n,o,p) ...
                         );
                 fprintf(fid6,'\n');
               end
@@ -2908,7 +3231,7 @@ function eos_extract()
 
   
     % go ahead and output header after first pass is done
-    if(passiter==1)
+    if(passiter==1 || require2passes==0)
       
       %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
       %
