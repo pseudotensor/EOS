@@ -20,13 +20,13 @@ c     1) Set iunit,ye_inp,temp_cgs,den_cgs,usediffinputs,limitedrange,temp_cgs_l
 c     2) Call lsguess, set ipvar(), call inveos(ye_inp,temp_nuc_lseos,den_nuc_lseos)
 c     2.5) Internally calls any_electron()
 c     3) Call store_row_fromlseos2cgs(didconverge)
-c     --- Sets lsabar,etc. <--abar,etc.
+c     --- Sets abar,etc. <--abar,etc.
 c     --- Contains lsoffset
 c     --- convert to ???_cgs single globals, also computes xnuc,npratiofree,etc. single globals
 c     
 c     If lsbox returns didconverge, then check convergence.  If goodconverge, then:
 c     --- Call store_row_fromcgsnuc2helmeos(index)
-c     ------ Stores abar_row(loci) <- lsabar,etc.
+c     ------ Stores abar_row(loci) <- abar,etc.
 c     ------ etaele_row(loci) <- musube
 c     ------ sets xnuc_row(loci) <- xnuc, etc.
 c     
@@ -156,7 +156,7 @@ ccccccccccccccccccccccccccccccccccccccc
 
       if( (whichnucleareos.eq.0).OR.(whichnucleareos.eq.2).OR.(whichnucleareos.eq.4)) then
 c     1 means do store result
-         call full_nonnuclear_eos(whichnucleareos,index,1,1)
+         call full_nonnuclear_eos_withlsspecies(whichnucleareos,index,1,1)
       end if
 
 cccccccccccccccccccccccccccccccccccccc
@@ -219,11 +219,9 @@ c     Constants
       include 'const.dek'
 
 
-      double precision AA,BB,CC
-
       double precision tmin,rhomin,tmax,rhomax, ypmin, ypmax
       double precision tminnse,rhominnse,tmaxnse,rhomaxnse
-      double precision taunse,taunselimit
+      double precision taunse,taunselimit,tminnse_cgs
       integer resettmin1,resettmin2,resettmin3
 
       double precision NUMEPSILON
@@ -253,27 +251,15 @@ c     Fix rhob and T near region where LSEOS is bad, but continue using normal r
 
 
 c     taunsefix now here:
-c     Note that as rho\to 0, taunse\to 0 so NSE well-established
-c     Note that as T\to \infty, taunse\to 0, so NSE well-established
-c     So we use taunse to force maximum on density
-
-         AA=179.7*1.0D9
-         BB=39.0d0
-         CC=0.2d0
-         taunse=(den_cgs)**(CC)*dexp(AA/(temp_cgs)-BB)
-         taunselimit=1.0
-
          resettmin1=0
          resettmin2=0
          resettmin3=0
 
-         if(taunse.gt.taunselimit) then
-c     Then NSE only established on second timescales, so don't use NSE table -- just revert to desired A,Z from stellar model and use simplified nuclear EOS.
-c     Make tmin a bit larger than temp_cgs so that if(temp_cgs.lt.tmin) is forced to be true
-c            tminnse=temp_cgs
+c     See if in NSE
+         call mytaunsecheck(den_cgs,temp_cgs,taunselimit,taunse,tminnse_cgs)
 
-c     Need to choose temperature for which NSE was broken at this density so can back-track to that temperature as the minimum allowed
-            tminnse = AA/(BB+dlog(taunselimit/(den_cgs)**(CC)))
+         if(taunse.gt.taunselimit) then
+            tminnse = tminnse_cgs
 
 c     Make rhomax a bit smaller than den_cgs so that if(den_cgs.gt.rhomax) is forced to be true
 c     Currently rhomax isn't used because always sufficiently in NSE
@@ -384,6 +370,132 @@ c     GODMARK:
 
 
 
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c
+c Get <A> if not nuclear EOS
+c
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      subroutine nonnuclearA(rho_cgs,tk_cgs,abarreturn,abarboundreturn)
+      implicit none
+      save
+
+c     Returned:
+      real*8 abarreturn,abarboundreturn
+c     Passed:
+      real*8 rho_cgs,tk_cgs
+c     Locals:
+      real*8 rho10,T11
+      real*8 taunse,taunselimit,tminnse_cgs
+      real*8 abarlocal
+      real*8 xnuc
+c     Functions:
+      real*8 xnuccalc
+      
+c     Constants
+      include 'const.dek'
+
+c     Purpose is to fit presupernovae model better
+      call computemutotfit_xnuc0(rho_cgs,tk_cgs,abarlocal)
+
+      rho10 = rho_cgs/1.0D10
+      T11 = tk_cgs/1.0D11
+
+c     Determine xnuc (uses xnuc_calc_new.f)
+      xnuc=xnuccalc(rho_cgs,tk_cgs)
+
+c     See if in NSE
+      call mytaunsecheck(rho_cgs,tk_cgs,taunselimit,taunse,tminnse_cgs)
+
+      if(taunse.gt.taunselimit) then
+c     Then not in NSE on the taunselimit timescale
+c     Then assume all bound nucleons with <A> as in computemutotfit_xnuc0
+         abarreturn = abarlocal
+         abarboundreturn = abarreturn
+      else
+c     Interpolate using xnuc from bound to free nucleons
+         abarreturn = (xnuc)*1.0 + (1.0-xnuc)*abarlocal
+         abarboundreturn = (xnuc)*0.0 + (1.0-xnuc)*abarlocal
+      end if
+      
+
+      return
+      end
+
+
+
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c
+c Check on whether in NSE or not (sets taunselimit unlike taunsecheck() where its an input)
+c
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      subroutine mytaunsecheck(rho_cgs,tk_cgs,taunselimit,taunse,tminnse_cgs)
+      implicit none
+      save
+
+      
+c     Passed:
+      real*8 rho_cgs,tk_cgs
+c     Returned:
+      real*8 taunselimit,taunse,tminnse_cgs
+
+c     10.0 second dynamical timescale is largest every expected to allow for NSE
+c     More reasonable would be 1.0 second, but want more important is smooth behavior in EOS at standard \rho,T.
+c      taunselimit=10.0
+      taunselimit=1.0
+      call taunsecheck(rho_cgs,tk_cgs,taunselimit,taunse,tminnse_cgs)
+
+      return
+      end
+
+
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+c
+c Check on whether in NSE or not
+c
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      subroutine taunsecheck(rho_cgs,tk_cgs,taunselimit,taunse,tminnse_cgs)
+      implicit none
+      save
+      
+c     Constants
+      include 'const.dek'
+
+c     Passed:
+      real*8 rho_cgs,tk_cgs,taunselimit
+c     Returned:
+      real*8 taunse,tminnse_cgs
+
+c     Locals:
+      double precision AA,BB,CC
+
+      double precision rhominnse,tmaxnse,rhomaxnse
+
+
+
+c     taunsefix now here:
+c     Note that as rho\to 0, taunse\to 0 so NSE well-established
+c     Note that as T\to \infty, taunse\to 0, so NSE well-established
+c     So we use taunse to force maximum on density
+      
+      AA=179.7*1.0D9
+      BB=39.0d0
+      CC=0.2d0
+      taunse=(rho_cgs)**(CC)*dexp(AA/(tk_cgs)-BB)
+      
+      
+c     Then NSE only established on second timescales, so don't use NSE table -- just revert to desired A,Z from stellar model and use simplified nuclear EOS.
+c     Make tmin a bit larger than temp_cgs so that if(temp_cgs.lt.tmin) is forced to be true
+      
+c     Need to choose temperature for which NSE was broken at this density so can back-track to that temperature as the minimum allowed
+      tminnse_cgs = AA/(BB+dlog(taunselimit/(rho_cgs)**(CC)))
+      
+
+
+      return
+      end
+
+
+
 
 
 
@@ -412,7 +524,7 @@ c..does all the stuff needed for calling the lattimer-swesty eos
 
 
 c..bring in the lattimer-swesty data structures
-c      include 'eos_m4c.commononly.inc'
+      include 'eos_m4c.commononly.inc'
 c      include 'el_eos.inc'
 c..bring in the data structure for LSEOS
 c  contains single globals
@@ -444,27 +556,14 @@ c     Local varaibles
       double precision difffactor
       double precision difffactor1,difffactor2,difffactorfinal
       double precision yekeep
+      real*8 dennuc_cgs
+
+
 
 c   Index used by LSEOS so can preserve original HELM EOS if LS EOS fails to converge
       lsindex=jhi_eos+1
-
-
-ccccccccccccccccc
-c     No longer use this method to fix non-NSE
-      if(1.eq.0) then
-c     
-c     taunsefix
-c     r= 10**8.186 cm taunse=1sec
-c     
-c     rhob<10**7.69549 in star
-c     temp<10**9.76274=5.791e+09 in star
-c     
-c     Below these the NSE timescale is 1-10seconds, so don't have to strictly use nuclear EOSs values
-c     rhotaunsefix=10**7.69549
-c     rhotaunsefix=10**8.5
-         rhotaunsefix=5.0D9
-         temptaunsefix=1.0D10
-      end if
+      helmindex=jhi_eos+2
+      otherindex=jhi_eos+3
 
 
 
@@ -523,6 +622,7 @@ c     write(*,*) "Calling shenbox",index,lsindex
             call shenbox(yelocal, tklocal, rhoblocal, didconverge)
 c      DEBUG:
 c            write(*,*) 'Called shenbox',yelocal,tklocal,rhoblocal,didconverge
+c            write(*,*) 'shenbox',index,abar,abar_row(index)
 
          end if
 
@@ -541,27 +641,35 @@ c         write(*,*) 'Called shenbox2',didconverge,goodconverge,numconverged,num
 
 
 
+
+
 cccccccccccccccccccccccccccccccccccccccccccccccccc
 c
 c  Store LSEOS/ShenEOS into HELM form
 c
 cccccccccccccccccccccccccccccccccccccccccccccccccc
+
          if(goodconverge.eq.1) then
+
+
+            write(*,*) 'WTFWTF1',index,abar,abar_row(index)
+
+
 c..   NOW BACK-STORE RESULTS into row vectors replacing results from HELM EOS if was using it
 c     write(*,*) "Calling store_row_fromlseos2helmeos",index,lsindex
             call store_row_fromcgsnuc2helmeos(index)
-         end if
+
+            write(*,*) 'WTFWTF2',index,abar,abar_row(index)
+            
+
+         else
+c     else if goodconverge.eq.0
 
 
-
-
-
-
-         if(goodconverge.eq.0) then
 cccccccccccccccccccccccccccccccccccccccccccccccccc
-c
-c  If no good convergence (or using limited range), then extrapolate into non-nuclear region (e.g. reduce to HELM/TIMMES/KAZ/etc. non-nuclear EOS)
-c
+c     
+c     If no good convergence (or using limited range), then extrapolate into non-nuclear region (e.g. reduce to HELM/TIMMES/KAZ/etc. non-nuclear EOS)
+c     
 cccccccccccccccccccccccccccccccccccccccccccccccccc
 
 
@@ -571,162 +679,178 @@ c     That is, convergence is not required to compute abar and zbar
 
 
 c     "Loop" is over LSEOS extra storage for HELM/TIMMES EOS array
-         lsindex=jhi_eos+1
-         loci=lsindex
+            lsindex=jhi_eos+1
+            helmindex=jhi_eos+2
+            loci=lsindex
 
 c     HELM and TIMMES EOSs use global variables already processed.  Save the ones that need to be changed before running then, so that they can be restored after that run
-         saved_jlo_eos=jlo_eos
-         saved_jhi_eos=jhi_eos
-         jlo_eos = loci
-         jhi_eos = loci
+            saved_jlo_eos=jlo_eos
+            saved_jhi_eos=jhi_eos
+            jlo_eos = loci
+            jhi_eos = loci
 
 
 ccccccccccccccccccccc
-c
-c     HELM/TIMMES need den,temp,abar,abarnum,zbar _row versions set
-c
+c     
+c     With no nuclear result at correct rho,T, need to use HELM/TIMMES/KAZ.
+c     But HELM/TIMMES/KAZ need den,temp,abar,abarnum,zbar _row versions to be set
+c     Below also smoothly connects energy and entropy per baryon to nuclear versions
+c     
 ccccccccccccccccccccc
+
+
+
+
+
 
 
 
 cccccccccccccccccccccccccccccccccccccccccccc
-c
-c usediffinputs==1
-c Hard switch to non-nuclear EOS
-c
+c     
+c     usediffinputs==1
+c     Hard switch to non-nuclear EOS
+c     
 cccccccccccccccccccccccccccccccccccccccccccc
 
-         
-         if(usediffinputs.eq.0 .OR. didconverge.eq.0) then
-cccccccccc STEP1 ccccccccccc
+            if(usediffinputs.eq.0 .OR. didconverge.eq.0) then
+ccccccccccSTEP1 ccccccccccc
 
 c     Get true rho,T
-            den_row(loci)=den_row(index)
-            temp_row(loci)=temp_row(index)
+               den_row(loci)=den_row(index)
+               temp_row(loci)=temp_row(index)
 
 c     Reset A,Z to old-non-nuclear values and  hope that similar and no discontinuities
-            zbar_row(loci)=zbar_row(index)
-            abar_row(loci)=abar_row(index)
-            abarnum_row(loci)=abarnum_row(index)
+               zbar_row(loci)=zbar_row(index)
+               abar_row(loci)=abar_row(index)
+               abarnum_row(loci)=abarnum_row(index)
 
-cccccccccc STEP2 ccccccccccc
+ccccccccccSTEP2 ccccccccccc
 c     Get non-nuclear solution and store all results into final solution ???_row(index) that is true solution states below lsindex
-            call full_nonnuclear_eos(whicheleeos,index,1,1)
+               call full_nonnuclear_eos_withlsspecies(whicheleeos,index,1,1)
 
 
-         end if
+
+            end if
+
+
+
+
 
 
 cccccccccccccccccccccccccccccccccccccccccccc
-c
-c usediffinputs==2
-c Use original A,Z for all non-nuclear regimes
-c Not good idea in general, and there will be jumps
-c
+c     
+c     usediffinputs==2
+c     Use original A,Z for all non-nuclear regimes
+c     Not good idea in general, and there will be jumps
+c     
 cccccccccccccccccccccccccccccccccccccccccccc
 
-         if(usediffinputs.eq.2  .AND. didconverge.eq.1) then
-cccccccccc STEP1 ccccccccccc
+            if(usediffinputs.eq.2  .AND. didconverge.eq.1) then
+ccccccccccSTEP1 ccccccccccc
 c     Select nuclear EOS version of A,Z only and hope that energy/baryon, etc. are continuous
 
 c     Get true rho,T
-            den_row(loci)=den_row(index)
-            temp_row(loci)=temp_row(index)
+               den_row(loci)=den_row(index)
+               temp_row(loci)=temp_row(index)
 c     At least use consistent zbar,abar
-            call store_row_lsspecies(loci)
+               call store_row_lsspecies(loci)
 c     This is the one set of things we store back overwriting original choice by non-nuclear EOS
-            call store_row_lsspecies(index)
+               call store_row_lsspecies(index)
 
-c            write(*,*) 'TEMPDEN',temp_row(loci),den_row(loci)
-c            write(*,*) 'LSBAR',lszbar,lsabar,lsabarnum
+c     write(*,*) 'TEMPDEN',temp_row(loci),den_row(loci)
 
-cccccccccc STEP2 ccccccccccc
+ccccccccccSTEP2 ccccccccccc
 c     Get non-nuclear solution (store in lsindex space)
-            call full_nonnuclear_eos(whicheleeos,lsindex,1,1)
+               call full_nonnuclear_eos(whicheleeos,loci,1,1)
 c     Now store pure electron quantities back to index space (avoids overwriting xnuc, etc. species info)
-            call store_row(index,whicheleeos,0)
+               call store_row(index,whicheleeos,0)
 
 
-         end if
+            end if
+
+
+
+
+
 
 
 cccccccccccccccccccccccccccccccccccccccccccc
-c
-c usediffinputs==3
-c Force non-nuclear energy per baryon to match nuclear energy/baryon
-c Note that species for nuclear not right if usingn old taunse, so jumps can occur that cannot fix
-c This is why went to usediffinputs==4
-c
+c     
+c     usediffinputs==3
+c     Force non-nuclear energy per baryon to match nuclear energy/baryon
+c     Note that species for nuclear not right if using old taunse, so jumps can occur that cannot fix
+c     This is why went to usediffinputs==4
+c     
 cccccccccccccccccccccccccccccccccccccccccccc
 
 
 
-         if(usediffinputs.eq.3  .AND. didconverge.eq.1) then
+            if(usediffinputs.eq.3  .AND. didconverge.eq.1) then
 c     Select nuclear EOS version of A,Z and obtain non-nuclear energy/baryon, etc. so can determine correct offset
 
 c     Setup lsindex version of density and temperature from limited nuclear table
-            den_row(loci)=den_cgs_lseos
-            temp_row(loci)=temp_cgs_lseos
+               den_row(loci)=den_cgs_lseos
+               temp_row(loci)=temp_cgs_lseos
 
-cccccccccc STEP1 ccccccccccc
+ccccccccccSTEP1 ccccccccccc
 c     Store nuclei terms from nuclear EOS at nuclear version of temperature and density
 c     Get in terms of per baryon
-            localpdiff = pbulk_cgs/den_row(loci)
-            localediff = ebulk_cgs
-            localsdiff = sbulk_cgs
+               localpdiff = pbulk_cgs/den_row(loci)
+               localediff = ebulk_cgs
+               localsdiff = sbulk_cgs
 c     Below was stupid idea that energy per baryon goes offset into entropy per baryon offset
-c            localsdiff = sbulk_cgs*temp_row(loci)
+c     localsdiff = sbulk_cgs*temp_row(loci)
 
-cccccccccc STEP2 ccccccccccc
+ccccccccccSTEP2 ccccccccccc
 c     Setup electron EOS inputs for A and Z to have consistent zbar,abar,density,temperature as nuclear EOS
 
-            call store_row_lsspecies(loci)
+               call store_row_lsspecies(loci)
 c     This is the one set of things we store back overwriting original choice by non-nuclear EOS
-            call store_row_lsspecies(index)
-            
+               call store_row_lsspecies(index)
+               
 
-cccccccccc STEP3 ccccccccccc
+ccccccccccSTEP3 ccccccccccc
 c     Get non-nuclear EOS solution for nuclei at nuclear version of temperature and density
 c     Store results in lsindex so don't overwrite nuclear species information
-c            write(*,*) 'atincorrect',den_row(loci),temp_row(loci)
-            call full_nonnuclear_eos(whicheleeos,lsindex,0,1)
+c     write(*,*) 'atincorrect',den_row(loci),temp_row(loci)
+               call full_nonnuclear_eos(whicheleeos,lsindex,0,1)
 
-cccccccccc STEP4 ccccccccccc
+ccccccccccSTEP4 ccccccccccc
 c     Store non-nuclear nuclei terms as part of offset (nuclear EOS includes Coulomb term in "ion")
 
 c     Shouldn't matter whether include other non-nuclei terms
-         if(1) then
-            localpdiff = localpdiff - (pion+pcoul)/den_row(loci)
-            localediff = localediff - (eion+ecoul)
-            localsdiff = localsdiff - (sion+scoul)
-c            localsdiff = localsdiff - (sion+scoul)*temp_row(loci)
-         else
-            localpdiff = localpdiff - (pres)/den_row(loci)
-            localediff = localediff - (ener)
-            localsdiff = localsdiff - (entr)
-c            localsdiff = localsdiff - (entr)*temp_row(loci)
-         end if
+               if(1) then
+                  localpdiff = localpdiff - (pion+pcoul)/den_row(loci)
+                  localediff = localediff - (eion+ecoul)
+                  localsdiff = localsdiff - (sion+scoul)
+c     localsdiff = localsdiff - (sion+scoul)*temp_row(loci)
+               else
+                  localpdiff = localpdiff - (pres)/den_row(loci)
+                  localediff = localediff - (ener)
+                  localsdiff = localsdiff - (entr)
+c     localsdiff = localsdiff - (entr)*temp_row(loci)
+               end if
 
-c         write(*,*) 'DIFFS',localpdiff,localediff,localsdiff
+c     write(*,*) 'DIFFS',localpdiff,localediff,localsdiff
 
-cccccccccc STEP5 ccccccccccc
+ccccccccccSTEP5 ccccccccccc
 c     Get non-nuclear EOS solution for nuclei at normal (correct) temperature and density
 c     Again, store results in lsindex space so don't overwrite species information
-         den_row(loci)=den_row(index)
-         temp_row(loci)=temp_row(index)
-c         write(*,*) 'atcorrect',den_row(loci),temp_row(loci)
+               den_row(loci)=den_row(index)
+               temp_row(loci)=temp_row(index)
+c     write(*,*) 'atcorrect',den_row(loci),temp_row(loci)
 
-         call full_nonnuclear_eos(whicheleeos,lsindex,0,1)
+               call full_nonnuclear_eos(whicheleeos,lsindex,0,1)
 
 
-
-c     p and s don't have binding energy to shift and any mismatch is simply error
-         localpdiff=0
+c     e and s can have per baryon shift
+c     p doesn't have binding energy to shift and any mismatch is simply error.  However, still require pressure to be monotonic vs. T, so still keep shift.
+c               localpdiff=0
 c     GODMARK:
-c         localediff=0
-c         localsdiff=0
+c     localediff=0
+c     localsdiff=0
 
-         if(1.eq.0) then
+               if(1.eq.0) then
 c     DEBUG GODMARK
 
 c     Interpolate pdiff from full value to 0 after 50% lower in density or temperature
@@ -734,277 +858,385 @@ c     den_row(loci)=den_cgs_lseos
 c     temp_row(loci)=temp_cgs_lseos
 c     den_row(loci)=den_row(index)
 c     temp_row(loci)=temp_row(index)
-            difffactor=(den_cgs_lseos-den_row(index))/den_cgs_lseos
+                  difffactor=(den_cgs_lseos-den_row(index))/den_cgs_lseos
 c     write(*,*) 'difffactor1a',difffactor
-            if(difffactor.lt.0.0) then
-               difffactor=0.0
-            else if(difffactor.gt.0.5) then
-               difffactor=0.0
-            else if(difffactor.ge.0.0 .AND. difffactor.le.0.5) then
-               difffactor=(1.0-0.0)/(0.0-0.5)*(difffactor-0.5)
-            end if
+                  if(difffactor.lt.0.0) then
+                     difffactor=0.0
+                  else if(difffactor.gt.0.5) then
+                     difffactor=0.0
+                  else if(difffactor.ge.0.0 .AND. difffactor.le.0.5) then
+                     difffactor=(1.0-0.0)/(0.0-0.5)*(difffactor-0.5)
+                  end if
 
-            localpdiff=localpdiff*difffactor
-            localediff=localediff*difffactor
-            localsdiff=localsdiff*difffactor
+                  localpdiff=localpdiff*difffactor
+                  localediff=localediff*difffactor
+                  localsdiff=localsdiff*difffactor
 c     write(*,*) 'difffactor1b',difffactor
 
-            difffactor=(temp_cgs_lseos-temp_row(index))/temp_cgs_lseos
+                  difffactor=(temp_cgs_lseos-temp_row(index))/temp_cgs_lseos
 c     write(*,*) 'difffactor2a',difffactor
-            if(difffactor.lt.0.0) then
-               difffactor=0.0
-            else if(difffactor.gt.0.5) then
-               difffactor=0.0
-            else if(difffactor.ge.0.0 .AND. difffactor.le.0.5) then
-               difffactor=(1.0-0.0)/(0.0-0.5)*(difffactor-0.5)
-            end if
+                  if(difffactor.lt.0.0) then
+                     difffactor=0.0
+                  else if(difffactor.gt.0.5) then
+                     difffactor=0.0
+                  else if(difffactor.ge.0.0 .AND. difffactor.le.0.5) then
+                     difffactor=(1.0-0.0)/(0.0-0.5)*(difffactor-0.5)
+                  end if
 
-            localpdiff=localpdiff*difffactor
-            localediff=localediff*difffactor
-            localsdiff=localsdiff*difffactor
+                  localpdiff=localpdiff*difffactor
+                  localediff=localediff*difffactor
+                  localsdiff=localsdiff*difffactor
 c     write(*,*) 'difffactor2b',difffactor
-         end if
+               end if
 
-cccccccccc STEP6 ccccccccccc
+ccccccccccSTEP6 ccccccccccc
 c     Offset non-nuclear EOSs values so matches well to nuclear EOS at boundary where goodconverge==0
 c     Only add it to ion term instead of Coulomb term
 c     If nuclear EOS matched perfectly already with non-nuclear EOS, then correction cancels
 c     As nuclear EOS has, say, a larger energy/baryon, then we add that to the "ion" term
-         pion = pion + localpdiff*den_row(loci)
-         eion = eion + localediff
-         sion = sion + localsdiff
-c         sion = sion + localsdiff/temp_row(loci)
+               pion = pion + localpdiff*den_row(loci)
+               eion = eion + localediff
+               sion = sion + localsdiff
+c     sion = sion + localsdiff/temp_row(loci)
 
 c     Have to correct totals and individuals since already totalled into pres,ener,entr inside non-nuclear EOS
-         pres = pres + localpdiff*den_row(loci)
-         ener = ener + localediff
-         entr = entr + localsdiff
-c         entr = entr + localsdiff/temp_row(loci)
+               pres = pres + localpdiff*den_row(loci)
+               ener = ener + localediff
+               entr = entr + localsdiff
+c     entr = entr + localsdiff/temp_row(loci)
 
-c         write(*,*) 'diffs',localpdiff,localediff,localsdiff
-
-cccccccccc STEP7 ccccccccccc
-c     Finally, store into ???_row @ index where normally would have been put
-c     This only stores back non-nuclear nucleon+electron+total into index space, not overwriting nuclear species information
-         call store_row(index,whicheleeos,0)
-
-
-
-
-         end if
-
-
-
-cccccccccccccccccccccccccccccccccccccccccccc
-c
-c usediffinputs==4
-c Interpolation between nuclear and non-nuclear since generally jump in species
-c But also account for energy/baryon offset between nuclear and non-nuclear EOS at boundary where nuclear EOS is used
-c so that in general this is continuous so consistent
-c Pressure and entropy not changed since assume any error is small
-c Species change can make pressure and entropy jump, but nuclear pressure is not dominant where doing this interpolation
-c
-cccccccccccccccccccccccccccccccccccccccccccc
-
-
-         if(usediffinputs.eq.4  .AND. didconverge.eq.1) then
-c     Select nuclear EOS version of A,Z and obtain non-nuclear energy/baryon, etc. so can determine correct offset
-
-c     Setup lsindex version of density and temperature from limited nuclear table
-            den_row(loci)=den_cgs_lseos
-            temp_row(loci)=temp_cgs_lseos
-
-cccccccccc STEP1 ccccccccccc
-c     Store nuclei terms from nuclear EOS at nuclear version of temperature and density
-c     Get in terms of per baryon
-            localpdiff = pbulk_cgs/den_row(loci)
-            localediff = ebulk_cgs
-            localsdiff = sbulk_cgs
-c            localsdiff = sbulk_cgs*temp_row(loci)
-
-cccccccccc STEP2 ccccccccccc
-c     Setup electron EOS inputs for A and Z to have consistent zbar,abar,density,temperature as nuclear EOS
-c            write(*,*) 'store_row_lsspecies',loci
-            call store_row_lsspecies(loci)
-c     This is the one set of things we store back overwriting original choice by non-nuclear EOS
-c     Required for getting nuclear version of (e.g.) etapls,etanls that is needed by neutrinos later
-c            call store_row_lsspecies(index)
-c            etap_row(index) = etap_row(loci)
-c            etan_row(index) = etan_row(loci)
-
-           
-
-cccccccccc STEP3 ccccccccccc
-c     Get non-nuclear EOS solution for nuclei at nuclear version of temperature, density, and species
-c     Store results in lsindex so don't overwrite nuclear species information
-c            write(*,*) 'atincorrect',den_row(loci),temp_row(loci)
-            call full_nonnuclear_eos(whicheleeos,lsindex,0,1)
-
-
-cccccccccc STEP4 ccccccccccc
-c     Store non-nuclear nuclei terms as part of offset (nuclear EOS includes Coulomb term in "ion")
-
-c     Shouldn't matter whether include other non-nuclei terms
-         if(1) then
-            localpdiff = localpdiff - (pion+pcoul)/den_row(loci)
-            localediff = localediff - (eion+ecoul)
-            localsdiff = localsdiff - (sion+scoul)
-c            localsdiff = localsdiff - (sion+scoul)*temp_row(loci)
-         else
-            localpdiff = localpdiff - (pres)/den_row(loci)
-            localediff = localediff - (ener)
-            localsdiff = localsdiff - (entr)
-c           binding energy comes in as de, then ds = de/(kb*T), so offset that ds, not just specific entropy, so can offset correctly when temperatures vary between nuclear point and non-nuclear point
-c     Stupid idea:
-c            localsdiff = localsdiff - (entr)*temp_row(loci)
-         end if
-
-c         write(*,*) 'DIFFS',localpdiff,localediff,localsdiff
-
-cccccccccc STEP5 ccccccccccc
-c     Get non-nuclear EOS solution for nuclei at normal (correct) temperature and density and (correct) species
-c     Again, store results in lsindex space so don't overwrite species information
-         den_row(loci)=den_row(index)
-         temp_row(loci)=temp_row(index)
-
-         
-         if(1.eq.0) then
-c     Reset A,Z to old-non-nuclear values and  hope that similar and no discontinuities
-            zbar_row(loci)=zbar_row(index)
-            abar_row(loci)=abar_row(index)
-            abarnum_row(loci)=abarnum_row(index)
-         else
-c     Interpolate A for a bit to avoid induced jumps in A (note, real star or whatever can have real compositional jumps)
-            difffactor1=(den_cgs_lseos-den_row(index))/den_cgs_lseos
-            difffactor2=(temp_cgs_lseos-temp_row(index))/temp_cgs_lseos
-            difffactor=dmax1(difffactor1,difffactor2)
-
-
-c     Allow for 50% change in T or rho before completely changing A
-            if(difffactor.lt.0.0) then
-               difffactorfinal=1.0
-            else if(difffactor.gt.0.2) then
-               difffactorfinal=0.0
-            else if(difffactor.ge.0.0 .AND. difffactor.le.0.2) then
-               difffactorfinal=(1.0-0.0)/(0.0-0.2)*(difffactor-0.2)
-            end if
-
-c     yekeep could be computed using loci or index, same ye
-            yekeep=zbar_row(loci)/abarnum_row(loci)
-            abar_row(loci)=abar_row(index)*(1.0d0-difffactorfinal) + abar_row(loci)*difffactorfinal
-            abarnum_row(loci)=abarnum_row(index)*(1.0d0-difffactorfinal) + abarnum_row(loci)*difffactorfinal
-            zbar_row(loci)=yekeep*abarnum_row(loci)
-            zbar_row(index)=zbar_row(loci)
-            abar_row(index)=abar_row(loci)
-            abarnum_row(index)=abarnum_row(loci)
-
-c            write(*,*) 'diffstuff',difffactor1,difffactor2,difffactor,difffactorfinal
-
-         end if
-
-c         write(*,*) 'atcorrect',den_row(loci),temp_row(loci)
-
-c     abar,zbar,abarnum still old non-nuclear values since nuclear didn't converge so didn't call store_row_lsspecies()
-c     The 0,1 means don't overwrite any _row's or species information (i.e. don't call store_row_lsspecies())
-         call full_nonnuclear_eos(whicheleeos,lsindex,0,1)
-
-
-c     p doesn't have binding energy to shift and any mismatch is simply error
-         localpdiff=0
-c     GODMARK:
-c     e and s DO have binding energy offset (ds = de/(kb T))
-c         localediff=0
-c         localsdiff=0
-
-         if(1.eq.0) then
-c     DEBUG GODMARK
-
-c     Interpolate pdiff from full value to 0 after 50% lower in density or temperature
-c     den_row(loci)=den_cgs_lseos
-c     temp_row(loci)=temp_cgs_lseos
-c     den_row(loci)=den_row(index)
-c     temp_row(loci)=temp_row(index)
-            difffactor=(den_cgs_lseos-den_row(index))/den_cgs_lseos
-c     write(*,*) 'difffactor1a',difffactor
-            if(difffactor.lt.0.0) then
-               difffactor=0.0
-            else if(difffactor.gt.0.5) then
-               difffactor=0.0
-            else if(difffactor.ge.0.0 .AND. difffactor.le.0.5) then
-               difffactor=(1.0-0.0)/(0.0-0.5)*(difffactor-0.5)
-            end if
-
-            localpdiff=localpdiff*difffactor
-            localediff=localediff*difffactor
-            localsdiff=localsdiff*difffactor
-c     write(*,*) 'difffactor1b',difffactor
-
-            difffactor=(temp_cgs_lseos-temp_row(index))/temp_cgs_lseos
-c     write(*,*) 'difffactor2a',difffactor
-            if(difffactor.lt.0.0) then
-               difffactor=0.0
-            else if(difffactor.gt.0.5) then
-               difffactor=0.0
-            else if(difffactor.ge.0.0 .AND. difffactor.le.0.5) then
-               difffactor=(1.0-0.0)/(0.0-0.5)*(difffactor-0.5)
-            end if
-
-            localpdiff=localpdiff*difffactor
-            localediff=localediff*difffactor
-            localsdiff=localsdiff*difffactor
-c     write(*,*) 'difffactor2b',difffactor
-         end if
-
-cccccccccc STEP6 ccccccccccc
-c     Offset non-nuclear EOSs values so matches well to nuclear EOS at boundary where goodconverge==0
-c     Only add it to ion term instead of Coulomb term
-c     If nuclear EOS matched perfectly already with non-nuclear EOS, then correction cancels
-c     As nuclear EOS has, say, a larger energy/baryon, then we add that to the "ion" term
-         pion = pion + localpdiff*den_row(loci)
-         eion = eion + localediff
-         sion = sion + localsdiff
-c         sion = sion + localsdiff/temp_row(loci)
-
-c     Have to correct totals and individuals since already totalled into pres,ener,entr inside non-nuclear EOS
-         pres = pres + localpdiff*den_row(loci)
-         ener = ener + localediff
-         entr = entr + localsdiff
-c         entr = entr + localsdiff/temp_row(loci)
-
-c         write(*,*) 'diffs',localpdiff,localediff,localsdiff
+c     write(*,*) 'diffs',localpdiff,localediff,localsdiff
 
 ccccccccccSTEP7 ccccccccccc
 c     Finally, store into ???_row @ index where normally would have been put
-c     This only stores back non-nuclear nucleon+electron+total into index space, ALSO overwriting nuclear species information
+c     This only stores back non-nuclear nucleon+electron+total into index space, not overwriting nuclear species information
+               call store_row(index,whicheleeos,0)
+
+
+
+
+            end if
+
+
+
+
+
+
+
+cccccccccccccccccccccccccccccccccccccccccccc
+c     
+c     usediffinputs==4
+c     Interpolation between nuclear and non-nuclear since generally jump in species
+c     But also account for energy/baryon offset between nuclear and non-nuclear EOS at boundary where nuclear EOS is used
+c     so that in general this is continuous so consistent
+c     Pressure not changed since assume any error is small and is physical
+c     Species change can make pressure and entropy jump, but nuclear pressure is not dominant where doing this interpolation
+c     However, do have to ensure <A> grows monotonically as T->0, or else entropy, pressure, etc. will be non-monotonic
+c     
+cccccccccccccccccccccccccccccccccccccccccccc
+
+
+            if(usediffinputs.eq.4  .AND. didconverge.eq.1) then
+c     
+c     Note that at this point, all quantities in _row(index) are non-nuclear
+c     All quantities in _row(loci=lsindex) are unset
+c     But nuclear values at edge of its table do exist in single (not _row) values
+c     Here we do something like what "call store_row_fromcgsnuc2helmeos(index)" does, but merging non-nuclear and nuclear EOSs
+
+c     Select nuclear EOS version of A,Z and obtain non-nuclear energy/baryon, etc. so can determine correct offset
+
+
+
+
+
+
+ccccccccccSTEP1 ccccccccccc
+c     Store nuclei terms from nuclear EOS at nuclear version of temperature and density
+c     Get in terms of per baryon
+               localpdiff = pbulk_cgs/den_cgs_lseos
+               localediff = ebulk_cgs
+               localsdiff = sbulk_cgs
+c     localsdiff = sbulk_cgs*temp_row(lsindex)
+
+ccccccccccSTEP2 ccccccccccc
+c     Setup below call to electron EOS to have inputs for A and Z to be consistent with zbar,abar,density,temperature of nuclear EOS
+c     Sets abar_row(), xneut_row(), etc. as nuclear versions in _row(lsindex)
+               call store_row_lsspecies(lsindex)
+               
+
+ccccccccccSTEP3 ccccccccccc
+c     Get non-nuclear EOS solution for nuclei at nuclear version of temperature, density, and species
+c     Store results in lsindex=lsindex so don't overwrite nuclear species information from non-nuclear EOS that is in _row(index)
+c     write(*,*) 'atincorrect',den_row(lsindex),temp_row(lsindex)
+c     0,0 means do not store result into _row() AND do not store species into ANY OF singles or _row()
+c     1,1 means store result into _row() and species into both singles and _row's
+c     Here we only need "HELM" singles
+               den_row(helmindex)=den_cgs_lseos
+               temp_row(helmindex)=temp_cgs_lseos
+               call store_row_lsspecies(helmindex)
+               call full_nonnuclear_eos(whicheleeos,helmindex,0,0)
+
+
+
+ccccccccccSTEP4 ccccccccccc
+c     Store non-nuclear nuclei terms as part of offset (nuclear EOS includes Coulomb term in "ion")
+
+c     Shouldn't matter whether include other non-nuclei terms
+               if(1) then
+                  localpdiff = localpdiff - (pion+pcoul)/den_cgs_lseos
+                  localediff = localediff - (eion+ecoul)
+                  localsdiff = localsdiff - (sion+scoul)
+c     localsdiff = localsdiff - (sion+scoul)*temp_row(lsindex)
+               else
+                  localpdiff = localpdiff - (pres)/den_cgs_lseos
+                  localediff = localediff - (ener)
+                  localsdiff = localsdiff - (entr)
+c     binding energy comes in as de, then ds = de/(kb*T), so offset that ds, not just specific entropy, so can offset correctly when temperatures vary between nuclear point and non-nuclear point
+c     Stupid idea:
+c     localsdiff = localsdiff - (entr)*temp_row(lsindex)
+               end if
+
+c     write(*,*) 'DIFFS',localpdiff,localediff,localsdiff
+
+
+
+ccccccccccSTEP5 ccccccccccc
+c     Get non-nuclear EOS solution for nuclei at normal (correct) temperature and density and (correct) species
+c     Again, store results in lsindex space so don't overwrite species information
+
+               
+
+
+c     Interpolate A for a bit to avoid induced jumps in A (note, real star or whatever can have real compositional jumps)
+               difffactor1=dabs(den_cgs_lseos-den_row(index))/den_cgs_lseos
+               difffactor2=dabs(temp_cgs_lseos-temp_row(index))/temp_cgs_lseos
+               difffactor=dmax1(difffactor1,difffactor2)
+
+
+c     Allow for 50% change in T or rho before completely changing A
+               difffactorfinal=1.0
+               if(difffactor.gt.0.2) then
+                  difffactorfinal=0.0
+               else
+                  difffactorfinal=(1.0-0.0)/(0.0-0.2)*(difffactor-0.2)
+               end if
+
+
+c     DEBUG:
+c               write(*,*) 'diffs',difffactor1,difffactor2,difffactor,difffactorfinal
+
+
+
+
+
+cccccccccccccccccccccccccccccccc
+c     In case that we are below LS density
+c     Strictly interpolation is very poor beyond nuclear density and no sense using extrapolation of stellar model <A> there, so truncate
+c               dennuc_cgs = 10.0D0**(14.2D0)
+c     Well, set this where never stellar model would have this density
+               dennuc_cgs = 5.0D9
+
+               if(den_cgs_lseos.gt.den_row(index)) then
+c     Then don't have to worry about reverting to nuclear <A> for monotonicity in T since at different T than nuclear EOS
+                  call interpolate_row_lsspecies(difffactorfinal,lsindex,index,helmindex)
+
+c     Also, avoid changing pressure per unit baryon.
+                  localpdiff = 0.0
+
+c     DEBUG:
+c                  write(*,*) 'Reverted to interpolated HELM species',helmindex
+c                  write(*,*) 'df,LSa,OA,newA',difffactorfinal,abar_row(lsindex),abar_row(index),abar_row(helmindex)
+c                  write(*,*) 'blob',den_cgs_lseos,den_row(index)
+
+               else
+c     Assign final <Z>, <A>, but must maintain monotonicity with temperature (i.e. <A> must grow with decreasing T)
+                  if( (temp_cgs_lseos.ge.temp_row(index) .AND. 
+     1                 abar_row(lsindex).ge.abar_row(index)) .OR.
+     1                 (den_row(index).ge.dennuc_cgs)
+     1                 ) then
+c     Then cannot use new non-nuclear <A> since induces non-monotonicity, so use nuclear values of <A>
+c     Nuclear single and array species still stored (i.e. full_nonnuclear_eos(...,0,0) call does not change single or array species), so store them into index
+
+c     Below would just repeat what's already done
+c     call store_row_lsspecies(lsindex)
+c     Also store nuclear species singles into final _row(index)
+                     call store_row_lsspecies(helmindex)
+c     DEBUG:
+c                     write(*,*) 'Reverted to nuclear species',helmindex
+c     Also Store species into nonnuclear _row()
+c     call store_row_lsspecies(helmindex)
+
+c     Not good enough to only copy over zbar,abar,abarnum since other species information needed for neutrinos later
+c     zbar_row(index)=zbar_row(lsindex)
+c     abar_row(index)=abar_row(lsindex)
+c     abarnum_row(index)=abarnum_row(lsindex)
+                  else
+c     Can use non-nuclear <A> with nuclear <A> to get interpolated value that tends toward non-nuclear <A> as T->0
+c     yekeep could be computed using lsindex or index, same ye
+c     Need to interpolate all species information, not just <A>, <Z>, since detailed species information needed for neutrinos
+c     Interpolate species information before calling full_nonnuclear_eos()
+c     Take lsindex and index and interpolate and put result into lsindex for full_nonnuclear_eos() below
+c     NOTEMARK: The below 2 calls only really give correct interpolation for <A> and <Z> for given Y_e as needed for full_nonnuclear_eos() below
+c     lsindex=lsindex: nuclear
+c     index=original <A>
+c     helmindex=output index
+c     Store nuclear species into final _row(index)
+                     call interpolate_row_lsspecies(difffactorfinal,lsindex,index,helmindex)
+c     DEBUG:
+c                     write(*,*) 'Interpolatednuclear species',helmindex
+c                     write(*,*) 'df,LSa,OA,newA',difffactorfinal,abar_row(lsindex),abar_row(index),abar_row(helmindex)
+
+                  end if
+
+c     End if else beneath LS in temperature
+               end if
+
+c     Now species information is fixed and in _row(lsindex=lsindex) and _row(index)
+
+
+c     write(*,*) 'atcorrect',den_row(lsindex),temp_row(lsindex)
+
+c     abar,zbar,abarnum still old non-nuclear values since nuclear didn't converge so didn't call store_row_lsspecies()
+c     Here we call non-nuclear EOS with interpolated <A> and <Z> upon input with non-nuclear species stored into final _row(index)
+               den_row(helmindex)=den_row(index)
+               temp_row(helmindex)=temp_row(index)
+               call full_nonnuclear_eos_withlsspecies(whicheleeos,helmindex,1,1)
+c     So after full_nonnuclear_eos() call with 1,1 above, non-nuclear EOS uses some interpolated <A> and <Z>, but otherwise determines everything else for itself (i.e. no use of other species interpolation)
+
+
+c     e and s can have per baryon shift
+c     p doesn't have binding energy to shift and any mismatch is simply error.  However, still require pressure to be monotonic vs. T, so still keep shift.
+c               localpdiff=0
+c     GODMARK:
+c     e and s DO have binding energy offset (ds = de/(kb T))
+c     localediff=0
+c     localsdiff=0
+
+
+c     Don't allow ad-hoc pdiff correction to be negative, since could eventually result in negative pressure
+c     And negative correction not required for monotonicity vs. T
+c     Ah, noted that p_N itself can be negative (due to Coulomb corrections), so allow negative correction
+c     .AND. den_row(index).lt.dennuc_cgs
+
+c     Don't help non-monotonicity
+               if(localpdiff.gt.0.0 .AND. temp_row(index).lt.temp_cgs_lseos ) then
+                  localpdiff=0.0
+               end if
+
+c     Don't help non-monotonicity
+               if(localpdiff.lt.0.0 .AND. temp_row(index).gt.temp_cgs_lseos ) then
+                  localpdiff=0.0
+               end if
+
+c     Don't use correction if at low enough density since can be too large and force pressure to become negative
+               if(den_row(index).lt.dennuc_cgs) then
+                  localpdiff=0.0
+               end if
+
+
+
+               if(1.eq.0) then
+c     DEBUG GODMARK
+
+c     Interpolate pdiff from full value to 0 after 50% lower in density or temperature
+c     den_row(lsindex)=den_cgs_lseos
+c     temp_row(lsindex)=temp_cgs_lseos
+c     den_row(lsindex)=den_row(index)
+c     temp_row(lsindex)=temp_row(index)
+                  difffactor=(den_cgs_lseos-den_row(index))/den_cgs_lseos
+c     write(*,*) 'difffactor1a',difffactor
+                  if(difffactor.lt.0.0) then
+                     difffactor=0.0
+                  else if(difffactor.gt.0.5) then
+                     difffactor=0.0
+                  else if(difffactor.ge.0.0 .AND. difffactor.le.0.5) then
+                     difffactor=(1.0-0.0)/(0.0-0.5)*(difffactor-0.5)
+                  end if
+
+                  localpdiff=localpdiff*difffactor
+                  localediff=localediff*difffactor
+                  localsdiff=localsdiff*difffactor
+c     write(*,*) 'difffactor1b',difffactor
+
+                  difffactor=(temp_cgs_lseos-temp_row(index))/temp_cgs_lseos
+c     write(*,*) 'difffactor2a',difffactor
+                  if(difffactor.lt.0.0) then
+                     difffactor=0.0
+                  else if(difffactor.gt.0.5) then
+                     difffactor=0.0
+                  else if(difffactor.ge.0.0 .AND. difffactor.le.0.5) then
+                     difffactor=(1.0-0.0)/(0.0-0.5)*(difffactor-0.5)
+                  end if
+
+                  localpdiff=localpdiff*difffactor
+                  localediff=localediff*difffactor
+                  localsdiff=localsdiff*difffactor
+c     write(*,*) 'difffactor2b',difffactor
+               end if
+
+
+
+ccccccccccSTEP6 ccccccccccc
+c     Offset non-nuclear EOSs values so matches well to nuclear EOS at boundary where goodconverge==0
+c     Only add it to ion term instead of Coulomb term
+c     If nuclear EOS matched perfectly already with non-nuclear EOS, then correction cancels
+c     As nuclear EOS has, say, a larger energy/baryon, then we add that to the "ion" term
+               pion = pion + localpdiff*den_row(index)
+               eion = eion + localediff
+               sion = sion + localsdiff
+c     sion = sion + localsdiff/temp_row(lsindex)
+
+c     Have to correct totals and individuals since already totalled into pres,ener,entr inside non-nuclear EOS
+               pres = pres + localpdiff*den_row(index)
+               ener = ener + localediff
+               entr = entr + localsdiff
+c     entr = entr + localsdiff/temp_row(lsindex)
+
+c     Overwrite non-nuclear some things with nuclear versions
+               etapls = etap_row(lsindex)
+               etanls = etan_row(lsindex)
+
+c     write(*,*) 'diffs',localpdiff,localediff,localsdiff
+
+
+
+ccccccccccSTEP7 ccccccccccc
+c     Finally, store into ???_row @ index where normally would have been put
+c     This only stores back non-nuclear nucleon+electron+total into index space
+c     Store non-species singles into _row(index)
 c     call store_row(index,whicheleeos,0)
-         call store_row(index,whicheleeos,1)
-         
-         call backstore_row_lsspecies(index)
 
-c     Store "LS" results back into normal array
-         call store_row_lsspecies(index)
-         
-
-
-
-         end if
+c     Full storage of interpolated <A> and <Z> version of "HELM+species" into _row()
+               call store_row(index,whicheleeos,1)
+               
+c     Don't do below, which would overwrite species information
+c     call store_row(index,whicheleeos,1)
+c     Take _row(index) and put back into LS-species singles for neutrino code
+c     call backstore_row_lsspecies(index)
+c     Store "LS" species singles into _row(index)
+c     call store_row_lsspecies(index)
+               
+               
+               
+c     END IF if usediffinputs.eq.4 but have limited nuclear values in "index"
+            end if
 
 
 
 
 
 c     write(*,*) 'TEMPDEN',temp_row(loci),den_row(loci)
-c     write(*,*) 'LSBAR',lszbar,lsabar,lsabarnum
-
-
+            
+            
 c     NOW restore saved versions
 c     Now any EOS processes called before reaching here are preserved
-         jlo_eos=saved_jlo_eos
-         jhi_eos=saved_jhi_eos
+            jlo_eos=saved_jlo_eos
+            jhi_eos=saved_jhi_eos
 
-
+            
+c     END if over goodconverge.eq.0
          end if
-c  Otherwise assume calling function keeps decent values
+c     Otherwise assume calling function keeps decent values
 
 
 
@@ -1038,10 +1270,106 @@ cccccccccccccccccccccccccccccc
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+c     Should be exact inverse of store_row_lsspecies() (apart from any checks and setting of etanu should be from etanu not 0.0=)
+c     Currently this is used just before output to put into singles for kazoutput()
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      subroutine backstore_row_lsspecies(loci)
+      implicit none
+      save
+
+c     Passed:
+      integer loci
+
+
+
+
+c..bring in the lattimer-swesty data structures
+      include 'eos_m4c.commononly.inc'
+c      include 'el_eos.inc'
+c..bring in the data structure for LSEOS
+c  contains single globals
+      include 'vector_eos.dek'
+      include 'vector_eos.single.dek'
+      include 'vector_sneos.dek'
+      include 'extra_vector_sneos.dek'
+c      include 'const.dek'
+c..bring in the data structure for HELM or TIMMES EOS
+      include 'kazeos.dek'
+
+c     Constants
+      include 'const.dek'
+
+c     Pattern used:
+c     \([_A-Za-z()\]+\) *= *\([_-A-Za-z\+().]+\)
+
+
+      zbar=zbar_row(loci)
+      abar=abar_row(loci)
+      abarnum=abarnum_row(loci)
+
+      xnut=xneut_row(loci)
+      xprot=xprot_row(loci)
+      xalfa=xalfa_row(loci)
+      xh=xheav_row(loci)
+      a=aheav_row(loci)
+      x=zheav_row(loci)*a
+c      1.0d0-(xnut+xprot+xalfa+xh)=xcheck_row(loci)
+      muhat=muhat_row(loci)
+
+      etapls=etap_row(loci)
+      etanls=etan_row(loci)
+      etanu=etanu_row(loci)
+
+      xnuc=xnuc_row(loci)
+      yetot=yetot_row(loci)
+      yefree=yefree_row(loci)
+      yebound=yebound_row(loci)
+      yeheav=yeheav_row(loci)
+      npratiofree=npratiofree_row(loci)
+      npratiobound=npratiobound_row(loci)
+      npratioheav=npratioheav_row(loci)
+      npratiototal=npratiototal_row(loci)
+      abarbound=abarbound_row(loci)
+
+
+      nptotal=nptotal_row(loci)
+      nntotal=nntotal_row(loci)
+      npfree=npfree_row(loci)
+      nnfree=nnfree_row(loci)
+      npbound=npbound_row(loci)
+      nnbound=nnbound_row(loci)
+      npheav=npheav_row(loci)
+      nnheav=nnheav_row(loci)
+
+
+
+
+
+      return
+      end
+
+
+
+
+
+
+
+
 c Should roughly be inverse of store_row_lsspecies()
 c But should be consistent with how set abar and zbar initially in jon_helm.f or jon_helm_stellarinput.f
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
-      subroutine backstore_row_lsspecies(loci)
+      subroutine stupidbackstore_row_lsspecies(loci)
       implicit none
       save
       
@@ -1069,24 +1397,25 @@ c     Constants
 
 
 
-c     We want to use store_row_lsspecies() below, but first assign right-hand-side inside there to be correct
-         lszbar=zbar_row(loci)
-         lsabar=abar_row(loci)
-         lsabarnum=abarnum_row(loci)
 
-         if(lsabar.gt.4.5) then
+c     We want to use store_row_lsspecies() below, but first assign right-hand-side inside there to be correct
+         zbar=zbar_row(loci)
+         abar=abar_row(loci)
+         abarnum=abarnum_row(loci)
+
+         if(abar.gt.4.5) then
 c     call computemutotfit_xnuc0(den_row(),temp_row(loci),abar_row(loci))
             xnut =1D-49
             xprot =1D-49
             xalfa = 1D-49
             xh = 1.0d0
-            a = lsabar
-            x = lszbar/lsabar
-            muhat = lsabar
+            a = abar
+            x = zbar/abar
+            muhat = abar
 
 c     Note that etapls and etanls are set from "lsindex" unlike others, which means we use nuclear versions of these, where nuclear versions are assigned at the boundary of the table where nuclear EOS exists (goodconverge.eq.1)
-            etapls = etap_row(lsindex)
-            etanls = etan_row(lsindex)
+            etapls = etap_row(loci)
+            etanls = etan_row(loci)
 
             xnuc = xnut + xprot
             yetot = x
@@ -1096,7 +1425,7 @@ c     Note that etapls and etanls are set from "lsindex" unlike others, which me
             npratiofree = 1D-49
             npratiobound = 1.0d0-x
             npratiototal = npratiobound
-            abarbound = lsabar
+            abarbound = abar
 
             nblocal = (den_row(loci)/mb)
             
@@ -1109,7 +1438,7 @@ c     Note that etapls and etanls are set from "lsindex" unlike others, which me
             npheav = nptotal
             nnheav = nntotal
 
-         else if(lsabar.gt.3.5) then
+         else if(abar.gt.3.5) then
 c     call computemutotfit_xnuc0(den_row(),temp_row(loci),abar_row(loci))
             xnut =1D-49
             xprot =1D-49
@@ -1117,11 +1446,12 @@ c     call computemutotfit_xnuc0(den_row(),temp_row(loci),abar_row(loci))
             xh = 1D-49
             a = 1D-49
             x = 0.50d0 ! doesn't matter
-            muhat = lsabar
+            muhat = abar
 
 c     Note that etapls and etanls are set from "lsindex" unlike others, which means we use nuclear versions of these, where nuclear versions are assigned at the boundary of the table where nuclear EOS exists (goodconverge.eq.1)
-            etapls = etap_row(lsindex)
-            etanls = etan_row(lsindex)
+c     CHANGEMARK:
+            etapls = etap_row(loci)
+            etanls = etan_row(loci)
 
             xnuc = xnut + xprot
             yetot = x
@@ -1131,7 +1461,7 @@ c     Note that etapls and etanls are set from "lsindex" unlike others, which me
             npratiofree = 1D-49
             npratiobound = 1.0d0-x
             npratiototal = npratiobound
-            abarbound = lsabar
+            abarbound = abar
 
             nblocal = (den_row(loci)/mb)
             
@@ -1152,7 +1482,7 @@ c     This extrapolation of etap and etan works unless in hydrogen region.  Just
             xh = 1D-49
             a = 1D-49
             x = 0.5d0
-            muhat = lsabar
+            muhat = abar
 
             etapls = 1D-49
             etanls = 1D-49
@@ -1172,8 +1502,8 @@ c     see Kohri & Mineshige (2002)
 
 
             xnuc = xnut + xprot
-            yetot = lszbar/lsabar
-            yefree = lszbar/lsabar
+            yetot = zbar/abar
+            yefree = zbar/abar
             yebound = 1D-49
             yeheav = 0.5d0 !doesn't matter
             npratiofree = 1.0d0 - yefree
@@ -1208,6 +1538,169 @@ c     see Kohri & Mineshige (2002)
 
 
 
+c     Should set non-nuclear values of xnuc, xprot, etc. all the LS species stuff
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      subroutine nonnuclear_lsspecies(loci)
+      implicit none
+      save
+      
+      integer loci
+      double precision nblocal
+      real*8 xnuccalc
+      real*8 yelocal
+
+      include 'eosparms.f'
+
+
+c..bring in the lattimer-swesty data structures
+      include 'eos_m4c.commononly.inc'
+c      include 'el_eos.inc'
+c..bring in the data structure for LSEOS
+c  contains single globals
+      include 'vector_eos.dek'
+      include 'vector_eos.single.dek'
+      include 'vector_sneos.dek'
+      include 'extra_vector_sneos.dek'
+c      include 'const.dek'
+c..bring in the data structure for HELM or TIMMES EOS
+      include 'kazeos.dek'
+
+c     Constants
+      include 'const.dek'
+
+
+
+
+c     Setup <A> and <Z>
+
+c     "LS"abar, etc. are just renaming of standard total <A>, etc.
+c     Generally true
+      yetot = zbar_row(loci)/abar_row(loci)
+
+      abar = abar_row(loci)
+      abarnum = abar_row(loci)
+c      zbar = yetot*abar
+
+
+c     Compute xnuc
+      xnuc=xnuccalc(den_row(loci),temp_row(loci))
+           
+c     free have same Y_e as bound:
+      xnut = (1.0-yetot)*xnuc
+      xprot = yetot*xnuc
+
+
+c     Other things:
+      etanu=0.0d0
+
+
+cccccccccccccccccccccc
+c     Compute xalfa and xh
+c      if(abar.gt.4.5) then
+         xalfa = 1D-49
+         xh = (1.0d0-xnuc)
+c      else
+c     Can't make all alfa and get any Y_e and <A>, so create avoid and only make heavies for now
+c         xalfa = (1.0-xnuc)
+c         xh = 1D-49
+c      end if
+
+
+cccccccccccccccccccccc
+c     General:
+c     <A> = \Sum_i [X_i] / Sum_i [X_i/A_i]
+c         =  1/ ( X_nut/1 + Xprot/1 + Xalfa/4 + Xh/a)
+c
+c     So: a = Xh/(1/<A> - Xnut - Xprot - Xalfa/4)
+
+      a=xh/((xh+xprot+xnut+xalfa)/abar_row(loci) - (xnut+xprot)/1.0d0 - xalfa/4.0d0)
+      if(a.lt.1.0d0 .OR. a.gt. abar_row(loci)*(1.0d0+1D-4)) then
+         write(*,*) 'bada',abar_row(loci),xh,xnuc,xalfa,a
+         write(*,*) 'xcheck',xnut+xprot+xalfa+xh
+c         xh = 1D-49
+c         xalfa = (1.0-xnuc)
+c         a=1D-49
+      end if
+
+c     Same Y_e
+      x = yetot
+      muhat = abar_row(loci)
+
+
+
+c     This extrapolation of etap and etan works unless in hydrogen region.  Just force etap=etan=0 if in that region where etae>>1
+c     No non-nuclear \eta's
+      etapls = 1D-49
+      etanls = 1D-49
+
+c     Assume beta equilibrium as valid at high temperatures
+c     see Kohri & Mineshige (2002)
+      if(temp_row(loci) .gt. me*light2/kerg) then
+         etanls = etapls + etae
+      end if
+
+c     Except sometimes assume degenerate nucleons at high density and low temp
+c     see Kohri & Mineshige (2002)
+      if( (temp_row(loci) .lt. me*light2/kerg) .AND. (den_row(loci).gt. 1.0D10) ) then
+         etanls = etae + (mn-mb)*light2
+         etapls = 1D-49
+      end if
+
+c     All same Y_e
+c         call computeyefreebound(den_row(loci),temp_row(loci),yetot,xnuc,yefree,yebound)
+c         yeheav = yebound
+      yefree = yetot
+      yebound = yetot
+      yeheav = yetot
+      npratiofree = (1.0d0-yefree)/yefree
+      npratiobound = (1.0d0-yebound)/yebound
+      npratiototal = (1.0d0-yetot)/yetot
+c     All bound species:
+      abarbound = (a+4)/(xh/a+xalfa/4)
+
+      nblocal = (den_row(loci)/mb)
+      nptotal = nblocal*yetot
+      nntotal = nblocal*npratiototal
+      npfree = nblocal*xnuc*yefree
+      nnfree = npfree*npratiofree
+
+      npbound = nblocal*(xh+xalfa)*npratiototal
+      nnbound = npbound*npratiobound
+
+      npratioheav = (1.0d0-x)/x
+      npheav = nblocal*(xh)*npratiototal
+      nnheav = npheav*npratioheav
+
+c     DEBUG:
+c      write(*,*) 'box',loci,den_row(loci),nblocal,yetot,nptotal,nntotal,npfree,nnfree,npbound,nnbound,npheav,nnheav
+
+
+
+
+ccccccccccccccccccccccccccccccccccccccccccccccccc
+c
+c        Recompute these since adjusted above (i.e. Modify zbar if species change requires it)
+c
+ccccccccccccccccccccccccccccccccccccccccccccccccc
+         call compute_nuclear_azbar(xnut, xprot, xalfa, xh, a, x,
+     1        abarnum,abar,zbar,yelocal)
+
+         if(abs(yelocal-yetot)>100.0*yetolerance) then
+            write (*,*) 'input ye to nonnuclear_lsspecies
+     1           is not consistent with X_i',yetot,yelocal
+            write(*,*) 'stuff',xnut,xprot,xalfa,xh,x,a
+         end if
+
+
+      return
+      end
+
+
+
+
+
+
+
 c Should roughly be inverse of preparecall2kazeos() except for independent variables
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       subroutine store_row_lsspecies(loci)
@@ -1230,9 +1723,11 @@ c..bring in the data structure for HELM or TIMMES EOS
       include 'kazeos.dek'
 
 c     This is the one thing we store back overwriting original choice by non-nuclear EOS
-      zbar_row(loci)=lszbar
-      abar_row(loci)=lsabar
-      abarnum_row(loci)=lsabarnum
+      zbar_row(loci)=zbar
+      abar_row(loci)=abar
+      abarnum_row(loci)=abarnum
+
+
 
 
 c     NEW LSEOS quantities
@@ -1295,6 +1790,98 @@ c     Also store-over Kaz-like species quantities
 
 
 
+
+c               yekeep=zbar_row(loci)/abarnum_row(loci)
+c               abar_row(loci)=abar_row(index)*(1.0d0-difffactorfinal) + abar_row(loci)*difffactorfinal
+c               abarnum_row(loci)=abarnum_row(index)*(1.0d0-difffactorfinal) + abarnum_row(loci)*difffactorfinal
+c               zbar_row(loci)=yekeep*abarnum_row(loci)
+               
+c               zbar_row(index)=zbar_row(loci)
+c               abar_row(index)=abar_row(loci)
+c               abarnum_row(index)=abarnum_row(loci)
+c     Should be like store_row_lsspecies, except using _row(loci) and _row(index) and interpolate and put result into _row(index)
+cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      subroutine interpolate_row_lsspecies(df,nuclearindex,nonnucindex,outdex)
+      implicit none
+      save
+      
+c     Passed:
+      real*8 df
+      integer nuclearindex,nonnucindex,outdex
+
+
+c..bring in the lattimer-swesty data structures
+      include 'eos_m4c.commononly.inc'
+c      include 'el_eos.inc'
+c..bring in the data structure for LSEOS
+c  contains single globals
+      include 'vector_eos.dek'
+      include 'vector_eos.single.dek'
+      include 'vector_sneos.dek'
+      include 'extra_vector_sneos.dek'
+c      include 'const.dek'
+c..bring in the data structure for HELM or TIMMES EOS
+      include 'kazeos.dek'
+
+c     Locals:
+      real*8 yekeep
+
+
+c     Keep Y_e fixed
+      yekeep=zbar_row(nuclearindex)/abarnum_row(nuclearindex)
+      abar_row(outdex)=abar_row(nonnucindex)*(1.0d0-df) + abar_row(nuclearindex)*df
+      abarnum_row(outdex)=abar_row(outdex)
+      zbar_row(outdex)=yekeep*abarnum_row(outdex)
+
+
+      xneut_row(outdex)    = xneut_row(nonnucindex)*(1.0d0-df) + xneut_row(nuclearindex)*df
+      xprot_row(outdex)    = xprot_row(nonnucindex)*(1.0d0-df) + xprot_row(nuclearindex)*df
+      xalfa_row(outdex)    = xalfa_row(nonnucindex)*(1.0d0-df) + xalfa_row(nuclearindex)*df
+      xheav_row(outdex)    = xheav_row(nonnucindex)*(1.0d0-df) + xheav_row(nuclearindex)*df
+      aheav_row(outdex)    = aheav_row(nonnucindex)*(1.0d0-df) + aheav_row(nuclearindex)*df
+      zheav_row(outdex)    = xheav_row(outdex)*aheav_row(outdex)
+      xcheck_row(outdex)   = 1.0d0-(xneut_row(outdex)+xprot_row(outdex)+xalfa_row(outdex)+xheav_row(outdex))
+      muhat_row(outdex)    = muhat_row(nonnucindex)*(1.0d0-df) + muhat_row(nuclearindex)*df
+
+c     Forced to use nuclear \eta's since no defined non-nuclear \eta's
+      etap_row(outdex) = etap_row(nuclearindex)
+      etan_row(outdex) = etan_row(nuclearindex)
+      etanu_row(outdex) = etanu_row(nuclearindex)
+
+c     Kaz-like species info:
+      xnuc_row(outdex)=xnuc_row(nonnucindex)*(1.0d0-df) + xnuc_row(nuclearindex)*df
+      yetot_row(outdex)=yetot_row(nonnucindex)*(1.0d0-df) + yetot_row(nuclearindex)*df
+      yefree_row(outdex)=yefree_row(nonnucindex)*(1.0d0-df) + yefree_row(nuclearindex)*df
+      yebound_row(outdex)=yebound_row(nonnucindex)*(1.0d0-df) + yebound_row(nuclearindex)*df
+      yeheav_row(outdex)=yeheav_row(nonnucindex)*(1.0d0-df) + yeheav_row(nuclearindex)*df
+      npratiofree_row(outdex)=npratiofree_row(nonnucindex)*(1.0d0-df) + npratiofree_row(nuclearindex)*df
+      npratiobound_row(outdex)=npratiobound_row(nonnucindex)*(1.0d0-df) + npratiobound_row(nuclearindex)*df
+      npratioheav_row(outdex)=npratioheav_row(nonnucindex)*(1.0d0-df) + npratioheav_row(nuclearindex)*df
+      npratiototal_row(outdex)=npratiototal_row(nonnucindex)*(1.0d0-df) + npratiototal_row(nuclearindex)*df
+      abarbound_row(outdex)=abarbound_row(nonnucindex)*(1.0d0-df) + abarbound_row(nuclearindex)*df
+
+      nptotal_row(outdex)=nptotal_row(nonnucindex)*(1.0d0-df) + nptotal_row(nuclearindex)*df
+      nntotal_row(outdex)=nntotal_row(nonnucindex)*(1.0d0-df) + nntotal_row(nuclearindex)*df
+      npfree_row(outdex)=npfree_row(nonnucindex)*(1.0d0-df) + npfree_row(nuclearindex)*df
+      nnfree_row(outdex)=nnfree_row(nonnucindex)*(1.0d0-df) + nnfree_row(nuclearindex)*df
+      npbound_row(outdex)=npbound_row(nonnucindex)*(1.0d0-df) + npbound_row(nuclearindex)*df
+      nnbound_row(outdex)=nnbound_row(nonnucindex)*(1.0d0-df) + nnbound_row(nuclearindex)*df
+      npheav_row(outdex)=npheav_row(nonnucindex)*(1.0d0-df) + abar_row(nuclearindex)*df
+      nnheav_row(outdex)=nnheav_row(nonnucindex)*(1.0d0-df) + nnheav_row(nuclearindex)*df
+
+c     DEBUG:
+c     Normal that non-<A> and non-<Z> are zero since currently this is only called to get <A> and <Z> interpolated, where rest of things are determined by non-nuclear EOS by itself
+c      write(*,*) 'nptotal_row(outdex)',nptotal_row(outdex),nptotal_row(nonnucindex),nptotal_row(nuclearindex),df
+
+
+      return
+      end
+
+
+
+
+
+
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 c
 c
@@ -1314,10 +1901,23 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 c     include 'const.dek'
 c..bring in the data structure for HELM or TIMMES EOS
-c      include 'vector_eos.dek'
+
+c     Bring in abar and zbar stuff
+      include 'vector_eos.single.dek'
+c     Bring in jlo_eos and jhi_eos
+      include 'vector_eos.dek'
 
 c     Passed
       integer whichnonnucleareos,loci,dostore,dostorespecies
+c     Locals:
+      integer saved_jlo_eos,saved_jhi_eos
+
+
+c     Setup electron EOS call
+      saved_jlo_eos=jlo_eos
+      saved_jhi_eos=jhi_eos
+      jlo_eos = loci
+      jhi_eos = loci
 
 
 cccccccccccccccccccccccccccccccccccccc
@@ -1343,8 +1943,9 @@ c
 ccccccccccccccccccccccccccccccccccccccc
       if(whichnonnucleareos.eq.2) then
 c..   call the eos with assumed global vectors of temp_row, den_row, abar_row, abarnum_row, zbar_row
-c     write(*,*) 'Calling eosfxt'
+c      write(*,*) 'Calling eosfxt',abar,zbar
          call eosfxt
+c      write(*,*) 'Done eosfxt',abar,zbar
 c..   Stores many things in ??_row(?) that sit in vector_eos.dek
 
 c     ISSUES:
@@ -1372,13 +1973,16 @@ c     No Coulomb corrections
 
 
 
-c     Now store from lsindex to normal index
+c     Now store from singles to normal index
       if(dostore.eq.1) then
          call store_row(loci,whichnonnucleareos,dostorespecies)
       end if
 
 
 
+c     Restore as before electron EOS call
+      jlo_eos = saved_jlo_eos
+      jhi_eos = saved_jhi_eos
 
 
       return
@@ -1684,8 +2288,7 @@ c     LSEOS/SHEN EOS ok with etot<0
             positiveenergy=0
          end if
 
-c     if(abs(zbar_row(lsindex)/abarnum_row(lsindex) - ye_inp)<1E-5) then
-         if(abs(lszbar/lsabarnum - ye_inp)<1E-5) then
+         if(abs(zbar/abarnum - ye_inp)<1E-5) then
             yeconsistent=1
          else
             yeconsistent=0
@@ -1699,9 +2302,6 @@ c
 ccccccccccccccccccccccccccccccccccccccccccccccccc
          call compute_nuclear_azbar(xnut, xprot, xalfa, xh, a, x,
      1        abarnum,abar,zbar,yelocal)
-         lszbar = zbar
-         lsabarnum = abarnum
-         lsabar = abar
 
          
 c  .428431667757438 0.2146141197858406E+00011 0.1644676177994669E+00015   
@@ -1918,10 +2518,6 @@ c     Rest of quantities are new quantities or newly computed quantities from LS
 
 
 
-c     LSEOS modified these from original choice that determined Y_e
-      abar_row(loci) = lsabar
-      abarnum_row(loci) = lsabarnum
-      zbar_row(loci) = lszbar
       
 
 c..store this row
@@ -2086,6 +2682,11 @@ c     Ok even if not called ???_cgs, just use same variables since overwritten
 c     Store species quantities
         call store_row_lsspecies(loci)
 
+c     BELOW done in store_row_lsspecies() above
+c     LSEOS modified these from original choice that determined Y_e
+c      abar_row(loci) = abar
+c      abarnum_row(loci) = abarnum
+c      zbar_row(loci) = zbar
         
 
 
@@ -2683,28 +3284,7 @@ c          write(*,*) 'lambdainside1',lambdatot,lambdatot_row(loci)
 c     Needed for normal output of eosother.dat
 c     If storenewspecies.eq.0 then assume already computed and don't want to replace
           if(storenewspecies.eq.1) then
-             xnuc_row(loci)=          xnuc
-             npratiofree_row(loci)=          npratiofree
-             npratiobound_row(loci)=npratiobound
-             npratioheav_row(loci)=npratioheav
-             npratiototal_row(loci)=npratiototal
-             yetot_row(loci)=          yetot
-             yefree_row(loci)=          yefree
-             yebound_row(loci)=          yebound
-             yeheav_row(loci)=          yeheav
-
-             abarbound_row(loci) = abarbound
-
-             nptotal_row(loci)=nptotal
-             nntotal_row(loci)=nntotal
-             npfree_row(loci)=npfree
-             nnfree_row(loci)=nnfree
-             npbound_row(loci)=npbound
-             nnbound_row(loci)=nnbound
-             npheav_row(loci)=npheav
-             nnheav_row(loci)=nnheav
-
-
+             call store_row_lsspecies(loci)
           end if
 
           p_nu_row(loci)=          p_nu
@@ -3015,27 +3595,12 @@ c      write(*,*) 'lambdainside2',lambdatot,lambdatot_row(loci)
       ntauttauohcm  =           ntauttauohcm_row(loci)
       ntauatauohcm  =           ntauatauohcm_row(loci)
 
+
+
 c     Needed for normal output of eosother.dat
-      xnuc  =           xnuc_row(loci)
-      npratiofree  =           npratiofree_row(loci)
-      npratiobound = npratiobound_row(loci)
-      npratioheav = npratioheav_row(loci)
-      npratiototal = npratiototal_row(loci)
-      yetot  =           yetot_row(loci)
-      yefree  =           yefree_row(loci)
-      yebound  =           yebound_row(loci)
-      yeheav  =           yeheav_row(loci)
+      call backstore_row_lsspecies(index)
 
-      abarbound = abarbound_row(loci)
 
-      nptotal = nptotal_row(loci)
-      nntotal = nntotal_row(loci)
-      npfree = npfree_row(loci)
-      nnfree = nnfree_row(loci)
-      npbound = npbound_row(loci)
-      nnbound = nnbound_row(loci)
-      npheav = npheav_row(loci)
-      nnheav = nnheav_row(loci)
 
 
       p_nu  =           p_nu_row(loci)
@@ -3080,7 +3645,69 @@ c     Notice the change of energy to per unit energy
 
 
 
-c     Some extra Kaz-like calculations to be done by HELM/TIMMES
+c     Some extra Kaz-like calculations to be done by HELM/TIMMES (called directly in jon_eosfxt.f and jon_helmstandard.f)
+c     Should compute *all* LSEOS-species quantities as in store_row_lsspecies() but with non-nuclear information
+      subroutine full_nonnuclear_eos_withlsspecies(whichnonnucleareos, loci, dostore,dostorespecies)
+      implicit none
+
+c     Passed quantity
+c     Local index
+      integer loci
+      integer whichnonnucleareos
+      integer dostore,dostorespecies
+      
+c     Need to add-in rest-mass so consistent with LSEOS and Kaz EOS
+      real*8 rhoblocal,nb,neleposi
+      real*8 yelocal,yesumlocal,eele_rest,sele_rest
+      real*8 betatemp
+      real*8 xnuccalc !function
+
+
+      include 'const.dek'
+
+      include 'eosparms.f'
+      include 'vector_eos.dek'
+      include 'vector_eos.single.dek'
+c      include 'vector_eos.extra4kaz.dek'
+c     Caution:
+      include 'kazeos.dek' ! includes a very similar name etae for etaele
+      
+
+c     abar=<A> and zbar=<Z> should be written to during call to non-nuclear EOS, but should be same as nuclear since these were inputs
+c     Get Full non-nuclear EOS (but won't include all LS-species and Kaz-like things that are needed
+      call full_nonnuclear_eos(whichnonnucleareos, loci, dostore,dostorespecies)
+
+
+c     So dostorespecies also means don't compute LS/KAZ-species information
+      if(dostorespecies.eq.1) then
+c     This wasn't computed by HELM/TIMMES, so compute it now
+c         xnuc=xnuccalc(den_row(loci),temp_row(loci))
+c         yetot = zbar_row(loci)/abarnum_row(loci)
+c         abarbound = abarbound_row(loci)
+c         call computeyefreebound(den_row(loci),temp_row(loci),yetot,xnuc,yefree,yebound)
+c         yeheav = yebound
+         
+cccccccccccccccc
+c     Set LS-species singles but for non-nuclear EOS (only uses <A> and <Z> to set them best one can without more composition details)
+c     Below computes some generally-true things needed for Kaz-EOS
+c     call eos2kazeos_species(nbtotal)
+c     This overwrites somes (all?) things set by eos2kazeos_species()
+c     Even KAZ EOS doesn't compute some of these things
+         call nonnuclear_lsspecies(loci)
+      end if
+
+
+      return
+      end
+
+
+
+
+
+
+
+
+c     Some extra Kaz-like calculations to be done by HELM/TIMMES (called directly in jon_eosfxt.f and jon_helmstandard.f)
       subroutine helmtimmes_extracalculation(loci,whichnonnucleareos)
       implicit none
 
@@ -3093,8 +3720,6 @@ c     Need to add-in rest-mass so consistent with LSEOS and Kaz EOS
       real*8 rhoblocal,nb,neleposi
       real*8 yelocal,yesumlocal,eele_rest,sele_rest
       real*8 betatemp
-      real*8 xnuccalc !function
-      real*8 nbtotal ! tempvar
 
 
       include 'const.dek'
@@ -3109,26 +3734,6 @@ c     Caution:
 
 
 
-
-
-c     This wasn't computed by HELM/TIMMES, so compute it now
-      xnuc=xnuccalc(den_row(loci),temp_row(loci))
-      yetot = zbar_row(loci)/abarnum_row(loci)
-      
-      kazxheav = xnuc
-      abarbound = abarbound_row(loci)
-
-      call computeyefreebound(den_row(loci),temp_row(loci),yetot,xnuc,yefree,yebound)
-      yeheav = yebound
-      
-      rhoblocal = den_row(loci)
-      nbtotal = (rhoblocal/mb)
-c     Below computes some generally-true things needed for Kaz-EOS
-      call eos2kazeos_species(nbtotal)
-   
-
-
-
 cccccccccccccccc
 c     Translate some quantities into right physics format
 c     None of these rest-mass corrections affect the thermodynamic consistency calculations
@@ -3140,8 +3745,7 @@ c     JCM: etaepos = -etae-2/betatemp
 c     JCM: When outputting, make (LSEOS/Kaz)-like (no subtraction)
       betatemp = kerg*temp_row(loci)/(mecc)
 
-
-
+ccccccccccccccccccccccccccccccccc
 c     JCM: electron rest-mass NOT negligible!
       yelocal = zbar_row(loci)/abarnum_row(loci)
       rhoblocal = den_row(loci)
@@ -3475,12 +4079,15 @@ c  JCM:
       include 'eosparms.f'
       include 'vector_eos.dek'
       include 'vector_sneos.dek'
+c     contains single globals (also has abar,abarnum,zbar)
+      include 'vector_eos.single.dek'
 
 c..declare the pass
       double precision tin,yein,dnsin
 
 c     Local variables
-      double precision abarnum,abar,zbar,yelocal
+c      double precision abarnum,abar,zbar,yelocal
+      double precision yelocal
 
 
 c..local variables
@@ -3503,6 +4110,8 @@ c     8                  light2  = clight*clight,
 c     9                  me      = 9.1093897d-28,
 c     &                  mecc    = me*light2)
 
+c     Passed:
+c     Locals:
       integer loci
       integer saved_jlo_eos,saved_jhi_eos
       integer dostore,dostorespecies
@@ -3527,21 +4136,21 @@ c     totally done since already filled el_eos.inc
       else
 
 
+
+
 c     HELM and TIMMES EOSs use global variables already processed.  Save the ones that need to be changed before running then, so that they can be restored after that run
          saved_jlo_eos=jlo_eos
          saved_jhi_eos=jhi_eos
 
 
-
-c     Note that "index" specifies what component of ???_row(?) to use while computing HELM or TIMMES EOS
-c     Since that is a global quantity, must choose same one as set that got here
-c         loci=index
-         loci=lsindex
+c     Note, just want to get singles, don't want to modify original _row() quantities!
+c     So use an independent index so don't overwrite abar_row, abarnum_row, zbar_row stuff that is required upon input to full_nonnuclear_eos()
+         loci=otherindex
          
 
-         if(loci.ne.(jhi_eos+1)) then
-            write(*,*) 'loci PROBLEM',loci
-         end if
+c         if(loci.ne.(otherindex)) then
+c            write(*,*) 'loci PROBLEM',loci
+c         end if
          
 c..   set the input vector in cgs units
 c     This should have changed nothing about temp_row and den_row
@@ -3557,9 +4166,9 @@ c     This should have changed nothing about temp_row and den_row
          end if
          
          
-c         write(*,*) 'abar,abarnum,zbar',abar,zbar
+c         write(*,*) 'abarzbar',abar,zbar
 c
-c        Keep same for now
+c        Must set these for full_nonnuclear_eos(loci)
          abar_row(loci) = abar
          abarnum_row(loci) = abarnum
          zbar_row(loci) = zbar
@@ -3575,26 +4184,25 @@ c
 c     
 c     NOW RUN CHOSEN EOS
 
-
+c     DEBUG:
+c         write(*,*) 'other',xnut,xprot,xalfa,xh,a,x,yelocal
 c         write(*,*) 'eleEOSgets',temp_row(loci),den_row(loci)
-c     1        ,abar_row(loci),abarnum_row(loci),zbar_row(loci)
+c     1        ,abar,abarnum,zbar
 
 
 
 c     Whether to perform extra store in _row() beyond normal store into jlo_eos and jhi_eos
 c     Automatically stores once into loci already, so don't need to do again
+c     Don't store species since using nuclear EOS for that
          dostore=0
          dostorespecies=0
          call full_nonnuclear_eos(whicheleeos, loci, dostore,dostorespecies)
-
 
 
 c     NOW restore saved versions
 c     Now any EOS processes called before reaching here are preserved
          jlo_eos=saved_jlo_eos
          jhi_eos=saved_jhi_eos
-
-
 
 
 
@@ -3937,7 +4545,7 @@ c     Below are energy per baryon offset
          fakelsoffset=1.1d0
 c     Below is entropy per baryon offset, where entropy is in dimensionless units of [1/cc]/nb
 c     Determined by looking at the dimensionless entropy in SM using kazpostmatlab.m:checkpretables
-         fakeentropylsoffset=14.0d0
+         fakeentropylsoffset=14.0d0+10.0D0**1.3
       end if
 
 
@@ -3957,7 +4565,7 @@ c     For LSEOS this means adding 8.07131747535936MeV to the nuclear term
          fakelsoffset=1.1d0
 c     Below is entropy per baryon offset, where entropy is in dimensionless units of [1/cc]/nb
 c     Determined by looking at the dimensionless entropy in SM using kazpostmatlab.m:checkpretables
-         fakeentropylsoffset=14.0d0
+         fakeentropylsoffset=14.0d0+10.0D0**1.3
       end if
 
 
@@ -4031,65 +4639,15 @@ c xheav  = a n_h / n_b  where A_h=a and Z_h=x*a
 
 
 
-ccccccccccccccccc
-c     No longer use this method to fix non-NSE
-      if(1.eq.0) then
-c     If taunsefix activated, assume only need to correct a, keeping x same
-         if(taunsefix.eq.1) then
-            aorig=a
-c     Override use of nuclear EOS if NSE timescale is too long
-c     Purpose is to fit presupernovae model better
-c     Note use of true density and temperature, not _lseos versions
-            call computemutotfit_xnuc0(den_cgs,temp_cgs,mutotxnuc0)
-c     ataunse = (xh+xalfa)/((xh+xalfa)/mutotxnuc0-xalfa/4.0)
-c     Ensure that abar~ataunse for heavy components
-            ataunse = xh/((xh+xalfa)/mutotxnuc0-xalfa/4.0)
-            if(ataunse.lt.0.5) then
-               ataunse = 1.0
-               write(*,*) 'TYPE1'
-            end if
-            if(den_cgs.lt.rhotaunsefix/1.5 .OR. temp_cgs.lt.temptaunsefix/1.5) then
-               a=ataunse
-               write(*,*) 'TYPE2'
-            else
-c     average in between
-               write(*,*) 'TYPE3'
-               a=0.5*(a+ataunse)
-            end if
-c     Keep x (i.e. Y_e for heavy nuclei) the same
 
-
-c     Must modify pion
-c     pnogas=ptot-bpress
-c     Doesn't account for change in Coulomb correction
-c     bpress=bpress*aorig/a
-c     ptot = pnogas + bpress
-
-         end if
-      end if
-
-
-
-
-
-
-
-
+c     Here abar, zbar, zbar, abarnum, and abar are all set
          call compute_nuclear_azbar(xnut, xprot, xalfa, xh, a, x,
      1        abarnum,abar,zbar,yelocal)
-         lszbar = zbar
-         lsabarnum = abarnum
-         lsabar = abar
 
 
 c     DEBUG:
 c      write(*,*) 'INLSEOS',xnut,xprot,xalfa,xh,a,x,'LSBAR',abarnum,abar,zbar,yelocal
 
-
-c     abarnum,abar,zbar here are stored for later storing back to ??_row versions
-c      lsabar=abar
-c      lsabarnum=abar
-c      lszbar=zbar
 
 
 c     Apply energy-per-baryon offset

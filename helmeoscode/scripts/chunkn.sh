@@ -86,6 +86,7 @@ then
 	#
     bsub -n 1 -x -R span[ptile=1] -q kipac-ibq -J $jobname -o $outputfile -e $errorfile -a openmpi $JOBDIR/runchunkone.sh $JOBDIR
 fi
+
 if [ $uselonestar -eq 1 ]
 then
 	# http://www.tacc.utexas.edu/services/userguides/lonestar/
@@ -98,6 +99,13 @@ then
 	# ptile=1 always so only 1 job started, but with exclusive (-x) access to node.
         # "$CHUNKLIST" has to be in quotes to preserve fact that single argument, otherwise gets expanded
     bsub -B -N -u jmckinne@stanford.edu -P TG-AST080025N -x -W 47:59 -n $truenumprocs -x -o $outputfile -e $errorfile -R span[ptile=1] -q normal -J $jobname $DATADIR/runchunkn.sh "$CHUNKLIST" $TOTALCHUNKS $DATADIR $jobprefix
+fi
+
+# Single node interactive-like run (e.g. on your own desktop):
+if [ $useorange -eq 0 ] && 
+   [ $uselonestar -eq 0 ]
+then
+    $DATADIR/runchunkn.sh "$CHUNKLIST" $TOTALCHUNKS $DATADIR $jobprefix
 fi
 
     ############

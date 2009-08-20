@@ -64,6 +64,8 @@ c     Note that most of this data isn't used, but useful to keep SM macros simpl
 
 
 
+
+
 cccccccccccccccccccccccccccccccccccccccc
 c
 c     READ IN DATA HEADER
@@ -74,6 +76,15 @@ cccccccccccccccccccccccccccccccccccccccc
       read (3,*) numlines
       close (3)
          
+
+c     Make sure enough memory for storage AND for temporary LSEOS AND temporary HELMEOS space for electron EOS
+      if(nrowmax.lt.numlines+nrowextra) then
+         write(*,*) 'nrowmax=',nrowmax,'numlines+nrowextra=',numlines+nrowextra
+         stop 'nrowmax not large enough'
+      end if
+
+
+
 
 c..Setup the pipeline
       jlo_eos = 1

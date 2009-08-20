@@ -12,7 +12,7 @@ c     Constants
 c     Local parameters
       logical ifxh,ifxnut,ifxprot,ifxalfa,ifnonelargest
 c     Local variables
-      double precision xcheckafter
+      double precision xbefore,xcheckafter
       
 c     Passed quantity
       double precision ye_inp, xnut, xprot, xalfa, xh, a, x
@@ -23,6 +23,7 @@ c     Passed quantity
 
       integer didfixx
       integer iii
+      integer count
 
 ccccccccccccccccccccccccc
 c     
@@ -42,6 +43,33 @@ ccccccccccccccccccccccccc
 
 ccccccccccccccccccccccccc
 c     
+c     First, check if really bad solution.  Then just renormalize since more than one species may be >1.0 after interpolation
+c     
+ccccccccccccccccccccccccc
+
+      count=0;
+      if(xnut.ge.1.0) then
+         count=count+1;
+      end if
+      if(xprot.ge.1.0) then
+         count=count+1;
+      end if
+      if(xalfa.ge.1.0) then
+         count=count+1;
+      end if
+      if(xh.ge.1.0) then
+         count=count+1;
+      end if
+      if(count.ge.2) then
+         xbefore = (xnut + xprot + xalfa + xh)
+         xnut = xnut/xbefore
+         xprot = xprot/xbefore
+         xalfa = xalfa/xbefore
+         xh = xh/xbefore
+      end if
+
+ccccccccccccccccccccccccc
+c     
 c     Determine which species is largest
 c     
 ccccccccccccccccccccccccc
@@ -53,6 +81,8 @@ c     However, in general want to correct largest fractions that will absorb sma
       ifxprot=(((xprot>xh) .AND. (xprot>xnut)) .AND. (xprot>xalfa) )
       ifxalfa=(((xalfa>xh) .AND. (xalfa>xnut)) .AND. (xalfa>xprot) )
       ifnonelargest=((ifxh).AND.(ifxnut)).AND.((ifxprot).AND.(ifxalfa))
+
+
 
 
 
@@ -140,6 +170,26 @@ ccccccccccccccccccccccccc
          xh=xhtrust
       end if
 
+ccccccccccccccccccccccccc
+c     
+c     Enforce maximums after correction
+c     
+ccccccccccccccccccccccccc
+      if(xnut>1.0) then
+         xnut=1.0
+      end if
+      if(xprot.ge.1.0) then
+         xprot=1.0
+      end if
+      if(xalfa.ge.1.0) then
+         xalfa=1.0
+      end if
+      if(xh.ge.1.0) then
+         xh=1.0
+      end if
+
+
+
 
 c     *0.99999's are to avoid machine issues
 c     *10.0 on xchecktolerance is for Matlab
@@ -151,13 +201,23 @@ c     *10.0 on xchecktolerance is for Matlab
      1     .OR.(xalfa<xmin*0.99999 .OR. xalfa>1.0)
      1     .OR.(xh<xhtrust*0.99999 .OR. xh>1.0)
      1     ) then
-         write(*,*) 'Problem with xcheckafter(1)=',xcheckafter,xnut,xprot,xalfa,xh
+         write(*,*) 'Problem with xcheckafter(1)=',xcheckafter,ye_inp,xnut,xprot,xalfa,xh,a,x,xconsistent
          write(*,*) 'Problem with xcheckafter(2)=',xmin,xhtrust
          xconsistent=0
       else
          xconsistent=1
       end if
 
+
+c     If still not consistent, revert to originals and do simple normalization
+      xbefore = (xnutorig + xprotorig + xalfaorig + xhorig)
+      xnut = xnutorig/xbefore
+      xprot = xprotorig/xbefore
+      xalfa = xalfaorig/xbefore
+      xh = xhorig/xbefore
+
+c     Forced to be consistent now
+      xconsistent=1
 
 c Some matlab issue with precision:
 
@@ -201,114 +261,133 @@ c     double precision yelocal
 
       double precision xcheck
 
-      double precision xhorig,xnutorig,xprotorig,xalfaorig
-      double precision xorig
+      double precision xhorig,xnutorig,xprotorig,xalfaorig,xorig,aorig
+      double precision xhorig2,xnutorig2,xprotorig2,xalfaorig2,xorig2,aorig2
+
+      integer iii
+
+c     Used at end to report problem so have initial conditions
+      xhorig2=xh
+      xnutorig2=xnut
+      xprotorig2=xprot
+      xalfaorig2=xalfa
+      xorig2=x
+      aorig2=a
+
+
+c     Make 3 passes
+      do iii=1,3
+
+         xhorig=xh
+         xnutorig=xnut
+         xprotorig=xprot
+         xalfaorig=xalfa
+         xorig=x
+         aorig=a
+
+
+         ifoutputfixtype=.FALSE.
+c     ifoutputfixtype=.TRUE.
+         yeconsistent=0
 
 
 
-      xhorig=xh
-      xnutorig=xnut
-      xprotorig=xprot
-      xalfaorig=xalfa
-      xorig=x
 
-      ifoutputfixtype=.FALSE.
-c      ifoutputfixtype=.TRUE.
-      yeconsistent=0
-
-
-
-      if((xnut.gt.xprot).AND.(xnut.gt.xalfa).AND.(xnut.gt.xh)) then
-         xnut = -ye_inp + 1.0 - 0.5*xalfa + xh*(x-1.0)
-         xprot = -0.5*xalfa-x*xh+ye_inp
-         if(xprot.lt.xmin .OR. xprot.gt.1.0 .OR. xnut.lt.xmin .OR. xnut.gt.1.0 ) then
-            xnut = xnutorig
-            xprot = xprotorig
-            xnut = (0.5*xalfa+xprot-x*(xprot+xalfa-1.0)-ye_inp)/x
-            xh = (ye_inp-xprot-0.5*xalfa)/x
+         if((xnut.gt.xprot).AND.(xnut.gt.xalfa).AND.(xnut.gt.xh)) then
+            xnut = -ye_inp + 1.0 - 0.5*xalfa + xh*(x-1.0)
+            xprot = -0.5*xalfa-x*xh+ye_inp
+            if(xprot.lt.xmin .OR. xprot.gt.1.0 .OR. xnut.lt.xmin .OR. xnut.gt.1.0 ) then
+               xnut = xnutorig
+               xprot = xprotorig
+               xnut = (0.5*xalfa+xprot-x*(xprot+xalfa-1.0)-ye_inp)/x
+               xh = (ye_inp-xprot-0.5*xalfa)/x
+c     If making correction on x, then fix a as well so Y_e calculation consistent
+               if(a.lt.aheavtrust) then
+                  a = 1.0
+               end if
+               if(xnut.lt.xmin .OR. xnut.gt.1.0 .OR. xh.lt.xhtrust .OR. xh.gt.1.0 ) then
+                  write(*,*) 'Fix did not work 1b',xnut,xh
+                  xnut = xnutorig
+                  xh = xhorig
+               else
+                  if(ifoutputfixtype) write(*,*) 'type1bfix',xnut,xh
+                  yeconsistent=1
+               end if
+            else
+               if(ifoutputfixtype) write(*,*) 'type1afix',xnut,xprot
+               yeconsistent=1
+            end if
+         else if((xprot.gt.xnut).AND.(xprot.gt.xalfa).AND.(xprot.gt.xh)) then
+            xprot = ye_inp - 0.5*xalfa - xh*x
+            xnut = 1.0 - (xprot+xalfa+xh)
+            if(xprot.lt.xmin .OR. xprot.gt.1.0 .OR. xnut.lt.xmin .OR. xnut.gt.1.0 ) then
+c     Then assume couldn't fix
+               write(*,*) 'Fix did not work 2',xprot,xnut
+               xprot = xprotorig
+               xnut = xnutorig
+            else
+               if(ifoutputfixtype) write(*,*) 'type2fix',xprot,xnut
+               yeconsistent=1
+            end if
+         else if((xh.gt.xnut).AND.(xh.gt.xalfa).AND.(xh.gt.xprot)) then
+            x = (xalfa+2.0*xprot-2.0*ye_inp)/(2.0*(-1.0+xalfa+xnut+xprot))
+            xh = 1.0 - (xprot+xalfa+xnut)
 c     If making correction on x, then fix a as well so Y_e calculation consistent
             if(a.lt.aheavtrust) then
                a = 1.0
             end if
-            if(xnut.lt.xmin .OR. xnut.gt.1.0 .OR. xh.lt.xhtrust .OR. xh.gt.1.0 ) then
-               write(*,*) 'Fix did not work 1b',xnut,xh
-               xnut = xnutorig
+            if(xh.lt.xhtrust .OR. xh.gt.1.0 .OR. x.lt.zheavtrust/aheavtrust) then
+               x = xorig
                xh = xhorig
+               xh = -(0.5*xalfa+xprot-ye_inp)/x
+               xnut = (0.5*xalfa+xprot-x*(-1.0+xalfa+xprot)-ye_inp)/x
+               if(xh.lt.xhtrust .OR. xh.gt.1.0 .OR. xnut.lt.xmin .OR. xnut.gt.1.0 ) then
+                  write(*,*) 'Fix did not work 3',xh,xnut
+                  xh = xhorig
+                  xnut = xnutorig
+               else
+                  if(ifoutputfixtype) write(*,*) 'type3bfix',x,xh
+                  yeconsistent=1
+               end if
             else
-               if(ifoutputfixtype) write(*,*) 'type1bfix',xnut,xh
+               if(ifoutputfixtype) write(*,*) 'type3afix',x,xh
                yeconsistent=1
             end if
-         else
-            if(ifoutputfixtype) write(*,*) 'type1afix',xnut,xprot
-            yeconsistent=1
-         end if
-      else if((xprot.gt.xnut).AND.(xprot.gt.xalfa).AND.(xprot.gt.xh)) then
-         xprot = ye_inp - 0.5*xalfa - xh*x
-         xnut = 1.0 - (xprot+xalfa+xh)
-         if(xprot.lt.xmin .OR. xprot.gt.1.0 .OR. xnut.lt.xmin .OR. xnut.gt.1.0 ) then
-c     Then assume couldn't fix
-            write(*,*) 'Fix did not work 2',xprot,xnut
-            xprot = xprotorig
-            xnut = xnutorig
-         else
-            if(ifoutputfixtype) write(*,*) 'type2fix',xprot,xnut
-            yeconsistent=1
-         end if
-      else if((xh.gt.xnut).AND.(xh.gt.xalfa).AND.(xh.gt.xprot)) then
-         x = (xalfa+2.0*xprot-2.0*ye_inp)/(2.0*(-1.0+xalfa+xnut+xprot))
-         xh = 1.0 - (xprot+xalfa+xnut)
-c     If making correction on x, then fix a as well so Y_e calculation consistent
-         if(a.lt.aheavtrust) then
-            a = 1.0
-         end if
-         if(xh.lt.xhtrust .OR. xh.gt.1.0 .OR. x.lt.zheavtrust/aheavtrust) then
-            x = xorig
-            xh = xhorig
-            xh = -(0.5*xalfa+xprot-ye_inp)/x
-            xnut = (0.5*xalfa+xprot-x*(-1.0+xalfa+xprot)-ye_inp)/x
-            if(xh.lt.xhtrust .OR. xh.gt.1.0 .OR. xnut.lt.xmin .OR. xnut.gt.1.0 ) then
-               write(*,*) 'Fix did not work 3',xh,xnut
-               xh = xhorig
-               xnut = xnutorig
-            else
-               if(ifoutputfixtype) write(*,*) 'type3bfix',x,xh
-               yeconsistent=1
-            end if
-         else
-            if(ifoutputfixtype) write(*,*) 'type3afix',x,xh
-            yeconsistent=1
-         end if
-      else if((xalfa.gt.xnut).AND.(xalfa.gt.xprot).AND.(xalfa.gt.xh)) then
-         xalfa = -2.0*(x*xh+xprot-ye_inp)
-         xnut = 1.0 + (2.0*x-1)*xh+xprot-2.0*ye_inp
-         if(xalfa.lt.xmin .OR. xalfa.gt.1.0 .OR. xnut.lt.xmin  .OR. xnut.gt.1.0 ) then
-            xalfa = xalfaorig
-            xnut = xnutorig
-            xalfa = 2.0*(x-1.0)*xh-2.0*(xnut+ye_inp-1.0)
-            xprot = -1+xh-2.0*x*xh+xnut+2.0*ye_inp
-            if(xalfa.lt.xmin .OR. xalfa.gt.1.0 .OR. xprot.lt.xmin .OR. xprot.gt.1.0 ) then
-c     Then assume couldn't fix
-               write(*,*) 'Fix did not work 4b',xalfa,xprot
+         else if((xalfa.gt.xnut).AND.(xalfa.gt.xprot).AND.(xalfa.gt.xh)) then
+            xalfa = -2.0*(x*xh+xprot-ye_inp)
+            xnut = 1.0 + (2.0*x-1)*xh+xprot-2.0*ye_inp
+            if(xalfa.lt.xmin .OR. xalfa.gt.1.0 .OR. xnut.lt.xmin  .OR. xnut.gt.1.0 ) then
                xalfa = xalfaorig
-               xprot = xprotorig
+               xnut = xnutorig
+               xalfa = 2.0*(x-1.0)*xh-2.0*(xnut+ye_inp-1.0)
+               xprot = -1+xh-2.0*x*xh+xnut+2.0*ye_inp
+               if(xalfa.lt.xmin .OR. xalfa.gt.1.0 .OR. xprot.lt.xmin .OR. xprot.gt.1.0 ) then
+c     Then assume couldn't fix
+                  write(*,*) 'Fix did not work 4b',xalfa,xprot
+                  xalfa = xalfaorig
+                  xprot = xprotorig
+               else
+                  if(ifoutputfixtype) write(*,*) 'type4bfix',xalfa,xprot
+                  yeconsistent=1
+               end if
             else
-               if(ifoutputfixtype) write(*,*) 'type4bfix',xalfa,xprot
+               if(ifoutputfixtype) write(*,*) 'type4afix',xalfa,xnut
                yeconsistent=1
             end if
          else
-            if(ifoutputfixtype) write(*,*) 'type4afix',xalfa,xnut
-            yeconsistent=1
+            write(*,*) 'yebad',xnut,xprot,xalfa,xh,x
          end if
-      else
-         write(*,*) 'yebad',xnut,xprot,xalfa,xh,x
-      end if
 
+
+
+      end do
 
 
 
 
       if(yeconsistent.eq.0) then
          write(*,*) 'Did not make Y_e consistent',ye_inp,xnut,xprot,xalfa,xh,x,a
+         write(*,*) 'Orig2:',ye_inp,xnutorig2,xprotorig2,xalfaorig2,xhorig2,xorig2,aorig2
       end if
 
       
@@ -391,15 +470,24 @@ c     Assume that below this one really means aheav=0 even if xheav very small
 c     Just artifact of doing log-interpolation on a and x in Matlab
 c     aheavtrust
 c     xhtrust
-      if ((a .ge. aheavtrust).AND.(x*a.ge.zheavtrust)) ytot1 = ytot1 + xh/a
+      if ((a .ge. aheavtrust).AND.(x*a.ge.zheavtrust)) then
+         ytot1 = ytot1 + xh/a
+c         write(*,*) 'Added heavies to ytot1',xh/a
+      end if
       zbarxx  = xprot + 0.5d0*xalfa
-      if ((a .ge. aheavtrust).AND.(x*a.ge.zheavtrust)) zbarxx = zbarxx + x*xh
+      if ((a .ge. aheavtrust).AND.(x*a.ge.zheavtrust)) then
+         zbarxx = zbarxx + x*xh
+c         write(*,*) 'Added heavies to zbarxx',x*xh
+      end if
 
       abarnum    = 1.0d0/ytot1
       abar=abarnum
       zbar    = zbarxx * abar
       yelocal = zbar/abarnum
 
+c     DEBUG:
+c      write(*,*) 'input',xnut,xprot,xalfa,xh,a,x
+c      write(*,*) 'result',abar,zbar,yelocal
 
 
       return

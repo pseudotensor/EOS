@@ -44,6 +44,7 @@ export DATADIR=`pwd`
 export TOTALCHUNKS=$2
 jobprefix="eoschunk"
 
+rm -rf eos.final.head ; touch eos.final.head
 rm -rf eos.final.dat ; touch eos.final.dat
 rm -rf eosother.final.dat ; touch eosother.final.dat
 rm -rf eoscoulomb.final.dat ; touch eoscoulomb.final.dat
@@ -58,6 +59,7 @@ do
     jobname=${jobprefix}c${jobnumber}tc${TOTALCHUNKS}
     JOBDIR=${DATADIR}/${jobname}
 
+    cat $JOBDIR/eos.head > eos.final.head
     cat $JOBDIR/eos.dat >> eos.final.dat
     cat $JOBDIR/eosother.dat >> eosother.final.dat
     cat $JOBDIR/eoscoulomb.dat >> eoscoulomb.final.dat

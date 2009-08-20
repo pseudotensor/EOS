@@ -8,9 +8,9 @@ c
 c
 
 c     Used to identify where to store solution for given state
-      integer index,lsindex
+      integer index,lsindex,helmindex,otherindex
 
-      common /chooseeleeos/ index,lsindex
+      common /chooseeleeos/ index,lsindex,helmindex,otherindex
 
 
 

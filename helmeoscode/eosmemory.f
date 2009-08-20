@@ -5,6 +5,11 @@ c..maximum length of the row vector
       integer   nrowmax
       parameter (nrowmax = 40000)
 
+c     Extra storage when want to manipulate _row information
+      integer   nrowextra
+      parameter (nrowextra = 3)
+
+
 c..maximum number of isotopes
       integer   irowmax
       parameter (irowmax = 30)

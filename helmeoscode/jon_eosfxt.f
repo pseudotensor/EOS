@@ -421,8 +421,16 @@ c JCM: DEBUG:
 c..start pipeline loop
       do j=jlo_eos,jhi_eos
 
-       if (temp_row(j) .le. 0.0) stop 'temp less than 0 in eosfxt'
-       if (den_row(j)  .le. 0.0) stop 'den less than 0 in eosfxt'
+       if (temp_row(j) .le. 0.0) then
+          write(*,*) 'temp:',temp_row(j)
+          write(*,*) 'abar,zbar',abar,zbar
+          stop 'temp less than 0 in eosfxt'
+       end if
+       if (den_row(j)  .le. 0.0) then
+          write(*,*) 'den:',den_row(j)
+          write(*,*) 'abar,zbar',abar,zbar
+          stop 'den less than 0 in eosfxt'
+       end if
 
        temp  = temp_row(j)
        den   = den_row(j)

@@ -85,10 +85,16 @@ c     set globals:
 ccccccccccccccccccccccccccccccccccccc
 c
 c     Set limits where want to use table
+c
+ccccccccccccccccccccccccccccccccccccc
+
+      if(useinterpn.eq.1) then
+c     Then expect edges to be corrupt since can't extrapolate and interpolation is poor
 
 c     tmin = 2.0*10**(ltkminin)*mev2K
 c     Recall that Shen EOS has T=0 data that I interpolated to, so original limit on temperature is excluding T=0.  Hence I expect I can set tmin to whatever lower temperature I interpolated to
-      tmin = 1.05*10**(ltkminout)*mev2K
+c     But keep tmin near original full sheneos.tab table limits
+      tmin = 1.05*10**(ltkminin)*mev2K
       tmax = 0.95*10**(ltkmaxin)*mev2K
 c     tmin = 0
 c     Should be chosen to interpolation chooses Shen eos values rather than outside
@@ -97,8 +103,32 @@ c     Don't trust Shen inside original density
 c     rhomin = 10**(5.2)
       rhomax = 0.99*10**(lrhobmaxin)
 
+c     Real ypmin is 0 in original table, so can't use that min, but sheneos.head uses sheneos.tab ranges
+c     So just use lypminout for ypmin
       ypmin=10**lypminout
-      ypmax=10**lypmaxout
+c     Don't use extrapolation beyond any original table, so use lypmaxin
+      ypmax=10**lypmaxin
+
+      else
+
+c     Then expect edges of original table to be well-preserved since expanded edges a bit and extrapolated and used good interpolation routine (pchip)
+c     Still restrict min/max of table use to original table so avoid extrapolations
+c     However, better is that extrapolations allow edge of table to use linear interpolation here in jon_sheneos.f where otherwise would have reduced to nearest neighbor
+
+      tmin = 0.99*10**(ltkminin)*mev2K
+      tmax = 1.01*10**(ltkmaxin)*mev2K
+
+      rhomin = 0.99*10**(lrhobminin)
+      rhomax = 1.01*10**(lrhobmaxin)
+
+c     Real ypmin is 0 in original table, so can't use that min, but sheneos.head uses sheneos.tab ranges
+c     So just use lypminout for ypmin
+      ypmin=10**lypminout
+c     Don't use extrapolation beyond any original table, so use lypmaxin
+      ypmax=1.01*10**lypmaxin
+
+      end if
+
 
 
 c     Further restrict and change rho,T limits
@@ -133,9 +163,12 @@ c here "didconverge" is meant to see if within lookup table
 
 
 c     DEBUG:
-c      write(*,*) den_cgs_lseos,temp_cgs_lseos,ye_inp
-c      write(*,*) goodlookup,rhoi,tki,ypi
-c      write(*,*) 'tki',tki
+      if(0.eq.1) then
+         write(*,*) den_cgs_lseos,temp_cgs_lseos,ye_inp
+         write(*,*) goodlookup,rhoi,tki,ypi
+         write(*,*) 'tki',tki
+      end if
+
 
       if(goodlookup.eq.1) then
 
@@ -168,6 +201,7 @@ c
 ccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 c      write(*,*) '2didconverge',didconverge,ye_inp
       call store_row_fromsheneos2lseos(den_cgs,temp_cgs,den_cgs_lseos,temp_cgs_lseos,ye_inp,didconverge)
+
 
 ccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 c      
@@ -377,7 +411,7 @@ c         whichfunction=0
             write(*,*) lYpfloor,ltempfloor,Ypfloor,tempfloor,azmin,xmin
 
 c     DEBUG:
-            write(*,*) 'totalbadinterp',totalbadinterp
+            write(*,*) '1totalbadinterp',totalbadinterp
             write(*,*) 'S1',shenlrhob_sing, shennb_sing
             write(*,*) 'S2',shenlyp_sing, shenyp_sing
             write(*,*) 'S3',shenf_sing,shenebulk_sing,shensbulk_sing
@@ -397,7 +431,7 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccc
 
          if(0) then
 c     DEBUG:
-            write(*,*) 'totalbadinterp',totalbadinterp
+            write(*,*) '2totalbadinterp',totalbadinterp
             write(*,*) 'F1',shenlrhob_sing, shennb_sing
             write(*,*) 'F2',shenlyp_sing, shenyp_sing
             write(*,*) 'F3',shenf_sing,shenebulk_sing,shensbulk_sing
@@ -442,7 +476,7 @@ c     Below includes xnut,xprot, etc. used for ye computation
 c..   bring in the SHEN data structures
       include 'vector_sheneos.dek'
 c     contains single globals (also has abar,abarnum,zbar)
-c      include 'vector_eos.single.dek'
+      include 'vector_eos.single.dek'
       include 'vector_sneos.dek'
 c     contains global parameters and Y_e calculation limits
       include 'vector_eos.dek'
@@ -452,7 +486,9 @@ c     Constants
 c     Local parameters
       logical doxcheck,doyecheck,dothermo1check,dothermo2check
 c     Local variables
-      double precision abarnum,abar,zbar,yelocal
+c      double precision abarnum,abar,zbar
+c     Locals:
+      double precision yelocal
 c      double precision yelocal
 
       double precision ye_inpbackup
@@ -710,10 +746,10 @@ c..bring in the data structure for HELM or TIMMES EOS
       include 'const.dek'
 
 c     Input loop variables
-      integer ii,jj,kk
+      integer*4 ii,jj,kk
 
 c     Indicator of whether already read table (need "save" keyword for this function)
-      integer didreadtable
+      integer*4 didreadtable
       data didreadtable/0/
 
 
@@ -1074,7 +1110,7 @@ c..   bring in the data structure for HELM or TIMMES EOS
       include 'const.dek'
        
 c     Input loop variables
-      integer ii,jj,kk
+      integer*4 ii,jj,kk
 
 c     Choose which units to convert read-in table into
 c     0 = nuclear (no change)
@@ -1086,7 +1122,7 @@ c     1 = CGS (not setup to use this, so don't use)
       data didreadtable/0/
 
 c     Local loop-check parameters
-      integer index1,index2,index3
+      integer*4 index1,index2,index3
 
 
 c     DEBUG:
@@ -1125,21 +1161,32 @@ c
 cccccccccccccccccccccccccccccccccccccccc
 
       open (unit=3,file='sheneos.head')
-      read (3,*) ncin,ncout,nrhobin,nypin,ntkin,nrhobout,nypout,ntkout
+      read (3,*) useinterpn,ncin,ncout,nrhobin,nypin,ntkin,nrhobout,nypout,ntkout
      1     ,lrhobminin,lrhobmaxin,lypminin,lypmaxin,ltkminin,ltkmaxin
      1     ,lrhobminout,lrhobmaxout,lypminout,lypmaxout
      1     ,ltkminout,ltkmaxout
       close (3)
 
-      
+c     Hard check:
       if(      (ncin.ne.ncinexpected)
      1     .OR.(ncout.ne.ncoutexpected)
      1     .OR.(nrhobin.ne.numrhoborig)
      1     .OR.(nypin.ne.numyporig)
      1     .OR.(ntkin.ne.numtorig)
-     1
+     1     ) then
+      write(*,*) "Shen EOS header has incorrect information"
+      write(*,*) 'useinterpn',useinterpn
+      write(*,*) 'ncin',ncin,ncinexpected
+      write(*,*) 'ncout',ncout,ncoutexpected
+      write(*,*) 'nrhob',nrhobin,numrhoborig
+      write(*,*) 'nyp',nypin,numyporig
+      write(*,*) 'ntk',ntkin,numtorig
+      stop
+      end if
+
+c     Hard check:
 c     Check if table is consistent with expected matlab size
-     1     .OR.(nrhobout.ne.numrhobmatlab)
+      if(   (nrhobout.ne.numrhobmatlab)
 c     Below not yet
 c     1     .OR.(nypout.ne.numypmatlab)
      1     .OR.(ntkout.ne.numtmatlab)
@@ -1150,8 +1197,8 @@ c     Below not yet
 c     1     .OR.(nypout.ne.numyp)
      1     .OR.(ntkout.ne.numt)
      1     ) then
-      write(*,*) "Shen EOS header has incorrect information"
-      stop
+      write(*,*) "Shen EOS header has unexpected"
+      write(*,*) "But perhaps ok, information."
       end if
 
 
@@ -1207,6 +1254,7 @@ cccccccccccccccccccccccccccccccccccccccc
 c     Check consistency of table indicies
                if( (index3==kk).AND.(index2==jj).AND.(index1==ii)) then
 c     then good
+c                  write(*,*) 'i',index1,ii,'j',index2,jj,'k',index3,kk
                   else
                      write(*,*) 'Table not consistent'
      1                    ,index1,index2,index3,kk,jj,ii
@@ -1428,33 +1476,58 @@ c      write(*,*) tk,ltk,ltkminout,ntkout,ltkmaxout,tki
       
 
 ccccccccccccccccc
-c
-c     Don't allow answer if beyond original table or beyond Matlab version of table
-c
-ccccccccccccccccc
-      if(
-     1     ((lrhob>lrhobmaxin).OR.(lrhob<lrhobminin))
-     1     .OR.((lrhob>lrhobmaxout).OR.(lrhob<lrhobminout))
-     1     .OR.((lyp>lypmaxin).OR.(yp<0.0))
-c     Original table min is 0 for yp
-c.OR.(lyp<lypminin)
-     1     .OR.((lyp>lypmaxout).OR.(lyp<lypminout))
-     1     .OR.((ltk>ltkmaxin))
-c     Original talbe min is 0 for Tk
-c.OR.(ltk<ltkminin)
-     1     .OR.((ltk>ltkmaxout).OR.(ltk<ltkminout))
-     1     ) then
 c     
-c
-c
+c     Don't allow answer if beyond original table or beyond Matlab version of table
+c     
+c     
+c     
+c     
 c     Note that want to not use Shen table if
 c     a) Temperature is larger than in Shen table
 c     b) Density is below Shen table
 c     c) Yp is larger than Shen table
-      didconverge=0
+c
+ccccccccccccccccc
+      if(useinterpn.eq.1) then
+         if(
+     1        ((lrhob>lrhobmaxin).OR.(lrhob<lrhobminin))
+     1        .OR.((lrhob>lrhobmaxout).OR.(lrhob<lrhobminout))
+     1        .OR.((lyp>lypmaxin).OR.(yp<0.0))
+c     Original table min is 0 for yp
+c     .OR.(lyp<lypminin)
+     1        .OR.((lyp>lypmaxout).OR.(lyp<lypminout))
+     1        .OR.((ltk>ltkmaxin))
+c     Original talbe min is 0 for Tk
+c     .OR.(ltk<ltkminin)
+     1        .OR.((ltk>ltkmaxout).OR.(ltk<ltkminout))
+     1        ) then
+c     
+c     
+c     
+c     Note that want to not use Shen table if
+c     a) Temperature is larger than in Shen table
+c     b) Density is below Shen table
+c     c) Yp is larger than Shen table
+         didconverge=0
       else
          didconverge=1
       end if
+      
+      
+      else
+c     If useinterpn.eq.0, then only restrict based upon Matlab table since tableminmaxfixes() will have performed any other restrictions related to original table
+         if(
+     1        ((lrhob>lrhobmaxout).OR.(lrhob<lrhobminout))
+     1        .OR.((lyp>lypmaxout).OR.(lyp<lypminout))
+     1        .OR.((ltk>ltkmaxout).OR.(ltk<ltkminout))
+     1        ) then
+         didconverge=0
+      else
+         didconverge=1
+      end if
+      
+      end if
+
 
 
 
@@ -1570,8 +1643,8 @@ c     To be returned parameters
       double precision shen_sing
       integer badinterp
 
-      integer iii,jjj,kkk
-      integer ii,jj,kk
+      integer*4 iii,jjj,kkk
+      integer*4 ii,jj,kk
 
       double precision funvalue
       integer waswithintable
@@ -1669,17 +1742,17 @@ c     To be returned parameters
       double precision shen_sing
       integer badinterp
 
-      integer ii,jj,kk
+      integer*4 ii,jj,kk
       double precision di(2),dj(2),dk(2)
       double precision dist(2,2,2),f(2,2,2)
       double precision totaldist,totalf
-      integer iii,jjj,kkk
+      integer*4 iii,jjj,kkk
 
 c     Below used to detect issues with data
       double precision negative1,mynan,myinf
 
 c     Used to indicate if got good values
-      integer totalsummed
+      integer*8 totalsummed
 
 c     Note that Matlab and Fortran agree on text appearance of NaN, so reading in NaN is used to indicate when table is out of range and don't want to use that data (like shifting away from bad regions)
 c      negative1=-1.0
@@ -1890,9 +1963,11 @@ cccccccccccccccccccccccccccccccccccccc
          dnsin=density_cgs_lseos*(avo*fm3)
 
 
+
 ccccccccccccccccccccccccccccccccc
 c     
 c     Convert from Shen ???_sing to LS EOS single global structures that are in vector_sneos.dek and eos_m4c.commononly.inc and maybe el_eos.inc
+c     This also overwrites 
 c     
 cccccccccccccccccccccccccccccccc
 
@@ -1917,7 +1992,11 @@ c     Below not the same
          xh=shenxh_sing
 
 
-c         write(*,*) 'azheav',a,x,xnut,xprot,xalfa,xh
+c     DEBUG:
+         if(1.eq.0) then
+            write(*,*) 'T,D',temperature_cgs_lseos,density_cgs_lseos
+            write(*,*) 'azheav',a,x,xnut,xprot,xalfa,xh
+         end if
 
 c     These are in nuclear units (GODMARK: what to do with these?)
 c         shenmun_sing
@@ -1938,7 +2017,6 @@ c         write(*,*) 'etanls=',etanls,etapls
 c     Calls any electron EOS and puts electron EOS quantities into nuclear form into direct LS EOS type quantities
 c     abar,zbar,zbarnum will be recomputed in any_electron()
          call any_electron(tin,yein,dnsin)
-
 c     any_electron() generates:
 c     1) abarnum,abar,zbar     : species
 c     2) nusbe,neplus,musube   : output vector
@@ -1994,6 +2072,8 @@ c     Set things to 0 as indicator that did not converge
       end if
 
 
+c     DEBUG:
+c      write(*,*) 'betweenINLSEOS',xnut,xprot,xalfa,xh,a,x,'betweenLSBAR',abarnum,abar,zbar
 
 
 

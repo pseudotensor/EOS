@@ -85,7 +85,8 @@ function eos_extract()
 
   % whether to fix stot if using old HELM/TIMMES code where forgot to add entropy of rest-mass of electrons
   % or general fix
-  stotfix = 1;
+  %  stotfix = 1;
+  stotfix = 0;
 
   % whether to use analytical fit or numerical values to set degenerate (offset) values
   utotdegenanalytic=0;
@@ -93,13 +94,14 @@ function eos_extract()
   % 0 = log but "0" is u=0.0
   % 1 = log but "0" is utotoffset
   % 2 = log with "0" as utotoffset, but choosen lower and upper "u" as well
+  % 3 = As with #2, but use temperature to choose lower "u,p,chi,s"
   % whether to set "0" for log output as degeneracy fitting formula (to be added by in when inside HARM)
   % trying to get better temperature resolution for the low-temperature domain
-  utotdegencut = 2;
+  utotdegencut = 3;
 
 
   % whether to force functions to be monotonic as functions of tk
-  forcemonotk = 1;
+  forcemonotk = 0;
 
   % whether to "clean" solution if out of bounds
   doclean=1;
@@ -309,9 +311,9 @@ function eos_extract()
   % E.g., eosparms.head contains:
   % 1E-8 1E-8 1E-8 1E-3 1E-13 1E-13 1E-13 1E-6
   % 1E-16 1E-16 1E-16 1E-16 1E-1 1E-1 1E-1 1E-1
+  % 1.1E5 1.1E5 1.1E5 1.1E5 1E8 1E8 1E8 1E8
   %
-  %
-  numparms=16;
+  numparms=8+8+8;
   
   fid=fopen(file7);
   [myhead,count]=fscanf(fid,'%g',[numparms]);
@@ -329,7 +331,7 @@ function eos_extract()
   CHIF=myhead(ii); ii=ii+1;
   STOTF=myhead(ii); ii=ii+1;
 
-  % for Rin
+  % for Rin related to U,P,CHI,S
   UTOTIN0=myhead(ii); ii=ii+1;
   PTOTIN0=myhead(ii); ii=ii+1;
   CHIIN0=myhead(ii); ii=ii+1;
@@ -339,6 +341,17 @@ function eos_extract()
   PTOTINF=myhead(ii); ii=ii+1;
   CHIINF=myhead(ii); ii=ii+1;
   STOTINF=myhead(ii); ii=ii+1;
+  
+  % for Rin in terms of T directly
+  TKUTOTIN0=myhead(ii); ii=ii+1;
+  TKPTOTIN0=myhead(ii); ii=ii+1;
+  TKCHIIN0=myhead(ii); ii=ii+1;
+  TKSTOTIN0=myhead(ii); ii=ii+1;
+  
+  TKUTOTINF=myhead(ii); ii=ii+1;
+  TKPTOTINF=myhead(ii); ii=ii+1;
+  TKCHIINF=myhead(ii); ii=ii+1;
+  TKSTOTINF=myhead(ii); ii=ii+1;
   
   
   
@@ -369,7 +382,7 @@ function eos_extract()
 
   
   
-  if utotdegencut==2
+  if utotdegencut==2 || utotdegencut==3
     % this method doesn't require 2 passes since min/max of grid are setup for *each* \rho_0, Y_e, Y_\nu, H
     numpasses = 1;
     require2passes = 0;
@@ -907,8 +920,80 @@ function eos_extract()
 
 
         
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %
+        % Cut methods
+        %
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         if utotdegencut==2
+          
+          UTOTIND=10.^(log10(UTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(UTOTINF)-log10(UTOTIN0)));
+          PTOTIND=10.^(log10(PTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(PTOTINF)-log10(PTOTIN0)));
+          CHIIND=10.^(log10(CHIIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(CHIINF)-log10(CHIIN0)));
+          STOTIND=10.^(log10(STOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(STOTINF)-log10(STOTIN0)));
+
+          % utotdegencut==1 effectively starts with utotin=utotdegenfit
+          % Start with utotdegenfit, but allow offset from that in proportion to utotdegenfit-utotoffset = Rinold - R0
+          utotin = utotdegenfit   + abs(utotoffset).*(UTOTIND);
+          ptotin = ptotdegenfit   + abs(ptotoffset).*(PTOTIND);
+          chiin  = chidegenfit    + abs(chioffset).*(CHIIND);
+          stotin = stotdegenfit   + abs(stotoffset).*(STOTIND);
+          sspecin = stotin./(rhobcsq); % forces consistency to stotin since dont' have SSIND.  Above is linear in stot, so it may be ok to do directly with same STOTIND, but not an issue.
+          
+        end %%%% end if utotdegencut==2
+
+        
+        
+        if utotdegencut==3
+          
+          % determine u(T) where T is given as input where want to start table.
+          % Point is that starting at constant T is better than U chosen in funny way based upon minimum value of u
+
+          % Value of Tk(\rho_0) to use
+          TKUTOTIND=10.^(log10(TKUTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(TKUTOTINF)-log10(TKUTOTIN0)));
+          TKPTOTIND=10.^(log10(TKPTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(TKPTOTINF)-log10(TKPTOTIN0)));
+          TKCHIIND=10.^(log10(TKCHIIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(TKCHIINF)-log10(TKCHIIN0)));
+          TKSTOTIND=10.^(log10(TKSTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(TKSTOTINF)-log10(TKSTOTIN0)));
+
+          % find u(TK????IND)
+            for p=1:nhcm
+              for o=1:ntdynorye
+                for m=1:nrhob
+
+                  % Note that using log10() here presumes utot, ptot, chi, and stot are positive definite!  Unlike rest of code!
+                  % ensure uniqueness and order of points
+                  [lutotltkx,lutotltky] = consolidator(squeeze(log10(tk(m,:,o,p))),squeeze(log10(utot(m,:,o,p))),'mean',CONTOL2);
+                  [lptotltkx,lptotltky] = consolidator(squeeze(log10(tk(m,:,o,p))),squeeze(log10(ptot(m,:,o,p))),'mean',CONTOL2);
+                  [lchiltkx,lchiltky] = consolidator(squeeze(log10(tk(m,:,o,p))),squeeze(log10(chi(m,:,o,p))),'mean',CONTOL2);
+                  [lstotltkx,lstotltky] = consolidator(squeeze(log10(tk(m,:,o,p))),squeeze(log10(stot(m,:,o,p))),'mean',CONTOL2);
+
+                  % use utot and tk to get utot(tk=TKUTOTIND), etc.
+                  utotin(m,1,o,p)= 10.^(extrap1(lutotltkx,lutotltky,squeeze(log10(TKUTOTIND(m,1,o,p))),interptype));
+                  ptotin(m,1,o,p)= 10.^(extrap1(lptotltkx,lptotltky,squeeze(log10(TKPTOTIND(m,1,o,p))),interptype));
+                  chiin(m,1,o,p)= 10.^(extrap1(lchiltkx,lchiltky,squeeze(log10(TKCHIIND(m,1,o,p))),interptype));
+                  stotin(m,1,o,p)= 10.^(extrap1(lstotltkx,lstotltky,squeeze(log10(TKSTOTIND(m,1,o,p))),interptype));
+                  
+                  % finally assign to all tk's (since same, really just so degen output can be plotted and in expected format for HARM) 
+                  for n=1:ntk % really ntk!  Still in T-space
+                    utotin(m,n,o,p) = utotin(m,1,o,p);
+                    ptotin(m,n,o,p) = ptotin(m,1,o,p);
+                    chiin(m,n,o,p) = chiin(m,1,o,p);
+                    stotin(m,n,o,p) = stotin(m,1,o,p);
+                  end
+
+                end
+              end
+            end
+            
+            
+          sspecin = stotin./(rhobcsq); % forces consistency to stotin since dont' have SSIND.  Above is linear in stot, so it may be ok to do directly with same STOTIND, but not an issue.
+
+
+        end  %%%% end if utotdegencut==3
+        
+        
+        if utotdegencut==2 || utotdegencut==3
           % More advanced case where grid is chosen such that grid is r = R0 + exp(x1), with r=utot and R0=utotoffset with r-R0 = utotdiff,
           % but where Rin=chosen separately and Rout=chosen separately
           % Here grid is U = U0 + (Uin-U0)*pow( (Uout-U0)/(Uin-U0) , i/N ) for N points with "i" as the index
@@ -926,18 +1011,6 @@ function eos_extract()
           stotout = stotmax;
           sspecout = sspecmax;
 
-          UTOTIND=10.^(log10(UTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(UTOTINF)-log10(UTOTIN0)));
-          PTOTIND=10.^(log10(PTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(PTOTINF)-log10(PTOTIN0)));
-          CHIIND=10.^(log10(CHIIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(CHIINF)-log10(CHIIN0)));
-          STOTIND=10.^(log10(STOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(STOTINF)-log10(STOTIN0)));
-
-          % utotdegencut==1 effectively starts with utotin=utotdegenfit
-          % Start with utotdegenfit, but allow offset from that in proportion to utotdegenfit-utotoffset = Rinold - R0
-          utotin = utotdegenfit   + abs(utotoffset).*(UTOTIND);
-          ptotin = ptotdegenfit   + abs(ptotoffset).*(PTOTIND);
-          chiin  = chidegenfit    + abs(chioffset).*(CHIIND);
-          stotin = stotdegenfit   + abs(stotoffset).*(STOTIND);
-          sspecin = stotin./(rhobcsq); % forces consistency to stotin since dont' have SSIND.  Above is linear in stot, so it may be ok to do directly with same STOTIND, but not an issue.
 
           % finally set "i/N" that always goes from 0 to 1
           lutotdiff = log10( (utot - utotoffset)./(utotin - utotoffset))./log10( (utotout - utotoffset)./(utotin - utotoffset));
@@ -947,8 +1020,12 @@ function eos_extract()
           % Easier to compute sspecdiff independently rather than inverting stotdiff and then appying relationship and then reobtaining sspecdiff
           lsspecdiff = log10( (sspec - sspecoffset)./(sspecin - sspecoffset))./log10( (sspecout - sspecoffset)./(sspecin - sspecoffset));
 
-        end
+        end  %%%% end if utotdegencut==2
 
+        
+        
+        
+        
         
         if utotdegencut==1 || utotdegencut==0
           % Not used, just filler
@@ -1388,8 +1465,8 @@ function eos_extract()
         nsspecdiffout=nutotdiffout; % not used really
         
         
-        if utotdegencut==2
-          % utotdegencut==2 sets up lutotdiff to already vary from 0 to 1 in a log way
+        if utotdegencut==2 || utotdegencut==3
+          % utotdegencut==2  || utotdegencut==3 sets up lutotdiff to already vary from 0 to 1 in a log way
           
           [lutotdiffmin lutotdiffmax steplutotdiff lutotdiffgrid] = setupgrid(nutotdiff);
           [lptotdiffmin lptotdiffmax steplptotdiff lptotdiffgrid] = setupgrid(nptotdiff);
