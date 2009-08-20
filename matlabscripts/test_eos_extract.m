@@ -79,6 +79,27 @@ figure;
 plot(newy1,y2ofy1);
 
 
+% spline is fine as long as using resolved-enough newy1
+y2ofy1 = interpn(y1x,y2y,newy1','linear');
+figure;
+plot(newy1,y2ofy1);
+
+
 %%END
+
+
+f = @(x,y,z,t) t.*exp(-x.^2 - y.^2 - z.^2);
+[x,y,z,t] = ndgrid(-1:0.2:1,-1:0.2:1,-1:0.2:1,0:2:10);
+v = f(x,y,z,t);
+[xi,yi,zi,ti] = ndgrid(-1:0.05:1,-1:0.08:1,-1:0.05:1,0:0.5:10);
+vi = interpn(x,y,z,t,v,xi,yi,zi,ti,'spline');
+nframes = size(ti, 4);
+for j = 1:nframes
+  slice(yi(:,:,:,j), xi(:,:,:,j), zi(:,:,:,j), vi(:,:,:,j),0,0,0);
+  caxis([0 10]);
+  M(j) = getframe;
+end
+movie(M); 
+
 
 

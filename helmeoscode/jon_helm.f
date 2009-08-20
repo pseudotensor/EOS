@@ -34,8 +34,7 @@ c     next 2 are for loop parameters
       double precision yein
       integer CHUNK,TOTALCHUNKS,chunkiter,totalchunkiter
       integer chunkiterlow,chunkiterhigh
-
-
+      real*8 abarlocal,abarboundlocal
 
 
 c     0 = assign A,Z (rho,T)
@@ -50,9 +49,9 @@ c     Set diagnostic for total number of converged LSEOS solutions to 0
 
 
 
-c     Make sure enough memory for storage AND for temporary LSEOS space for electron EOS
-      if(nrowmax.lt.nrhob+1) then
-         write(*,*) 'nrowmax=',nrowmax,'nrhob+1',nrhob+1
+c     Make sure enough memory for storage AND for temporary LSEOS AND temporary HELMEOS space for electron EOS
+      if(nrowmax.lt.nrhob+nrowextra) then
+         write(*,*) 'nrowmax=',nrowmax,'nrhob+nrowextra=',nrhob+nrowextra
          stop 'nrowmax not large enough'
       end if
 
@@ -221,12 +220,15 @@ c     Use below now so when outside nuclear EOS (or not in NSE) can have stellar
                            if(1.eq.1) then
                               yein = tdynorye
 c     Setup A and Z in case nuclear EOS is out of range or not provided (whichyemethod.eq.1)
-c     Purpose is to fit presupernovae model better
-                              call computemutotfit_xnuc0(den_row(index),temp_row(index),abar_row(index))
+
+c     Get non-nuclear <A> and <Abound>
+                              call nonnuclearA(den_row(index),temp_row(index),abarlocal,abarboundlocal)
+c     Assign final <A>, <Z>
+                              abar_row(index)=abarlocal
                               abarnum_row(index)=abar_row(index)
                               zbar_row(index)=abarnum_row(index)*yein
-c     Assume all bound A are same as unbound A
-                              abarbound_row(index)=abar_row(index)
+c     Assign <Abound>
+                              abarbound_row(index)=abarboundlocal
                            end if
 
 

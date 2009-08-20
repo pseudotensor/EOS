@@ -552,6 +552,7 @@ c     ,lambdaintot ! global now
       real*8 Elocalnue,Elocalnuebar,Elocalnumutau
 
       real*8 extrablock
+      real*8 etapwithm,etanwithm,etabwithm,etaewithm
 
 
       include 'const.dek'
@@ -1649,16 +1650,24 @@ c
 ccccccccccccccccccccccccccccc
 
 c     number terms (inelastic only : Note separately assign scattering total)
-c     Nucleon scattering is only inelastic for E_\nu>>m_b c^2
-c     Electron scattering is only inelastic for E_\nu>m_e c^2
-      Ebaryonfactor_nue = exp(-mb*clight**2/(nE_nue*kbtk))
-      Eelectronfactor_nue = exp(-me*clight**2/(nE_nue*kbtk))
+c     Nucleon scattering is only inelastic for E_\nu>>\mu_b[with rest mass] \sim m_b c^2
+c     Electron scattering is only inelastic for E_\nu>\mu_e[with rest mass] \sim m_e c^2
+c     etap and etan with rest-mass are just with with extra $mb c^2$, not individual m_n and m_p since that's how etap and etan are defined.
+      etapwithm=etap+mb*clight**2
+      etanwithm=etan+mb*clight**2
+      etabwithm=0.5*(etapwithm+etanwithm)
+c     etae already has rest-mass
+      etaewithm=etae
+      
+c     Note that nE_nue, etc. are per kbtk, so argument of exponential is dimensionless
+      Ebaryonfactor_nue = exp(-etabwithm/nE_nue)
+      Eelectronfactor_nue = exp(-etaewithm/nE_nue)
 
-      Ebaryonfactor_nuebar = exp(-mb*clight**2/(nE_nuebar*kbtk))
-      Eelectronfactor_nuebar = exp(-me*clight**2/(nE_nuebar*kbtk))
+      Ebaryonfactor_nuebar = exp(-etabwithm/nE_nuebar)
+      Eelectronfactor_nuebar = exp(-etaewithm/nE_nuebar)
 
-      Ebaryonfactor_mutau = exp(-mb*clight**2/(nE_numutau*kbtk))
-      Eelectronfactor_mutau = exp(-me*clight**2/(nE_numutau*kbtk))
+      Ebaryonfactor_mutau = exp(-etabwithm/nE_numutau)
+      Eelectronfactor_mutau = exp(-etaewithm/nE_numutau)
 
       ntautin_nue=ntaua_nue         + Eelectronfactor_nue*ntaus_enue       + Ebaryonfactor_nue*ntausN_nue
       ntautin_nuebar=ntaua_nuebar   + Eelectronfactor_nuebar*ntaus_enuebar + Ebaryonfactor_nuebar*ntausN_nuebar
@@ -1735,6 +1744,8 @@ c     Below for diagnostics
       gammanglobal=nminusn/nntotal
       gammannuglobal=nplusnnu/nntotal
 
+c      write(*,*) 'WTF',nminuspe,nptotal,nntotal
+
 c     Old way to get dY_e/dt
       if(1) then
          taulocal_nue = ddim((1.0-dexp(-(ntaut_nue))),0.0d0)
@@ -1775,7 +1786,7 @@ c     optical depth effects included, but \eta_\nu = 0 so neutrinos are non-ther
 
 c      Below does not assume neutrinos are perfectly thermalized since
 c     only case if \tau_{\nu}>>1
-      thermalnpratio = gammap2nglobal/gamman2pglobal
+      thermalnpratio = gammap2nglobal/(dabs(gamman2pglobal)+SMALL)
 c     This is some kind of global thermal value, not an absolute thermal value
 c     that would be obtained by computing \eta_e assuming the thermal Y_e
       thermalye = 1.0/(1.0+thermalnpratio)

@@ -12,7 +12,7 @@
 #
 # Then get these files either from repository or copy from a known location:
 #
-# scp -rp jon@ki-rh42.slac.stanford.edu:"/data/jon/svneostest/helmeoscode/scripts/chunkbunch.sh /data/jon/svneostest/helmeoscode/scripts/chunkn.sh /data/jon/svneostest/helmeoscode/scripts/runchunkone.sh /data/jon/svneostest/helmeoscode/scripts/runchunkn.sh" .
+# scp -rp jon@ki-rh42.slac.stanford.edu:"/data/jon/svneostest/helmeoscode/scripts/chunkbunch.sh /data/jon/svneostest/helmeoscode/scripts/chunkn.sh /data/jon/svneostest/helmeoscode/scripts/runchunkone.sh /data/jon/svneostest/helmeoscode/scripts/runchunkn.sh /data/jon/svneostest/helmeoscode/scripts/collatechunks.sh" .
 # 
 
 ########## 3 ##############
@@ -22,19 +22,15 @@
 # to kill lots of jobs:
 # bkill -q normal 0
 
-########## 4 ##############
-# choose system/batch type
-useorange=0
-uselonestar=1
 
-########## 5 ##############
+########## 4 ##############
 # run this script by doing:
-# sh chunkbunch.sh <DATADIR> <TOTALCHUNKS>
+# sh chunkbunch.sh <DATADIR> <TOTALCHUNKS> <SYSTEMTYPE>
 #e.g. 
-# sh chunkbunch.sh /lustre/ki/orange/jmckinne/eosfull/datadir/ 100
-# sh chunkbunch.sh . 160
+# sh chunkbunch.sh 2 /lustre/ki/orange/jmckinne/eosfull/datadir/ 100
+# sh chunkbunch.sh 2 . 160
 #
-# sh chunkbunch.sh . 160 "1 13 14 15 16 17 33 49 53 54 55 56 65 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160"
+# sh chunkbunch.sh 2 . 160 "1 13 14 15 16 17 33 49 53 54 55 56 65 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160"
 #
 # for 25,000 chunks, at 1 chunk per minute and 400 chunks will take 1 hour.  Doing 100 chunks will take about 4 hours if cluster free.
 
@@ -49,30 +45,32 @@ uselonestar=1
 # http://tldp.org/LDP/abs/html/testconstructs.html
 if test -z "$1"
 then
-    echo "No directory given."
-    echo "sh chunkbunch.sh <DATADIR> <TOTALCHUNKS>"
+    echo "No system given."
+    echo "sh chunkbunch.sh <SYSTEMTYPE> <DATADIR> <TOTALCHUNKS> <CHUNKLIST>"
+    echo "<CHUNKLIST> is optional argument.  Only have to give 3 arguments."
     exit 1
 else
-    echo "Directory is $1"
+    if [ $1 -eq 0 ]
+    then
+	useorange=0
+	uselonestar=0
+	echo "System is local system"
+    fi
+    if [ $1 -eq 1 ]
+    then
+	useorange=1
+	uselonestar=0
+	echo "System is Orange"
+    fi
+    if [ $1 -eq 2 ]
+    then
+	useorange=0
+	uselonestar=1
+	echo "System is Lonestar"
+    fi
 fi
 
-if test -z "$2"
-then
-    echo "No TOTALCHUNKS given."
-    echo "sh chunkbunch.sh <DATADIR> <TOTALCHUNKS>"
-    exit 1
-else
-    echo "TOTALCHUNKS is $2"
-fi
-
-
-
-cd $1
-export DATADIR=`pwd`
-export HELMDIR=$DATADIR/../svneos/helmeoscode/
-export SAFESTARTDIR=~/chunkdump/
-export TOTALCHUNKS=$2
-
+##############
 if [ $useorange -eq 1 ]
 then
     truenumprocs=1
@@ -85,19 +83,63 @@ then
     MAXJOBS=40
     # So TOTALCHUNKS/truenumprocs<40 has to be true
 fi
+if [ $useorange -eq 0 ] &&
+   [ $uselonestar -eq 0 ]
+then
+#   Assume on 4-core node system like ki-rh42.slac.stanford.edu
+    truenumprocs=4
+    MAXJOBS=10000000
+fi
 
 
+
+##############
+if test -z "$2"
+then
+    echo "No directory given."
+    echo "sh chunkbunch.sh <SYSTEMTYPE> <DATADIR> <TOTALCHUNKS> <CHUNKLIST>"
+    echo "<CHUNKLIST> is optional argument.  Only have to give 3 arguments."
+    exit 1
+else
+    INDIR=$2
+    echo "Directory is $INDIR"
+fi
+
+##############
 if test -z "$3"
 then
+    echo "No TOTALCHUNKS given."
+    echo "sh chunkbunch.sh <SYSTEMTYPE> <DATADIR> <TOTALCHUNKS> <CHUNKLIST>"
+    echo "<CHUNKLIST> is optional argument.  Only have to give 3 arguments."
+    exit 1
+else
+    export TOTALCHUNKS=$3
+    echo "TOTALCHUNKS is $TOTALCHUNKS"
+fi
+
+
+
+################
+if test -z "$4"
+then
     #COUNTFAKECHUNKLIST=`seq 1 $truenumprocs $TOTALCHUNKS`
-    echo "No MAINCHUNKLIST given, so generating chunks from 1 to TOTALCHUNKS=$TOTALCHUNKS in SUBCHUNKS of size truenumprocs=$trunumprocs comprising of $numjobs jobs"
+    echo "No CHUNKLIST given, so generating chunks from 1 to TOTALCHUNKS=$TOTALCHUNKS in SUBCHUNKS of size truenumprocs=$truenumprocs"
+    echo "No CHUNKLIST given, which is ok.  If want, can give CHUNKLIST:"
+    echo "sh chunkbunch.sh <SYSTEMTYPE> <DATADIR> <TOTALCHUNKS> <CHUNKLIST>"
+    echo "<CHUNKLIST> is optional argument.  Only have to give 3 arguments."
     CHUNKPOOL=`seq 1 $TOTALCHUNKS`
 else
-    CHUNKPOOL=$3
+    CHUNKPOOL=$4
     echo "Using TOTALCHUNKS=$TOTALCHUNKS but with arbitrary pool of CHUNKS rather than direct sequence"
 fi
 
 
+cd $INDIR
+export DATADIR=`pwd`
+#export HELMDIR=$DATADIR/../svneos/helmeoscode/
+# assume ran copyjonhelm.sh into datadir already
+export HELMDIR=`pwd`
+export SAFESTARTDIR=~/chunkdump/
 
 
 

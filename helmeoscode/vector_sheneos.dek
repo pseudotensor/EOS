@@ -13,7 +13,8 @@ c +1 corresponds to T=0 and Yp=0 tables
       parameter (numtorig = 31+1, numrhoborig=104, numyporig=71+1)
 
 c      parameter (numtmatlab = 200, numrhobmatlab=200, numypmatlab=20)
-      parameter (numtmatlab = 32*2, numrhobmatlab=104, numypmatlab=72)
+c      parameter (numtmatlab = 32*2, numrhobmatlab=104, numypmatlab=72)
+      parameter (numtmatlab = 128, numrhobmatlab=208, numypmatlab=144)
 
 c      Below is for loading original table
 c      parameter (numt = numtorig, numrhob=numrhoborig, numyp=numyporig)
@@ -22,8 +23,8 @@ c      Below is for loading Matlab interpolated version of table
       parameter (ncinexpected=17,ncoutexpected=19)
 
 c     Parameters from header file
-      integer ncin,ncout,nrhobin,nypin,ntkin,nrhobout,nypout,ntkout
-      common /tableheaderparms1/  ncin,ncout,nrhobin,nypin,ntkin,nrhobout,nypout,ntkout
+      integer useinterpn,ncin,ncout,nrhobin,nypin,ntkin,nrhobout,nypout,ntkout
+      common /tableheaderparms1/  useinterpn,ncin,ncout,nrhobin,nypin,ntkin,nrhobout,nypout,ntkout
 
 c     Parameters from header file
       double precision lrhobminin,lrhobmaxin,lypminin,lypmaxin,ltkminin,ltkmaxin
