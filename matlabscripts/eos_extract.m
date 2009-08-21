@@ -58,11 +58,13 @@ function eos_extract()
   % http://www.mathworks.com/access/helpdesk/help/techdoc/index.html?/access/helpdesk/help/techdoc/ref/interp2.html&http://www.google.com/search?q=interp2&ie=utf-8&oe=utf-8&aq=t&rls=org.mozilla:en-US:official&client=firefox-a
 
   
-  % whether to smooth input quantities that will be used as independent variables
+ 
+  % whether to smooth (moving average) input quantities that will be used as independent variables
   % makes utot and so utotdiff less accurate (weights to larger values, so final HARM estimate of temperature is systematiclaly lower)
   smoothinputs=0; 
   
-  % whether to smooth before doing derivatives
+  % whether to smooth (moving average) before doing derivatives
+  % seems to be ok.
   smoothbeforederivativestep1=1;
   smoothbeforederivativestep2=1;
 
@@ -101,7 +103,9 @@ function eos_extract()
 
 
   % whether to force functions to be monotonic as functions of tk
-  forcemonotk = 0;
+  % Shouldn't rely upon this for regions of importance.
+  % Just used currently to remove lack of monotonicity at T<1E7K for rho>1E12 rho<<1E14 that don't even use.  Unsure why TIMMES is non-monotonic there except that electron terms go back up and probably negative nuclear term not negative enough.
+  forcemonotk = 1;
 
   % whether to "clean" solution if out of bounds
   doclean=1;
@@ -116,7 +120,9 @@ function eos_extract()
   % 0=compute after using entropy (HELM's entropy is messed up, but LS and Shen are fine)
   % 1=compute before using only non-entropy data (BEST)
   % 2=compute both and use smaller of two versions if non-negative and use larger if one is negative (avoids difference errors) (shouldn't use for HELM since HELM's entropy is messed up)
-  preinterpsoundspeed=0;
+  % 0 and 1 should be close.  If 0 has drop-outs where out of bounds, then entropy is not good enough
+  % However, since entropy is not primary focus of code, can try 1 if problems with 0 as long as close in most of domain.cd 
+  preinterpsoundspeed=1;
 
 
 
@@ -226,33 +232,33 @@ function eos_extract()
   % 5 indeps and 3 things each indep = 15 total + lsoffset + fakelsoffset
   [myhead,count]=fscanf(fid,'%d %g %g',[3]);
   ii=1;
-  nrhob=myhead(ii); ii=ii+1;
-  rhobmin=myhead(ii); ii=ii+1;
-  rhobmax=myhead(ii); ii=ii+1;
+  nrhobin=myhead(ii); ii=ii+1;
+  rhobminin=myhead(ii); ii=ii+1;
+  rhobmaxin=myhead(ii); ii=ii+1;
 
   [myhead,count]=fscanf(fid,'%d %g %g',[3]);
   ii=1;
-  ntk=myhead(ii); ii=ii+1;
-  tkmin=myhead(ii); ii=ii+1;
-  tkmax=myhead(ii); ii=ii+1;
+  ntkin=myhead(ii); ii=ii+1;
+  tkminin=myhead(ii); ii=ii+1;
+  tkmaxin=myhead(ii); ii=ii+1;
   
   [myhead,count]=fscanf(fid,'%d %g %g',[3]);
   ii=1;
-  ntdynorye=myhead(ii); ii=ii+1;
-  tdynoryemin=myhead(ii); ii=ii+1;
-  tdynoryemax=myhead(ii); ii=ii+1;
+  ntdynoryein=myhead(ii); ii=ii+1;
+  tdynoryeminin=myhead(ii); ii=ii+1;
+  tdynoryemaxin=myhead(ii); ii=ii+1;
 
   [myhead,count]=fscanf(fid,'%d %g %g',[3]);
   ii=1;
-  ntdynorynu=myhead(ii); ii=ii+1;
-  tdynorynumin=myhead(ii); ii=ii+1;
-  tdynorynumax=myhead(ii); ii=ii+1;
+  ntdynorynuin=myhead(ii); ii=ii+1;
+  tdynorynuminin=myhead(ii); ii=ii+1;
+  tdynorynumaxin=myhead(ii); ii=ii+1;
 
   [myhead,count]=fscanf(fid,'%d %g %g',[3]);
   ii=1;
-  nhcm=myhead(ii); ii=ii+1;
-  hcmmin=myhead(ii); ii=ii+1;
-  hcmmax=myhead(ii); ii=ii+1;
+  nhcmin=myhead(ii); ii=ii+1;
+  hcmminin=myhead(ii); ii=ii+1;
+  hcmmaxin=myhead(ii); ii=ii+1;
 
   % lsoffset stuff
   [myhead,count]=fscanf(fid,'%g %g',[2]);
@@ -265,38 +271,38 @@ function eos_extract()
   
   
   % set log min/max
-  lrhobmin=log10(rhobmin);
-  lrhobmax=log10(rhobmax);
-  ltkmin=log10(tkmin);
-  ltkmax=log10(tkmax);
-  ltdynoryemin=log10(tdynoryemin);
-  ltdynoryemax=log10(tdynoryemax);
-  ltdynorynumin=log10(tdynorynumin);
-  ltdynorynumax=log10(tdynorynumax);
-  lhcmmin=log10(hcmmin);
-  lhcmmax=log10(hcmmax);
+  lrhobminin=log10(rhobminin);
+  lrhobmaxin=log10(rhobmaxin);
+  ltkminin=log10(tkminin);
+  ltkmaxin=log10(tkmaxin);
+  ltdynoryeminin=log10(tdynoryeminin);
+  ltdynoryemaxin=log10(tdynoryemaxin);
+  ltdynorynuminin=log10(tdynorynuminin);
+  ltdynorynumaxin=log10(tdynorynumaxin);
+  lhcmminin=log10(hcmminin);
+  lhcmmaxin=log10(hcmmaxin);
 
   
   % Set steps (should be consistent with kazloopfunctions.f)
-  stepltk=(ltkmax-ltkmin)/(ntk-1);
-  steplrhob=(lrhobmax-lrhobmin)/(nrhob-1);
+  stepltkin=(ltkmaxin-ltkminin)/(ntkin-1);
+  steplrhobin=(lrhobmaxin-lrhobminin)/(nrhobin-1);
 
-  if(whichrnpmethod==0 || ntdynorye<=1)
-    stepltdynorye=0;
+  if(whichrnpmethod==0 || ntdynoryein<=1)
+    stepltdynoryein=0;
   else
-    stepltdynorye=(ltdynoryemax-ltdynoryemin)/(ntdynorye-1);
+    stepltdynoryein=(ltdynoryemaxin-ltdynoryeminin)/(ntdynoryein-1);
   end
 
-  if(whichynumethod==0 || ntdynorynu<=1)
-    stepltdynorynu=0;
+  if(whichynumethod==0 || ntdynorynuin<=1)
+    stepltdynorynuin=0;
   else
-    stepltdynorynu=(ltdynorynumax-ltdynorynumin)/(ntdynorynu-1);
+    stepltdynorynuin=(ltdynorynumaxin-ltdynorynuminin)/(ntdynorynuin-1);
   end
 
-  if(whichhcmmethod==0 || nhcm<=1)
-    steplhcm=0;
+  if(whichhcmmethod==0 || nhcmin<=1)
+    steplhcmin=0;
   else
-    steplhcm=(lhcmmax-lhcmmin)/(nhcm-1);
+    steplhcmin=(lhcmmaxin-lhcmminin)/(nhcmin-1);
   end
 
 
@@ -309,17 +315,43 @@ function eos_extract()
   % Read parameter information
   %
   % E.g., eosparms.head contains:
+  % 0 100 1E5 1E15  50 1E5 1E13  50 1E-2 0.56  1 1E-15 1E-15  1 1E-15 1E-15
   % 1E-8 1E-8 1E-8 1E-3 1E-13 1E-13 1E-13 1E-6
   % 1E-16 1E-16 1E-16 1E-16 1E-1 1E-1 1E-1 1E-1
   % 1.1E5 1.1E5 1.1E5 1.1E5 1E8 1E8 1E8 1E8
   %
-  numparms=8+8+8;
+  numparms=1+15+8+8+8;
   
   fid=fopen(file7);
   [myhead,count]=fscanf(fid,'%g',[numparms]);
   fclose(fid);
 
   ii=1;
+
+  % if inisout==1, then don't need rest of that line
+  % But in any case, Temperature range for out is ignored.  Instead (e.g. for utotdegencut==3) last line is used for T range.
+  inisout=myhead(ii); ii=ii+1;
+
+  nrhobout=myhead(ii); ii=ii+1;
+  rhobminout=myhead(ii); ii=ii+1;
+  rhobmaxout=myhead(ii); ii=ii+1;
+
+  ntkout=myhead(ii); ii=ii+1;
+  tkminout=myhead(ii); ii=ii+1;
+  tkmaxout=myhead(ii); ii=ii+1;
+  
+  ntdynoryeout=myhead(ii); ii=ii+1;
+  tdynoryeminout=myhead(ii); ii=ii+1;
+  tdynoryemaxout=myhead(ii); ii=ii+1;
+
+  ntdynorynuout=myhead(ii); ii=ii+1;
+  tdynorynuminout=myhead(ii); ii=ii+1;
+  tdynorynumaxout=myhead(ii); ii=ii+1;
+
+  nhcmout=myhead(ii); ii=ii+1;
+  hcmminout=myhead(ii); ii=ii+1;
+  hcmmaxout=myhead(ii); ii=ii+1;
+  
   % for degenfit
   UTOT0=myhead(ii); ii=ii+1;
   PTOT0=myhead(ii); ii=ii+1;
@@ -355,8 +387,40 @@ function eos_extract()
   
   
   
+  % set log min/max for "out"  May be overwritten if inisout==1
+  lrhobminout=log10(rhobminout);
+  lrhobmaxout=log10(rhobmaxout);
+  ltkminout=log10(tkminout);
+  ltkmaxout=log10(tkmaxout);
+  ltdynoryeminout=log10(tdynoryeminout);
+  ltdynoryemaxout=log10(tdynoryemaxout);
+  ltdynorynuminout=log10(tdynorynuminout);
+  ltdynorynumaxout=log10(tdynorynumaxout);
+  lhcmminout=log10(hcmminout);
+  lhcmmaxout=log10(hcmmaxout);
+
   
-  
+  % Set steps (should be consistent with kazloopfunctions.f)
+  stepltkout=(ltkmaxout-ltkminout)/(ntkout-1);
+  steplrhobout=(lrhobmaxout-lrhobminout)/(nrhobout-1);
+
+  if(whichrnpmethod==0 || ntdynoryeout<=1)
+    stepltdynoryeout=0;
+  else
+    stepltdynoryeout=(ltdynoryemaxout-ltdynoryeminout)/(ntdynoryeout-1);
+  end
+
+  if(whichynumethod==0 || ntdynorynuout<=1)
+    stepltdynorynuout=0;
+  else
+    stepltdynorynuout=(ltdynorynumaxout-ltdynorynuminout)/(ntdynorynuout-1);
+  end
+
+  if(whichhcmmethod==0 || nhcmout<=1)
+    steplhcmout=0;
+  else
+    steplhcmout=(lhcmmaxout-lhcmminout)/(nhcmout-1);
+  end
   
   
   
@@ -364,20 +428,22 @@ function eos_extract()
   
   
 
+
+  
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   % 
   % BIG LOOP OVER EXTRA INDEPENDENT VARIABLES not used for complicated tasks like derivatives or interpolation
   %
   
-  truentdynorye=ntdynorye;
-  truentdynorynu=ntdynorynu;
-  truenhcm=nhcm;
+  truentdynoryein=ntdynoryein;
+  truentdynorynuin=ntdynorynuin;
+  truenhcmin=nhcmin;
   
   % fake so don't have to change interior code from old way where did full memory at once
-  % assuming never doing big memory method with ntdynorynu>1
-  ntdynorye=1;
-  ntdynorynu=1; % actually not used
-  nhcm=1;
+  % assuming never doing big memory method with ntdynorynuin>1
+  ntdynoryein=1;
+  ntdynorynuin=1; % actually not used
+  nhcmin=1;
   
 
   
@@ -440,9 +506,9 @@ function eos_extract()
     
     % consistent order for loops as output and read-in into HARM
     % must also be consistent with how jon_helm.f writes order so read-in in correct order
-    for hiter=1:truenhcm
-    for ynuiter=1:truentdynorynu
-      for titer=1:truentdynorye
+    for hiter=1:truenhcmin
+    for ynuiter=1:truentdynorynuin
+      for titer=1:truentdynoryein
 
         
 
@@ -450,10 +516,10 @@ function eos_extract()
         % open eos.dat
         %
         %
-        [mydata,count]=fscanf(fid2,'%g',[nc*nrhob*ntk*ntdynorye*nhcm]);
+        [mydata,count]=fscanf(fid2,'%g',[nc*nrhobin*ntkin*ntdynoryein*nhcmin]);
 
         % make vector into 6-D array
-        temp=reshape(mydata,[nc,nrhob,ntk,ntdynorye,nhcm]);
+        temp=reshape(mydata,[nc,nrhobin,ntkin,ntdynoryein,nhcmin]);
         clear mydata;
         % set primary matricies to be each column(field) read in from SM data (i.e.
         % read data is setup with column / nx / ny / nz order
@@ -472,10 +538,10 @@ function eos_extract()
         % clean-up the input data
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        for p=1:nrhob
-          for q=1:ntk
-            for r=1:ntdynorye
-              for s=1:nhcm
+        for p=1:nrhobin
+          for q=1:ntkin
+            for r=1:ntdynoryein
+              for s=1:nhcmin
                 nanonline=0;
                 for t=1:nc
                   nanonline=nanonline+isnan(mynewdata(p,q,r,s,t));
@@ -515,7 +581,7 @@ function eos_extract()
         tdynorynu = mynewdata(:,:,:,:,ii); ii=ii+1;
         hcm = mynewdata(:,:,:,:,ii); ii=ii+1;
         % below ptot,utot,stot actually don't include neutrino contribution if
-        % using whichrnpmethod=0,1, but are true totals if nhcm!=1
+        % using whichrnpmethod=0,1, but are true totals if nhcmin!=1
         % which will be reconstructed within HARM
         ptot = mynewdata(:,:,:,:,ii); ii=ii+1;
         utot = mynewdata(:,:,:,:,ii); ii=ii+1;
@@ -529,10 +595,10 @@ function eos_extract()
           % BEGIN DEBUG:
           % will use sspec to check stot
           %sspecdimless = stot./(rhob./mb);
-%          for p=1:nhcm
-%            for o=1:ntdynorye
-%              for n=1:ntk
-%                for m=1:nrhob
+%          for p=1:nhcmin
+%            for o=1:ntdynoryein
+%              for n=1:ntkin
+%                for m=1:nrhobin
 %                  blob=(lsoffset*ergPmev/mb)/(kb);
 %                  blob2=(lsoffset*ergPmev*rhob(m,n,o,p)/mb)/(kb*tk(m,n,o,p));
 %                  fprintf(fiddebug,'BEFORE: %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g\n',stot(m,n,o,p),sspecdimless(m,n,o,p),rhob(m,n,o,p),tk(m,n,o,p),blob,blob2);
@@ -565,10 +631,10 @@ function eos_extract()
           % Note that entropy offset at nuclear-to-nonnuclear EOS boundary is unchanged, so above accounts for all new EOS changes
 
           % BEGIN DEBUG:
-%          for p=1:nhcm
-%            for o=1:ntdynorye
-%              for n=1:ntk
-%                for m=1:nrhob
+%          for p=1:nhcmin
+%            for o=1:ntdynoryein
+%              for n=1:ntkin
+%                for m=1:nrhobin
 %                  fprintf(fiddebug,'AFTER: %21.15g %21.15g\n',stot(m,n,o,p),sspecdimless(m,n,o,p));
 %                end
 %              end
@@ -629,8 +695,8 @@ function eos_extract()
         
         if smoothinputs
           
-          for q=1:ntdynorye
-            for r=1:nhcm
+          for q=1:ntdynoryein
+            for r=1:nhcmin
               
               % assumes p,u,s >0
               roughlptot(:,:)=log10(ptot(:,:,q,r));
@@ -678,9 +744,9 @@ function eos_extract()
           
           % will use sspec to process stot's montonicity
 
-          for p=1:nrhob
-            for q=1:ntdynorye
-              for r=1:nhcm
+          for p=1:nrhobin
+            for q=1:ntdynoryein
+              for r=1:nhcmin
                 % only need to force these to be monotonic so chi is monotonic so can have single-valued inversion
                 % ptot and utot (and so chi)  need to be monotonically increasing functions of temperature in order to obtain a single temperature for a single ptot,utot,chi
                 utot(p,:,q,r)=monotonize(utot(p,:,q,r));
@@ -803,7 +869,7 @@ function eos_extract()
           % pick lowest temperature as bottom
           % Duplicate this for other temperatures
           if(0)
-            for q=1:ntk
+            for q=1:ntkin
 
               utotdegenfit(:,q,:,:) = utot(:,1,:,:);
               ptotdegenfit(:,q,:,:) = ptot(:,1,:,:);
@@ -813,62 +879,62 @@ function eos_extract()
 
           if(1)
             % don't assume monotonicity
-            for p=1:nhcm
-              for o=1:ntdynorye
-                for m=1:nrhob
+            for p=1:nhcmin
+              for o=1:ntdynoryein
+                for m=1:nrhobin
 
                   %%%%%%%%%% U
-                  for n=1:ntk
+                  for n=1:ntkin
                     mytemporary(n) = utot(m,n,o,p);
                   end
                   mytempmin = min(mytemporary);
                   mytempmax = max(mytemporary);
-                  for n=1:ntk
+                  for n=1:ntkin
                     utotdegenfit(m,n,o,p) = mytempmin;
                     utotmax(m,n,o,p) = mytempmax;
                   end
 
                   %%%%%%%%%% P
-                  for n=1:ntk
+                  for n=1:ntkin
                     mytemporary(n) = ptot(m,n,o,p);
                   end
                   mytempmin = min(mytemporary);
                   mytempmax = max(mytemporary);
-                  for n=1:ntk
+                  for n=1:ntkin
                     ptotdegenfit(m,n,o,p) = mytempmin;
                     ptotmax(m,n,o,p) = mytempmax;
                   end
 
                   %%%%%%%%%% CHI
-                  for n=1:ntk
+                  for n=1:ntkin
                     mytemporary(n) = chi(m,n,o,p);
                   end
                   mytempmin = min(mytemporary);
                   mytempmax = max(mytemporary);
-                  for n=1:ntk
+                  for n=1:ntkin
                     % chi treated independently
                     chidegenfit(m,n,o,p) = mytempmin;
                     chimax(m,n,o,p) = mytempmax;
                   end
 
                   %%%%%%%%%% S
-                  for n=1:ntk
+                  for n=1:ntkin
                     mytemporary(n) = stot(m,n,o,p);
                   end
                   mytempmin = min(mytemporary);
                   mytempmax = max(mytemporary);
-                  for n=1:ntk
+                  for n=1:ntkin
                     stotdegenfit(m,n,o,p) = mytempmin;
                     stotmax(m,n,o,p) = mytempmax;
                   end
 
                   %%%%%%%%%% SS
-                  for n=1:ntk
+                  for n=1:ntkin
                     mytemporary(n) = sspec(m,n,o,p);
                   end
                   mytempmin = min(mytemporary);
                   mytempmax = max(mytemporary);
-                  for n=1:ntk
+                  for n=1:ntkin
                     sspecdegenfit(m,n,o,p) = mytempmin;
                     sspecmax(m,n,o,p) = mytempmax;
                   end
@@ -892,20 +958,20 @@ function eos_extract()
 
           
           % also now vary offset since at higher density du/dT is much smaller
-          numshift = ntk;
+          numshift = ntkin;
           
           %UTOTF=1.0-1E-14;
           %UTOTF=UTOT0;
-          UTOTD=10.^(log10(UTOT0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(UTOTF)-log10(UTOT0)));
+          UTOTD=10.^(log10(UTOT0) + (log10(rhob)-lrhobminin)./(lrhobmaxin-lrhobminin).*(log10(UTOTF)-log10(UTOT0)));
           %PTOTF=1.0-1E-14;
           %PTOTF=PTOT0;
-          PTOTD=10.^(log10(PTOT0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(PTOTF)-log10(PTOT0)));
+          PTOTD=10.^(log10(PTOT0) + (log10(rhob)-lrhobminin)./(lrhobmaxin-lrhobminin).*(log10(PTOTF)-log10(PTOT0)));
           %CHIF=1.0-1E-14;
           %CHIF=CHI0;
-          CHID=10.^(log10(CHI0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(CHIF)-log10(CHI0)));
+          CHID=10.^(log10(CHI0) + (log10(rhob)-lrhobminin)./(lrhobmaxin-lrhobminin).*(log10(CHIF)-log10(CHI0)));
           %STOTF=1.0-1E-14;
           %STOTF=STOT0;
-          STOTD=10.^(log10(STOT0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(STOTF)-log10(STOT0)));
+          STOTD=10.^(log10(STOT0) + (log10(rhob)-lrhobminin)./(lrhobmaxin-lrhobminin).*(log10(STOTF)-log10(STOT0)));
           
           utotoffset = utotdegenfit   - max(10.^(log10(abs(utotmax))-numshift),abs(utotdegenfit).*(UTOTD));
           ptotoffset = ptotdegenfit   - max(10.^(log10(abs(ptotmax))-numshift),abs(ptotdegenfit).*(PTOTD));
@@ -928,10 +994,10 @@ function eos_extract()
         
         if utotdegencut==2
           
-          UTOTIND=10.^(log10(UTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(UTOTINF)-log10(UTOTIN0)));
-          PTOTIND=10.^(log10(PTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(PTOTINF)-log10(PTOTIN0)));
-          CHIIND=10.^(log10(CHIIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(CHIINF)-log10(CHIIN0)));
-          STOTIND=10.^(log10(STOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(STOTINF)-log10(STOTIN0)));
+          UTOTIND=10.^(log10(UTOTIN0) + (log10(rhob)-lrhobminin)./(lrhobmaxin-lrhobminin).*(log10(UTOTINF)-log10(UTOTIN0)));
+          PTOTIND=10.^(log10(PTOTIN0) + (log10(rhob)-lrhobminin)./(lrhobmaxin-lrhobminin).*(log10(PTOTINF)-log10(PTOTIN0)));
+          CHIIND=10.^(log10(CHIIN0) + (log10(rhob)-lrhobminin)./(lrhobmaxin-lrhobminin).*(log10(CHIINF)-log10(CHIIN0)));
+          STOTIND=10.^(log10(STOTIN0) + (log10(rhob)-lrhobminin)./(lrhobmaxin-lrhobminin).*(log10(STOTINF)-log10(STOTIN0)));
 
           % utotdegencut==1 effectively starts with utotin=utotdegenfit
           % Start with utotdegenfit, but allow offset from that in proportion to utotdegenfit-utotoffset = Rinold - R0
@@ -940,6 +1006,15 @@ function eos_extract()
           chiin  = chidegenfit    + abs(chioffset).*(CHIIND);
           stotin = stotdegenfit   + abs(stotoffset).*(STOTIND);
           sspecin = stotin./(rhobcsq); % forces consistency to stotin since dont' have SSIND.  Above is linear in stot, so it may be ok to do directly with same STOTIND, but not an issue.
+         
+          
+          % reasonable upper limits -- upper limits haven't been much of a problem except for a 1 zone drop-out at the top.
+          utotout = utotmax;
+          ptotout = ptotmax;
+          chiout = chimax;
+          stotout = stotmax;
+          sspecout = sspecmax;
+
           
         end %%%% end if utotdegencut==2
 
@@ -947,19 +1022,63 @@ function eos_extract()
         
         if utotdegencut==3
           
+          
           % determine u(T) where T is given as input where want to start table.
           % Point is that starting at constant T is better than U chosen in funny way based upon minimum value of u
 
           % Value of Tk(\rho_0) to use
-          TKUTOTIND=10.^(log10(TKUTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(TKUTOTINF)-log10(TKUTOTIN0)));
-          TKPTOTIND=10.^(log10(TKPTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(TKPTOTINF)-log10(TKPTOTIN0)));
-          TKCHIIND=10.^(log10(TKCHIIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(TKCHIINF)-log10(TKCHIIN0)));
-          TKSTOTIND=10.^(log10(TKSTOTIN0) + (log10(rhob)-lrhobmin)./(lrhobmax-lrhobmin).*(log10(TKSTOTINF)-log10(TKSTOTIN0)));
+          TKUTOTIND=10.^(log10(TKUTOTIN0) + (log10(rhob)-lrhobminin)./(lrhobmaxin-lrhobminin).*(log10(TKUTOTINF)-log10(TKUTOTIN0)));
+          TKPTOTIND=10.^(log10(TKPTOTIN0) + (log10(rhob)-lrhobminin)./(lrhobmaxin-lrhobminin).*(log10(TKPTOTINF)-log10(TKPTOTIN0)));
+          TKCHIIND=10.^(log10(TKCHIIN0) + (log10(rhob)-lrhobminin)./(lrhobmaxin-lrhobminin).*(log10(TKCHIINF)-log10(TKCHIIN0)));
+          TKSTOTIND=10.^(log10(TKSTOTIN0) + (log10(rhob)-lrhobminin)./(lrhobmaxin-lrhobminin).*(log10(TKSTOTINF)-log10(TKSTOTIN0)));
 
           % find u(TK????IND)
-            for p=1:nhcm
-              for o=1:ntdynorye
-                for m=1:nrhob
+          for p=1:nhcmin
+            for o=1:ntdynoryein
+              for m=1:nrhobin
+                
+                % Note that using log10() here presumes utot, ptot, chi, and stot are positive definite!  Unlike rest of code!
+                % ensure uniqueness and order of points
+                [lutotltkx,lutotltky] = consolidator(squeeze(log10(tk(m,:,o,p))),squeeze(log10(utot(m,:,o,p))),'mean',CONTOL2);
+                [lptotltkx,lptotltky] = consolidator(squeeze(log10(tk(m,:,o,p))),squeeze(log10(ptot(m,:,o,p))),'mean',CONTOL2);
+                [lchiltkx,lchiltky] = consolidator(squeeze(log10(tk(m,:,o,p))),squeeze(log10(chi(m,:,o,p))),'mean',CONTOL2);
+                [lstotltkx,lstotltky] = consolidator(squeeze(log10(tk(m,:,o,p))),squeeze(log10(stot(m,:,o,p))),'mean',CONTOL2);
+                
+                % use utot and tk to get utot(tk=TKUTOTIND), etc.
+                utotin(m,1,o,p)= 10.^(extrap1(lutotltkx,lutotltky,squeeze(log10(TKUTOTIND(m,1,o,p))),interptype));
+                ptotin(m,1,o,p)= 10.^(extrap1(lptotltkx,lptotltky,squeeze(log10(TKPTOTIND(m,1,o,p))),interptype));
+                chiin(m,1,o,p)= 10.^(extrap1(lchiltkx,lchiltky,squeeze(log10(TKCHIIND(m,1,o,p))),interptype));
+                stotin(m,1,o,p)= 10.^(extrap1(lstotltkx,lstotltky,squeeze(log10(TKSTOTIND(m,1,o,p))),interptype));
+                
+                % finally assign to all tk's (since same, really just so degen output can be plotted and in expected format for HARM) 
+                for n=1:ntkin % really ntkin!  Still in T-space
+                  utotin(m,n,o,p) = utotin(m,1,o,p);
+                  ptotin(m,n,o,p) = ptotin(m,1,o,p);
+                  chiin(m,n,o,p) = chiin(m,1,o,p);
+                  stotin(m,n,o,p) = stotin(m,1,o,p);
+                end
+                
+              end
+            end
+          end
+          
+          
+          sspecin = stotin./(rhobcsq); % forces consistency to stotin since dont' have SSIND.  Above is linear in stot, so it may be ok to do directly with same STOTIND, but not an issue.
+          
+          
+          if(inisout==1)
+            % reasonable upper limits -- upper limits haven't been much of a problem except for a 1 zone drop-out at the top.
+            utotout = utotmax;
+            ptotout = ptotmax;
+            chiout = chimax;
+            stotout = stotmax;
+            sspecout = sspecmax;
+          else
+            % then use similar procedure with (e.g.) utotin for (e.g.) utotout but with temperature fixed for all rhob and u,p,chi,s types
+            % find u(TK????IND)
+            for p=1:nhcmin
+              for o=1:ntdynoryein
+                for m=1:nrhobin
 
                   % Note that using log10() here presumes utot, ptot, chi, and stot are positive definite!  Unlike rest of code!
                   % ensure uniqueness and order of points
@@ -968,27 +1087,29 @@ function eos_extract()
                   [lchiltkx,lchiltky] = consolidator(squeeze(log10(tk(m,:,o,p))),squeeze(log10(chi(m,:,o,p))),'mean',CONTOL2);
                   [lstotltkx,lstotltky] = consolidator(squeeze(log10(tk(m,:,o,p))),squeeze(log10(stot(m,:,o,p))),'mean',CONTOL2);
 
-                  % use utot and tk to get utot(tk=TKUTOTIND), etc.
-                  utotin(m,1,o,p)= 10.^(extrap1(lutotltkx,lutotltky,squeeze(log10(TKUTOTIND(m,1,o,p))),interptype));
-                  ptotin(m,1,o,p)= 10.^(extrap1(lptotltkx,lptotltky,squeeze(log10(TKPTOTIND(m,1,o,p))),interptype));
-                  chiin(m,1,o,p)= 10.^(extrap1(lchiltkx,lchiltky,squeeze(log10(TKCHIIND(m,1,o,p))),interptype));
-                  stotin(m,1,o,p)= 10.^(extrap1(lstotltkx,lstotltky,squeeze(log10(TKSTOTIND(m,1,o,p))),interptype));
+                  % use utot and tk to get utot(tk=tkmaxout), etc.
+                  
+                  utotout(m,1,o,p)= 10.^(extrap1(lutotltkx,lutotltky,squeeze(ltkmaxout),interptype));
+                  ptotout(m,1,o,p)= 10.^(extrap1(lptotltkx,lptotltky,squeeze(ltkmaxout),interptype));
+                  chiout(m,1,o,p)= 10.^(extrap1(lchiltkx,lchiltky,squeeze(ltkmaxout),interptype));
+                  stotout(m,1,o,p)= 10.^(extrap1(lstotltkx,lstotltky,squeeze(ltkmaxout),interptype));
                   
                   % finally assign to all tk's (since same, really just so degen output can be plotted and in expected format for HARM) 
-                  for n=1:ntk % really ntk!  Still in T-space
-                    utotin(m,n,o,p) = utotin(m,1,o,p);
-                    ptotin(m,n,o,p) = ptotin(m,1,o,p);
-                    chiin(m,n,o,p) = chiin(m,1,o,p);
-                    stotin(m,n,o,p) = stotin(m,1,o,p);
+                  for n=1:ntkin % really ntkin!  Still in T-space
+                    utotout(m,n,o,p) = utotout(m,1,o,p);
+                    ptotout(m,n,o,p) = ptotout(m,1,o,p);
+                    chiout(m,n,o,p) = chiout(m,1,o,p);
+                    stotout(m,n,o,p) = stotout(m,1,o,p);
                   end
 
                 end
               end
             end
             
-            
-          sspecin = stotin./(rhobcsq); % forces consistency to stotin since dont' have SSIND.  Above is linear in stot, so it may be ok to do directly with same STOTIND, but not an issue.
+            sspecout = stotout./(rhobcsq); % forces consistency to stotin since dont' have SSIND.  Above is linear in stot, so it may be ok to do directly with same STOTIND, but not an issue.
 
+          
+          end  %%%% end if inisout==0
 
         end  %%%% end if utotdegencut==3
         
@@ -1004,12 +1125,6 @@ function eos_extract()
           % used for grid of data
           % meaning of utotdiff or ptotdiff or chidiff or stotdiff is "i/N" or the fraction of the grid from 0 to 1
 
-          % reasonable upper limits -- upper limits haven't been much of a problem except for a 1 zone drop-out at the top.
-          utotout = utotmax;
-          ptotout = ptotmax;
-          chiout = chimax;
-          stotout = stotmax;
-          sspecout = sspecmax;
 
 
           % finally set "i/N" that always goes from 0 to 1
@@ -1115,8 +1230,8 @@ function eos_extract()
 
             
             % get derivatives
-            for q=1:ntdynorye
-              for r=1:nhcm
+            for q=1:ntdynoryein
+              for r=1:nhcmin
 
 
                 if smoothbeforederivativestep1==1
@@ -1231,16 +1346,16 @@ function eos_extract()
             
           
             % adjust speed of sound to be no smaller than 0 and no larger than 1
-            for p=1:nhcm
-              for o=1:ntdynorye
-                for n=1:ntk % really ntk!  Still in T-space
-                  for m=1:nrhob
+            for p=1:nhcmin
+              for o=1:ntdynoryein
+                for n=1:ntkin % really ntkin!  Still in T-space
+                  for m=1:nrhobin
                     
-                    if cs2rhoT(m,n,o,p)>1.0
+                    if cs2rhoT(m,n,o,p)>1.0-CONTOL
                       cs2rhoT(m,n,o,p)=1.0-CONTOL;
                     end
-                    if cs2rhoT(m,n,o,p)<0.0
-                      cs2rhoT(m,n,o,p)=0.0;
+                    if cs2rhoT(m,n,o,p)<OUTBOUNDSVALUE
+                      cs2rhoT(m,n,o,p)=OUTBOUNDSVALUE;
                     end
 
                   end
@@ -1276,10 +1391,10 @@ function eos_extract()
           %m-1, n-1, o-1, p-1, ...
           % for small memory method
           
-          for o=1:nhcm
-            for p=1:ntdynorye
-              for n=1:ntk
-                for m=1:nrhob %+0                 +5                                      +5                                      +5                                      +5                                       +5                                      +5                                     +5                                      +5      +1
+          for o=1:nhcmin
+            for p=1:ntdynoryein
+              for n=1:ntkin
+                for m=1:nrhobin %+0                 +5                                      +5                                      +5                                      +5                                       +5                                      +5                                     +5                                      +5      +1
                   fprintf(fid8,'%3d %3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
                           m-1, n-1, titer-1, ynuiter-1, hiter-1, ...
                           rhob(m,n,o,p), tk(m,n,o,p), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
@@ -1364,10 +1479,10 @@ function eos_extract()
           % open q_volume.dat (GODMARK: outdated)
           if 0
 
-            [mydata,count]=fscanf(fid4,'%g',[nco*nrhob*ntk*ntdynorye*nhcm]);
+            [mydata,count]=fscanf(fid4,'%g',[nco*nrhobin*ntkin*ntdynoryein*nhcmin]);
 
             % make vector into 5-D array
-            temp=reshape(mydata,[nco,ntk,nrhob,ntdynorye,nhcm]);
+            temp=reshape(mydata,[nco,ntkin,nrhobin,ntdynoryein,nhcmin]);
             clear mydata;
             % set primary matricies to be each column(field) read in from SM data (i.e.
             % read data is setup with column / nx / ny / nz order
@@ -1451,14 +1566,14 @@ function eos_extract()
         %factor=1;
 
 
-        nutotdiff=ntk*factor;
+        nutotdiff=ntkin*factor;
         nptotdiff=nutotdiff;
         nchidiff=nutotdiff;
         nstotdiff=nutotdiff;
         nsspecdiff=nutotdiff;
         
-        % anything can be put here, but assume basically same as size of ntk
-        nutotdiffout=ntk;
+        % anything can be put here, but assume basically same as size of ntkin
+        nutotdiffout=ntkin;
         nptotdiffout=nutotdiffout;
         nchidiffout=nutotdiffout;
         nstotdiffout=nutotdiffout;
@@ -1640,13 +1755,13 @@ function eos_extract()
           % clear any old-defined quantities (only really needed if running at
           % command line where old values exist and mismatch in dimensions can occur)
           clear extraofUdiff;
-          extraofUdiff=zeros(nrhob,nutotdiff,ntdynorye,nhcm,numextras);
+          extraofUdiff=zeros(nrhobin,nutotdiff,ntdynoryein,nhcmin,numextras);
 
           
           % say X, Y, Xi and get Yi
-          for p=1:nrhob
-            for q=1:ntdynorye
-              for r=1:nhcm
+          for p=1:nrhobin
+            for q=1:ntdynoryein
+              for r=1:nhcmin
 
                 %p
                 %q
@@ -1770,8 +1885,8 @@ function eos_extract()
                   %  size(mynewdata)
                   
                   %setup size of extras array
-                  %lutotextrax = zeros(numextras,ntk);
-                  %lutotextray = zeros(numextras,ntk);
+                  %lutotextrax = zeros(numextras,ntkin);
+                  %lutotextray = zeros(numextras,ntkin);
 
                   
                   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1857,7 +1972,7 @@ function eos_extract()
                   lsspecdiffutotx=lsspecdiff(p,:,q,r);
                   lsspecdiffutoty=log10(utot(p,:,q,r));
                   
-                  % lutotdiff(lsspecdiff)
+                  % lutotdiff(lsspecdiff) % don't logify lutotdiff!
                   lsspecdifflutotdiffx=lsspecdiff(p,:,q,r);
                   lsspecdifflutotdiffy=lutotdiff(p,:,q,r);
 
@@ -1994,7 +2109,8 @@ function eos_extract()
                 % below used for c_s^2 = 1/h dp/drho0|SS
                 PofSSdiff(p,:,q,r) = 10.^(myinterp1(5,lsspecdiffptotx, lsspecdiffptoty, lsspecdiffgrid',interptype));
                 UofSSdiff(p,:,q,r) = 10.^(myinterp1(6,lsspecdiffutotx, lsspecdiffutoty, lsspecdiffgrid',interptype));
-                UdiffofSSdiff(p,:,q,r) = 10.^(myinterp1(6,lsspecdifflutotdiffx, lsspecdifflutotdiffy, lsspecdiffgrid',interptype));
+                % below UdiffofSSdiff is really native coordinate Udiff that is really like log and should stay so!  Don't use 10.^() on it!
+                UdiffofSSdiff(p,:,q,r) = myinterp1(6,lsspecdifflutotdiffx, lsspecdifflutotdiffy, lsspecdiffgrid',interptype);
 
                 % Below is SofU(rho0,u,H) : S = Sden
                 SofUdiff(p,:,q,r) = 10.^(myinterp1(8,lutotdiffstotx, lutotdiffstoty, lutotdiffgrid',interptype));
@@ -2053,17 +2169,17 @@ function eos_extract()
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
           
           for p=1:nutotdiff
-            for q=1:ntdynorye
-              for r=1:nhcm
+            for q=1:ntdynoryein
+              for r=1:nhcmin
                 % using 1 instead of p because of size of p is different
                 rhobgrid4d(:,p,q,r)    = rhob(:,1,q,r);
                 rhobcsqgrid4d(:,p,q,r) = rhobcsq(:,1,q,r);
               end
             end
           end
-          for p=1:nrhob
-            for q=1:ntdynorye
-              for r=1:nhcm
+          for p=1:nrhobin
+            for q=1:ntdynoryein
+              for r=1:nhcmin
                 % diff values
                 lutotdiffgrid4d(p,:,q,r)  = lutotdiffgrid(:);
                 lptotdiffgrid4d(p,:,q,r)  = lptotdiffgrid(:);
@@ -2131,7 +2247,8 @@ function eos_extract()
 
               PofSSdiff = cleanvar(5, PofSSdiff, rhobcsqgrid4d, sspecgrid4d); % here SS is specific entropy and uses rhobcsq
               UofSSdiff = cleanvar(6, UofSSdiff, rhobcsqgrid4d, sspecgrid4d); % here SS is specific entropy and uses rhobcsq
-              UdiffofSSdiff = cleanvar(6, UdiffofSSdiff, rhobcsqgrid4d, sspecgrid4d); % here SS is specific entropy and uses rhobcsq
+              % Udiff below is logified already
+              UdiffofSSdiff = cleanvar(6, UdiffofSSdiff, rhobcsqgrid4d, sspecgrid4d); % here SS is specific entropy and uses rhobcsq.
               
               SofUdiff = cleanvar(8, SofUdiff, rhobcsqgrid4d, utotgrid4d); % here S is entropy density and uses rhobcsq
 
@@ -2189,7 +2306,8 @@ function eos_extract()
 
                 PofSSdiff(~isfinite(log10(PofSSdiff)))=OUTBOUNDSVALUE;
                 UofSSdiff(~isfinite(log10(UofSSdiff)))=OUTBOUNDSVALUE;
-                UdiffofSSdiff(~isfinite(log10(UdiffofSSdiff)))=OUTBOUNDSVALUE;
+                % Udiff already log, so can be negative!
+                UdiffofSSdiff(~isfinite(UdiffofSSdiff))=OUTBOUNDSVALUE;
 
                 SofUdiff(~isfinite(log10(SofUdiff)))=OUTBOUNDSVALUE;
 
@@ -2206,10 +2324,10 @@ function eos_extract()
               
               else % not used currently
                 
-                for p=1:nrhob
+                for p=1:nrhobin
                   for q=1:nutotdiff
-                    for r=1:ntdynorye
-                      for s=1:nhcm
+                    for r=1:ntdynoryein
+                      for s=1:nhcmin
                         %              p
                         %              q
                         %              r
@@ -2375,8 +2493,8 @@ function eos_extract()
 
           
           % say X, Y, Xi and get Yi
-          for q=1:ntdynorye
-            for r=1:nhcm
+          for q=1:ntdynoryein
+            for r=1:nhcmin
               % NOTE
               % The first output FX is always the gradient along the 2nd dimension of F, going across columns. The second output FY is always the gradient along the 1st dimension of F, going across rows. For the third output FZ and the outputs that follow, the Nth output is the gradient along the Nth dimension of F. 
 
@@ -2541,9 +2659,9 @@ function eos_extract()
 
 
           % say X, Y, Xi and get Yi
-          for p=1:nrhob
-            for q=1:ntdynorye
-              for r=1:nhcm
+          for p=1:nrhobin
+            for q=1:ntdynoryein
+              for r=1:nhcmin
                 
                 
                 % HACK
@@ -2552,13 +2670,13 @@ function eos_extract()
                 
                 % BEGIN DEBUG:
                 %hiter
-                %truenhcm
+                %truenhcmin
 
                 %ynuiter
-                %truentdynorynu
+                %truentdynorynuin
 
                 %titer
-                %truentdynorye
+                %truentdynoryein
 
                 %x(1,:)=log10(UdiffofS(p,:,q,r));
                 %sumit = sum(log10(UdiffofS(p,:,q,r)));
@@ -2588,7 +2706,10 @@ function eos_extract()
                 % dPofSdrho0(:,:,q,r)
 
                 %[lutotdpx,lutotdpy] = consolidator(log10(UofS(p,:,q,r)),dPofSSdiffdrho0(p,:,q,r),'mean',CONTOL);
-                [lutotdiffdpx,lutotdiffdpy] = consolidator(UdiffofSSdiff(p,:,q,r),dPofSSdiffdrho0(p,:,q,r),'mean',CONTOL);
+
+                
+                %[lutotdiffdpx,lutotdiffdpy] = consolidator(UdiffofSSdiff(p,:,q,r),dPofSSdiffdrho0(p,:,q,r),'mean',CONTOL);
+                
 
                 % Below is dP/drho0(U,rho0,H)|SS
                 % below used for c_s^2 = 1/h dp/drho0|SS
@@ -2596,7 +2717,13 @@ function eos_extract()
                 % Using UdiffofSSdiff since interpolation needs to use consistent quantity : diff version
                 % Below changes from SSdiff to Udiff dependence
                 % This may cause problems since may be more accurate (and avoid chopping off grid sections) by moving from T to U direction for sound speed (i.e. avoid entropy as in other sound speed method)
-                dPofUdiffdrho0cSS(p,:,q,r) = myinterp1(9,lutotdiffdpx, lutotdiffdpy, lutotdiffgrid',interptype);
+
+                
+                
+                % (d/drho0)P(rho0,Udiff)|SS =interp= (d/drho0)P(rho0,SS)|SS =assume SSdiff not func of rho0= (d/drho0)P(rho0,SSdiff)|SSdiff
+                % UdiffofSSdiff already like log10(U)
+                [lutotdiffldpx,lutotdiffldpy] = consolidator(UdiffofSSdiff(p,:,q,r),log10(dPofSSdiffdrho0(p,:,q,r)),'mean',CONTOL);
+                dPofUdiffdrho0cSS(p,:,q,r) = 10.^(myinterp1(9,lutotdiffldpx, lutotdiffldpy, lutotdiffgrid',interptype));
 
               end
             end
@@ -2651,10 +2778,10 @@ function eos_extract()
 
           if preinterpsoundspeed==2
             % Use cs2post to fix cs2
-            for p=1:nhcm
-              for o=1:ntdynorye
+            for p=1:nhcmin
+              for o=1:ntdynoryein
                 for n=1:nutotdiff % supersampled so far
-                  for m=1:nrhob
+                  for m=1:nrhobin
                     
                     if cs2ofUdiff(m,n,o,p)>2.0*cs2ofUdiffpost(m,n,o,p) && cs2ofUdiffpost(m,n,o,p)>=0.0
                       cs2ofUdiff(m,n,o,p) = cs2ofUdiffpost(m,n,o,p);
@@ -2675,6 +2802,50 @@ function eos_extract()
 
 
           end
+          
+          
+          
+          
+          
+          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+          %
+          % Adjust quantities to be physical in case of numerical error
+          %
+          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+          [mincs2,mincs2I]=min(min(min(min(cs2ofUdiff))));
+          fprintf(fiddebug,'Old Min c_s^2/c^2: %21.15g\n',mincs2);
+          [maxcs2,maxcs2I]=max(max(max(max(cs2ofUdiff))));
+          fprintf(fiddebug,'Old Max c_s^2/c^2: %21.15g\n',maxcs2);
+
+          % adjust speed of sound to be no smaller than 0 and no larger than 1
+
+          for p=1:nhcmin
+            for o=1:ntdynoryein
+              for n=1:nutotdiff
+                for m=1:nrhobin
+                  
+                  if cs2ofUdiff(m,n,o,p)>1.0-CONTOL
+                    cs2ofUdiff(m,n,o,p)=1.0-CONTOL;
+                  end
+                  if cs2ofUdiff(m,n,o,p)<OUTBOUNDSVALUE
+                    cs2ofUdiff(m,n,o,p)=OUTBOUNDSVALUE;
+                  end
+
+                end
+              end
+            end
+          end
+
+          [mincs2,mincs2I]=min(min(min(min(cs2ofUdiff))));
+          fprintf(fiddebug,'New Min c_s^2/c^2: %21.15g\n',mincs2);
+          [maxcs2,maxcs2I]=max(max(max(max(cs2ofUdiff))));
+          fprintf(fiddebug,'New Max c_s^2/c^2: %21.15g\n',maxcs2);
+
+          
+          
+          
 
 
           %%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2731,14 +2902,15 @@ function eos_extract()
           %
           % for quantities that have large dynamic range use log interpolation
           % unless quantities can naturally be 0 or negative such as derivatives or
-          % things from derivatives (e.g. cs2ofUdiff)
+          % things from derivatives.
+          % Exception made for cs2ofUdiff that should be positive
           %
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
           fprintf(fiddebug,'Begin Downsample %d %d %d\n',hiter,titer,ynuiter);
 
-          for p=1:nrhob
-            for q=1:ntdynorye
-              for r=1:nhcm
+          for p=1:nrhobin
+            for q=1:ntdynoryein
+              for r=1:nhcmin
 
                 % for degen checks in HARM
                 UofUdiffout(p,:,q,r)          = 10.^(myinterp1(1,lutotdiffgrid, log10(UofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype));
@@ -2761,8 +2933,8 @@ function eos_extract()
                 dPofUdiffdrho0out(p,:,q,r)    = myinterp1(20,lutotdiffgrid, dPofUdiffdrho0(p,:,q,r), lutotdiffoutgrid',interptype);
                 dPofUdiffduout(p,:,q,r)       = myinterp1(21,lutotdiffgrid, dPofUdiffdu(p,:,q,r), lutotdiffoutgrid',interptype);
 
-                cs2ofUdiffout(p,:,q,r)           = myinterp1(22,lutotdiffgrid, cs2ofUdiff(p,:,q,r), lutotdiffoutgrid',interptype2);
-                cs2ofUdiffcgsout(p,:,q,r)        = myinterp1(23,lutotdiffgrid, cs2ofUdiffcgs(p,:,q,r), lutotdiffoutgrid',interptype2);
+                cs2ofUdiffout(p,:,q,r)           = 10.^(myinterp1(22,lutotdiffgrid, log10(cs2ofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype2));
+                cs2ofUdiffcgsout(p,:,q,r)        = 10.^(myinterp1(23,lutotdiffgrid, log10(cs2ofUdiffcgs(p,:,q,r)), lutotdiffoutgrid',interptype2));
 
                 SofUdiffout(p,:,q,r)          = 10.^(myinterp1(8,lutotdiffgrid, log10(SofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype));
                 % dSofUdiffdrho0out(p,:,q,r)   = 10.^(myinterp1(24,lutotdiffgrid, log10(dSofUdiffdrho0(p,:,q,r)), lutotdiffoutgrid',interptype));
@@ -2838,17 +3010,17 @@ function eos_extract()
 
           % generate down-sampled rho
           for p=1:nutotdiffout
-            for q=1:ntdynorye
-              for r=1:nhcm
+            for q=1:ntdynoryein
+              for r=1:nhcmin
                 % using 1 instead of p because of size of p is different
                 rhobgrid4dout(:,p,q,r)    = rhob(:,1,q,r);
                 rhobcsqgrid4dout(:,p,q,r) = rhobcsq(:,1,q,r);
               end
             end
           end
-          for p=1:nrhob
-            for q=1:ntdynorye
-              for r=1:nhcm
+          for p=1:nrhobin
+            for q=1:ntdynoryein
+              for r=1:nhcmin
                 % diff values
                 lutotdiffgrid4dout(p,:,q,r)  = lutotdiffoutgrid(:);
                 lptotdiffgrid4dout(p,:,q,r)  = lptotdiffoutgrid(:);
@@ -2894,9 +3066,9 @@ function eos_extract()
           % Below used in HARM for entropy-tracking of same fluid element.  Entropy lookup can be arbitrary and non-monotonic and that's fine.
 %          fprintf(fiddebug,'Begin monotonize of final output for U(S) %d %d %d\n',hiter,titer,ynuiter);
 %
-%          for p=1:nrhob
-%            for q=1:ntdynorye
-%              for r=1:nhcm
+%          for p=1:nrhobin
+%            for q=1:ntdynoryein
+%              for r=1:nhcmin
 %
 %                UofSdiffout(p,:,q,r) = monotonize(UofSdiffout(p,:,q,r));
 %
@@ -2953,23 +3125,23 @@ function eos_extract()
           
           % adjust speed of sound to be no smaller than 0 and no larger than 1
 
-          for p=1:nhcm
-            for o=1:ntdynorye
+          for p=1:nhcmin
+            for o=1:ntdynoryein
               for n=1:nutotdiffout
-                for m=1:nrhob
+                for m=1:nrhobin
                   
-                  if cs2ofUdiffout(m,n,o,p)>1.0
+                  if cs2ofUdiffout(m,n,o,p)>1.0-CONTOL
                     cs2ofUdiffout(m,n,o,p)=1.0-CONTOL;
                   end
-                  if cs2ofUdiffout(m,n,o,p)<0.0
-                    cs2ofUdiffout(m,n,o,p)=0.0;
+                  if cs2ofUdiffout(m,n,o,p)<OUTBOUNDSVALUE
+                    cs2ofUdiffout(m,n,o,p)=OUTBOUNDSVALUE;
                   end
 
-                  if cs2ofUdiffcgsout(m,n,o,p)>c.*c
+                  if cs2ofUdiffcgsout(m,n,o,p)>(1.0-CONTOL).*c.*c
                     cs2ofUdiffcgsout(m,n,o,p)=(1.0-CONTOL).*c.*c;
                   end
-                  if cs2ofUdiffcgsout(m,n,o,p)<0.0
-                    cs2ofUdiffcgsout(m,n,o,p)=0.0;
+                  if cs2ofUdiffcgsout(m,n,o,p)<OUTBOUNDSVALUE
+                    cs2ofUdiffcgsout(m,n,o,p)=OUTBOUNDSVALUE;
                   end
 
                 end
@@ -3071,18 +3243,18 @@ function eos_extract()
           
           if finaldoclean
             
-            for p=1:nhcm
-              for o=1:ntdynorye
+            for p=1:nhcmin
+              for o=1:ntdynoryein
                 for n=1:nutotdiffout
 
-                  for m=1:nrhob
+                  for m=1:nrhobin
                     % based upon P=(\gamma-1)u with \gamma~2 being normal highest and assuming can have up to \gamma=3.  Trying to keep inversion method stable.
                     if(dPofUdiffduout(m,n,o,p)>2.0)
                       dPofUdiffduout(m,n,o,p)=2.0;
                     end
                   end
 
-                  for m=1:nrhob
+                  for m=1:nrhobin
                     % based upon P=(\gamma-1)u assuming P=(\gamma-1)/\gamma chi so maximum of dP/dchi is 1.0 no matter what gamma.   Trying to keep inversion method stable.
                     if(dPofCHIdiffdchiout(m,n,o,p)>1.0)
                       dPofCHIdiffdchiout(m,n,o,p)=1.0;
@@ -3092,7 +3264,7 @@ function eos_extract()
                   
                   
                   m0=-1;
-                  for m=nrhob:-1:1
+                  for m=nrhobin:-1:1
                     %            if(dPofUdiffdrho0out(m,n,o,p)<0.0 || dPofUdiffdrho0out(m,n,o,p)>5.0)
                     if((dPofUdiffdrho0out(m,n,o,p)<0.0 || dPofUdiffdrho0out(m,n,o,p)>5.0)&&(tkofUdiffout(m,n,o,p)>1E11)&&(rhob(m,n,o,p)<1E8)  )
                       m0=m;
@@ -3107,7 +3279,7 @@ function eos_extract()
                   end
                   
                   m0=-1;
-                  for m=nrhob:-1:1
+                  for m=nrhobin:-1:1
                     %            if(dSofUdiffdrho0out(m,n,o,p)<0.0 || dSofUdiffdrho0out(m,n,o,p)>5.0)
                     % not sure if entropy version can be negative
                     if((dSofUdiffdrho0out(m,n,o,p)<0.0 || dSofUdiffdrho0out(m,n,o,p)>5.0)&&(tkofUdiffout(m,n,o,p)>1E11)&&(rhob(m,n,o,p)<1E8)  )
@@ -3124,7 +3296,7 @@ function eos_extract()
                   end
                   
                   m0=-1;
-                  for m=nrhob:-1:1
+                  for m=nrhobin:-1:1
                     if((dPofCHIdiffdrho0out(m,n,o,p)<0.0 || dPofCHIdiffdrho0out(m,n,o,p)>5.0)&&(tkofCHIdiffout(m,n,o,p)>1E11)&&(rhob(m,n,o,p)<1E8)  )
                       %            if(dPofCHIdiffdrho0out(m,n,o,p)<0.0 || dPofCHIdiffdrho0out(m,n,o,p)>5.0)
                       m0=m;
@@ -3139,7 +3311,7 @@ function eos_extract()
                   end
 
                   m0=-1;
-                  for m=nrhob:-1:1
+                  for m=nrhobin:-1:1
                     if((dSSofCHIdiffdrho0out(m,n,o,p)<0.0 || dSSofCHIdiffdrho0out(m,n,o,p)>5.0)&&(tkofCHIdiffout(m,n,o,p)>1E11)&&(rhob(m,n,o,p)<1E8)  )
                       %            if(dSSofCHIdiffdrho0out(m,n,o,p)<0.0 || dSSofCHIdiffdrho0out(m,n,o,p)>5.0)
                       m0=m;
@@ -3186,10 +3358,10 @@ function eos_extract()
           %m-1, n-1, o-1, p-1, ...
           % small-memory
           
-          for p=1:nhcm
-            for o=1:ntdynorye
+          for p=1:nhcmin
+            for o=1:ntdynoryein
               for n=1:nutotdiffout
-                for m=1:nrhob
+                for m=1:nrhobin
                   %            0                  +5                                                      +8                              +4      +1               +2              +2      +1                     +3                      +3                      +3                              +4 
                   fprintf(fid3,'%3d %3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
                           m-1, n-1, titer-1, ynuiter-1, hiter-1,...
@@ -3240,9 +3412,9 @@ function eos_extract()
           
           
           n=1;
-          for p=1:nhcm
-            for o=1:ntdynorye
-              for m=1:nrhob
+          for p=1:nhcmin
+            for o=1:ntdynoryein
+              for m=1:nrhobin
                 
                 if 1
                   %utotoffset(m,n,o,p) = UofUdiffout(m,n,o,p) - utotdiffoutgrid(n) NO!
@@ -3369,20 +3541,20 @@ function eos_extract()
       % method, number of output colums, num extras
       fprintf(fid5,'%d %d %d\n',whichrnpmethod,whichynumethod,whichhcmmethod);
       fprintf(fid5,'%d %d %d\n',whichdatatype,NUMOUTCOLUMNS,numextras);
-      fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nrhob,lrhobmin,lrhobmax,steplrhob,baselrhob,linearoffsetlrhob);
+      fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nrhobin,lrhobminin,lrhobmaxin,steplrhobin,baselrhob,linearoffsetlrhob);
 
       fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nutotdiffout,lutotdiffoutmin,lutotdiffoutmax,steplutotdiffout,baselutotdiffout,linearoffsetlutotdiffout);
       fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nptotdiffout,lptotdiffoutmin,lptotdiffoutmax,steplptotdiffout,baselptotdiffout,linearoffsetlptotdiffout);
       fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nchidiffout,lchidiffoutmin,lchidiffoutmax,steplchidiffout,baselchidiffout,linearoffsetlchidiffout);
       fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nstotdiffout,lstotdiffoutmin,lstotdiffoutmax,steplstotdiffout,baselstotdiffout,linearoffsetlstotdiffout);
 
-      fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',truentdynorye,ltdynoryemin,ltdynoryemax,stepltdynorye,baseltdynorye,linearoffsetltdynorye);
-      fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',truentdynorynu,ltdynorynumin,ltdynorynumax,stepltdynorynu,baseltdynorynu,linearoffsetltdynorynu);
-      fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',truenhcm,lhcmmin,lhcmmax,steplhcm,baselhcm,linearoffsetlhcm);
+      fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',truentdynoryein,ltdynoryeminin,ltdynoryemaxin,stepltdynoryein,baseltdynorye,linearoffsetltdynorye);
+      fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',truentdynorynuin,ltdynorynuminin,ltdynorynumaxin,stepltdynorynuin,baseltdynorynu,linearoffsetltdynorynu);
+      fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',truenhcmin,lhcmminin,lhcmmaxin,steplhcmin,baselhcm,linearoffsetlhcm);
 
       fprintf(fid5,'%21.15g %21.15g\n',lsoffset,fakelsoffset);
 
-      fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',ntk,ltkmin,ltkmax,stepltk,baseltk,linearoffsetltk);
+      fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',ntkin,ltkminin,ltkmaxin,stepltkin,baseltk,linearoffsetltk);
 
       fclose(fid5);
     end

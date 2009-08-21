@@ -1,11 +1,15 @@
+c Expand by 1% the grid of rho and T so borders are well-defined when take derivatives
+c Or just expand in T
+c Or not at all
+
 ccccccccc
       parameter(nrhob=100)      !number of doloop steps, 5 in 1 order of mag.
       parameter(rhobmin=1.0D0) !minimum value of rhob in g/cc
       parameter(rhobmax=1.0D15)  !maximum value of rhob in g/cc
 ccccccccc
       parameter(ntk=50)         !number of doloop steps, 5 in 1 order of mag.
-      parameter(tkmin=1.0D5)     !minimum value of temperature in K
-      parameter(tkmax=1.0D13)    !maximum value of temperature in K
+      parameter(tkmin=0.99D5)     !minimum value of temperature in K
+      parameter(tkmax=1.01D13)    !maximum value of temperature in K
 ccccccccc
       parameter(nhcm=1)        !number of doloop steps, 5 in 1 order of mag.
       parameter(hcmmin=1E-15)   !minimum value of Hcm in cm

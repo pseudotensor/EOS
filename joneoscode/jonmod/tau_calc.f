@@ -665,7 +665,7 @@ c     we often form the ratios fd5/fd3 or fd4/fd2 or use fd2 and fd3 multiplicat
 c     If Fermi_Dirac integral is 0, then energy/number density is 0 and must avoid division by 0.
 c     This can happen for very large negative eta_nuebar, so correct those terms
 c     For example, number density of anti-neutrinos can be 0 if large enough \eta_nu, so avoid but keep negligible
-      if(1) then
+      if(1.eq.1) then
 
 
          nonue=0
@@ -749,7 +749,7 @@ c     Note that energy per neutrino estimated as $1.0$ if those SMALL checks are
 c     But should imply very small actual rates since number rates don't divide by these SMALL's
          noepos=0
          noeneg=0
-         if(1) then
+         if(1.eq.1) then
 
 
             if( (fd2_epos.lt.SMALL).OR.(fd3_epos.lt.SMALL)
@@ -918,7 +918,7 @@ c     npfreenondeg=nfreenondeg=0 is possible when Ynpfree=Ypnfree=0, so limit so
       Xpnondeg=npfreenondeg/nbfreenondeg
       Xnnondeg=nnfreenondeg/nbfreenondeg
 
-      if(1) then
+      if(1.eq.1) then
          npheavnondeg = npheav
          nnheavnondeg = nnheav
 
@@ -1085,7 +1085,7 @@ c     Some neutrino phase space blocking factors
 c
 ccccccccccccccccccccccccccccc
 
-      if(0) then
+      if(1.eq.0) then
 c     These only apply for hot matter and Ruffert form of rates
 c     See Ruffert et al. (1996) equations A11-A12 and A15-A16 (for absoroption \beta-process)
 c     [not currently used since don't use explicit absorption]
@@ -1747,7 +1747,7 @@ c     Below for diagnostics
 c      write(*,*) 'WTF',nminuspe,nptotal,nntotal
 
 c     Old way to get dY_e/dt
-      if(1) then
+      if(1.eq.1) then
          taulocal_nue = ddim((1.0-dexp(-(ntaut_nue))),0.0d0)
          taulocal_nuebar = ddim((1.0-dexp(-(ntaut_nuebar))),0.0d0)
       else
@@ -2057,7 +2057,7 @@ c
 c
 ccccccccccccccccccccccccccccccccccccccccc
 
-      if(0) then
+      if(1.eq.0) then
 c     These energies are as generated within fluid
 c     however, this isn't necessarily the energy of escaping neutrinos
 c     Number-rate weighted energy
@@ -3252,7 +3252,7 @@ c     Get baryon-mass density of particles
       rhoA10 = rhoA/1.0D10
 
 
-      if(1) then
+      if(1.eq.1) then
 c     Use Shapiro page 526 equation 18.5.6 from Tubbs & Schramm (1975)
 c     Note that the cross section is given per nuclei and so when multiplying by \rho need to consider per baryon cross section
 c     Other parameters needed are used as in Di Matteo et al. (2002)
