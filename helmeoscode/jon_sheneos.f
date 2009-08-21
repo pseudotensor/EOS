@@ -407,7 +407,7 @@ c         whichfunction=0
 
 
 
-         if(0) then
+         if(1.eq.0) then
             write(*,*) lYpfloor,ltempfloor,Ypfloor,tempfloor,azmin,xmin
 
 c     DEBUG:
@@ -429,7 +429,7 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccc
             call enforce_consistency_sheneos()
          end if
 
-         if(0) then
+         if(1.eq.0) then
 c     DEBUG:
             write(*,*) '2totalbadinterp',totalbadinterp
             write(*,*) 'F1',shenlrhob_sing, shennb_sing
@@ -1754,13 +1754,16 @@ c     Below used to detect issues with data
 c     Used to indicate if got good values
       integer*8 totalsummed
 
+      real*8 zero
+
 c     Note that Matlab and Fortran agree on text appearance of NaN, so reading in NaN is used to indicate when table is out of range and don't want to use that data (like shifting away from bad regions)
 c      negative1=-1.0
 c      mynan=sqrt(negative1)
 
       negative1=0.0
       mynan=negative1/negative1
-      myinf=1.0/0.0
+      zero=0.0d0
+      myinf=1.0d0/zero
 
 
       ii=idint(rhobi) ! fastest index in _row

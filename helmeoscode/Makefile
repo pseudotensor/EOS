@@ -20,6 +20,7 @@
 #jon_ls_2p7.f: Generates LS EOS result
 #jon_sheneos.f : Generates Shen EOS result
 #jon_helm.f : Generates HELM EOS result
+#jon_helm_programstart.f : Top-level program
 #
 #jon_lsbox.f :  Combines Shen/LS with non-nuclear EOS
 #
@@ -121,13 +122,47 @@
 ##############
 
 
+######################
+# to compile and install and run:
+#
+# 0) Choose options like USEMPI, etc.
+# 1) Compile:
+# cd ../joneoscode/jonmod/ ; make clean ; make ; cd ../../helmeoscode/ ; make clean ; make
+#
+# 2) Install:
+# sh copyjonhelm.sh <installdir>
+#
+# 3a) Run in 1-CPU mode:
+# cd <installdir>
+#
+# ./helmeos.exe
+# OR ./helmeosc <totalchunks> <chunklist>
+# OR ./helmstareos.exe
+#
+# Only helmeosc has MPI capability
+#
+# 3b) Run in MPI mode (only with helmeosc binary)
+# cd <installdir>
+# mpirun -np <numprocs> ./helmeosc <chunklist> <totalchunks> <DATADIR> <jobprefix>
+# Where number of chunks in chunklist must be equal to numprocs.
+# e.g.
+# mpirun -np 4 ./helmeosc "1 2 3 4" 4 . "eoschunk"
+#
+#
+# ensure no odd binaries are still running after mpirun failure: killall helmeosc
+#
+###########################
+
+
+#############
+# Choose whether to use MPI
+USEMPI=1
 
 
 
+all: helmeosc helmeos.exe helmstareos.exe
 
-all: helmeos.exe helmstareos.exe
-
-OBJS=jon_helm_azbarset.o jon_sneut5.o jon_kazQm.o jon_helm_computekazlike.o jon_helm_outputstyle.o jon_helmstandard.o jon_eosfxt.o jon_lsbox.o general_compute_functions.o jon_ls_2p7.o jon_sheneos.o
+OBJS=jon_helm.o jon_helm_azbarset.o jon_sneut5.o jon_kazQm.o jon_helm_computekazlike.o jon_helm_outputstyle.o jon_helmstandard.o jon_eosfxt.o jon_lsbox.o general_compute_functions.o jon_ls_2p7.o jon_sheneos.o
 
 #KAZDIR=~/research/kazeos/jonmod
 KAZDIR=../joneoscode/jonmod/
@@ -146,12 +181,41 @@ FFLAGS=-cm -132 -w90 -g
 #FFLAGS=-cm -132 -O0 -C
 # NORMAL WITH OPTS
 #FFLAGS=-cm -w90 -132
+#FC=ifort
 
-FC=ifort
+
+#FFLAGS=-ffixed-line-length-none -ff2c
+FFLAGS=-ffixed-line-length-none
+FC=gfortran 
+#LINKER=gfortran -ff2c -lstdc++
+
+ifeq ($(USEMPI),1)
+# mpicc should work perfectly with linking as long as all paths are set as if source'ed relevant lib paths, include paths, etc.  Should be done by system!
+LINKER=mpicc -cc=gfortran -lstdc++
+endif
+ifeq ($(USEMPI),0)
+LINKER=gfortran -lstdc++
+endif
+
+# g++ works, but requires extern "C" stuff.  Also not standard on supercomputers.
+#CC=g++
+# gcc doesn't require extern "C" stuff, just normal extern prototype with _ at end of function name works.
+# gcc also standard even on supercomputers and should have MPI support
+CC=gcc
+# icc doesn't work
+#CC=icc
+CFLAGS=-O2 -Wall -g -DUSINGMPI=$(USEMPI)
+#LINKER=g++ $(CFLAGS) -lstdc++
 
 
-helmeos.exe: jon_helm.o $(DEPS)
-	$(FC) $(FFLAGS) -o helmeos.exe jon_helm.o $(OBJS) $(KAZOBJS)
+#helmeosc: jon_helm_programstartc.o $(DEPS)
+#	$(CC) $(CFLAGS) -o helmeosc jon_helm_programstartc.o $(OBJS) $(KAZOBJS)
+
+helmeosc: jon_helm_programstartc.o $(DEPS)
+	$(LINKER) -o helmeosc jon_helm_programstartc.o $(OBJS) $(KAZOBJS)
+
+helmeos.exe: jon_helm_programstart.o $(DEPS)
+	$(FC) $(FFLAGS) -o helmeos.exe jon_helm_programstart.o $(OBJS) $(KAZOBJS)
 
 helmstareos.exe: jon_helm_stellarinput.o $(DEPS)
 	$(FC) $(FFLAGS) -o helmstareos.exe jon_helm_stellarinput.o $(OBJS) $(KAZOBJS)
@@ -159,7 +223,13 @@ helmstareos.exe: jon_helm_stellarinput.o $(DEPS)
 
 
 clean:
-	rm -f $(OBJS) $(KAZOBJS) core* *~ helmeos.exe helmstareos.exe
+	rm -f $(OBJS) $(KAZOBJS) core* *~ helmeosc helmeos.exe helmstareos.exe
+
+jon_helm_programstartc.o: jon_helm_programstartc.c Makefile
+	$(CC)  -c $(CFLAGS)  jon_helm_programstartc.c
+
+jon_helm_programstart.o: jon_helm_programstart.f jon_helm.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek   kazeos.loopparms.dek  kaz_state.dek  kaz_fakestate.dek const.dek jon_helmstandard.o jon_eosfxt.o Makefile
+	$(FC)  -c $(FFLAGS)  jon_helm_programstart.f
 
 jon_helm.o: jon_helm.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek   kazeos.loopparms.dek  kaz_state.dek  kaz_fakestate.dek const.dek jon_helmstandard.o jon_eosfxt.o Makefile
 	$(FC)  -c $(FFLAGS)  jon_helm.f

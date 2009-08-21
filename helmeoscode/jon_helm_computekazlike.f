@@ -156,7 +156,7 @@ c            write(*,*) 'postkazneutrino',lambdatot
 
 
 c     GODMARK: Below calculation isn't general
-         if(0) then
+         if(0.eq.1) then
 cccccccccccccccccccccccccccccccccccccccc
 c     Compute npratiofree
 c     

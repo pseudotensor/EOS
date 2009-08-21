@@ -1,6 +1,5 @@
 #~/bin/bash
 # runjonhelm.sh <DATADIR>
-PROG=helmeos.exe
 DATADIR=$1
 #
 DIRSOURCE=`pwd`
@@ -16,7 +15,9 @@ cp -a $DIRSOURCE/scripts/*.sh scripts/
 # make local link
 ln -s scripts/*.sh .
 ln -s $DIRSOURCE/*.atb $DIRSOURCE/helm_table.dat $DIRSOURCE/ls220_guesses.dat $DIRSOURCE/sheneos.dat $DIRSOURCE/sheneos.head .
-cp -a $DIRSOURCE/$PROG .
+cp -a $DIRSOURCE/helmeos.exe .
+cp -a $DIRSOURCE/helmstareos.exe .
+cp -a $DIRSOURCE/helmeosc .
 
 alias cp='cp -i'
 

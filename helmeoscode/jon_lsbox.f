@@ -440,8 +440,8 @@ c     Returned:
 
 c     10.0 second dynamical timescale is largest every expected to allow for NSE
 c     More reasonable would be 1.0 second, but want more important is smooth behavior in EOS at standard \rho,T.
-c      taunselimit=10.0
-      taunselimit=1.0
+      taunselimit=10.0
+c      taunselimit=1.0
       call taunsecheck(rho_cgs,tk_cgs,taunselimit,taunse,tminnse_cgs)
 
       return
@@ -651,15 +651,16 @@ cccccccccccccccccccccccccccccccccccccccccccccccccc
 
          if(goodconverge.eq.1) then
 
-
-            write(*,*) 'WTFWTF1',index,abar,abar_row(index)
+c     DEBUG:
+c            write(*,*) 'WTFWTF1',index,abar,abar_row(index)
 
 
 c..   NOW BACK-STORE RESULTS into row vectors replacing results from HELM EOS if was using it
 c     write(*,*) "Calling store_row_fromlseos2helmeos",index,lsindex
             call store_row_fromcgsnuc2helmeos(index)
 
-            write(*,*) 'WTFWTF2',index,abar,abar_row(index)
+c     DEBUG:
+c            write(*,*) 'WTFWTF2',index,abar,abar_row(index)
             
 
          else
@@ -819,7 +820,7 @@ ccccccccccSTEP4 ccccccccccc
 c     Store non-nuclear nuclei terms as part of offset (nuclear EOS includes Coulomb term in "ion")
 
 c     Shouldn't matter whether include other non-nuclei terms
-               if(1) then
+               if(1.eq.1) then
                   localpdiff = localpdiff - (pion+pcoul)/den_row(loci)
                   localediff = localediff - (eion+ecoul)
                   localsdiff = localsdiff - (sion+scoul)
@@ -982,7 +983,7 @@ ccccccccccSTEP4 ccccccccccc
 c     Store non-nuclear nuclei terms as part of offset (nuclear EOS includes Coulomb term in "ion")
 
 c     Shouldn't matter whether include other non-nuclei terms
-               if(1) then
+               if(1.eq.1) then
                   localpdiff = localpdiff - (pion+pcoul)/den_cgs_lseos
                   localediff = localediff - (eion+ecoul)
                   localsdiff = localsdiff - (sion+scoul)
@@ -1548,6 +1549,7 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       double precision nblocal
       real*8 xnuccalc
       real*8 yelocal
+      real*8 xconsistent,yeconsistent
 
       include 'eosparms.f'
 
@@ -1597,8 +1599,8 @@ c     Other things:
 cccccccccccccccccccccc
 c     Compute xalfa and xh
 c      if(abar.gt.4.5) then
-         xalfa = 1D-49
-         xh = (1.0d0-xnuc)
+      xalfa = 1D-49
+      xh = (1.0d0-xnuc)
 c      else
 c     Can't make all alfa and get any Y_e and <A>, so create avoid and only make heavies for now
 c         xalfa = (1.0-xnuc)
@@ -1608,22 +1610,46 @@ c      end if
 
 cccccccccccccccccccccc
 c     General:
+
+c     Try same Y_e at first
+      x = yetot
+
 c     <A> = \Sum_i [X_i] / Sum_i [X_i/A_i]
 c         =  1/ ( X_nut/1 + Xprot/1 + Xalfa/4 + Xh/a)
 c
 c     So: a = Xh/(1/<A> - Xnut - Xprot - Xalfa/4)
 
+
+c     Assign a
       a=xh/((xh+xprot+xnut+xalfa)/abar_row(loci) - (xnut+xprot)/1.0d0 - xalfa/4.0d0)
-      if(a.lt.1.0d0 .OR. a.gt. abar_row(loci)*(1.0d0+1D-4)) then
+
+      if(a.lt.1.0d0 .AND. xh.gt.1D-10) then
          write(*,*) 'bada',abar_row(loci),xh,xnuc,xalfa,a
          write(*,*) 'xcheck',xnut+xprot+xalfa+xh
+         a=1.0d0
+      end if
+
+      if(a.gt. abar_row(loci)*(1.0d0+1.0d-4) .AND. xh.gt.1D-10) then
+         write(*,*) 'bada',abar_row(loci),xh,xnuc,xalfa,a
+         write(*,*) 'xcheck',xnut+xprot+xalfa+xh
+         a=abar_row(loci)
+      end if
+
+c     Enforce x consistency
+      call enforce_x_consistency(yetot,xnut,xprot,xalfa,xh,a,x,xconsistent)
+
+c     Enforce Y_e consistency
+      call enforce_ye_consistency(yetot,xnut,xprot,xalfa,xh,a,x,yeconsistent)
+
+
+
+c         write(*,*) 'bada',abar_row(loci),xh,xnuc,xalfa,a
+c         write(*,*) 'xcheck',xnut+xprot+xalfa+xh
 c         xh = 1D-49
 c         xalfa = (1.0-xnuc)
 c         a=1D-49
-      end if
+c      end if
 
-c     Same Y_e
-      x = yetot
       muhat = abar_row(loci)
 
 
@@ -2258,7 +2284,7 @@ c     Passed or returned variables
 
       double precision yelocal
 
-      double precision negative1,mynan,cpinf
+      double precision negative1,mynan,cpinf,zero
 
 
 
@@ -2282,7 +2308,7 @@ c     Override, assume user knew what they were doing
          end if
 
 c     LSEOS/SHEN EOS ok with etot<0
-         if((1).OR.(etot_cgs.gt.0.0)) then
+         if((1.eq.1).OR.(etot_cgs.gt.0.0)) then
             positiveenergy=1
          else
             positiveenergy=0
@@ -2311,9 +2337,10 @@ c  .428431667757438 0.2146141197858406E+00011 0.1644676177994669E+00015
             xconsistent=1
          else
 c if(abs(xcheck)<1E-2) then
-            cpinf=1.0/0.0
+            zero=0.0d0
+            cpinf=1.0d0/zero
 c     Use fix for special case of somewhat bad xcheck but cp=Inf.  Assume rest of variables ok no matter how bad xcheck is
-            if((1).AND.(abs(cp).eq.abs(cpinf))) then
+            if((1.eq.1).AND.(abs(cp).eq.abs(cpinf))) then
                xconsistent=1
                cp = 0.2829658353841933E+00008
             else
@@ -2321,9 +2348,10 @@ c     Use fix for special case of somewhat bad xcheck but cp=Inf.  Assume rest o
             end if
          end if
 
-         cpinf=1.0/0.0
+         zero=0.0d0
+         cpinf=1.0d0/zero
 c     Use fix for special case of somewhat bad xcheck but cp=Inf.  Assume rest of variables ok no matter how bad cp is
-         if((1).AND.(abs(cp).eq.abs(cpinf))) then
+         if((1.eq.1).AND.(abs(cp).eq.abs(cpinf))) then
             xconsistent=1
             cp = 0.2829658353841933E+00008
          end if
@@ -3062,7 +3090,7 @@ c..store this row
         dsz_row(loci)    = dentrdz
 
         prad_row(loci)   = prad
-        if(1) then
+        if(1.eq.1) then
            dpradt_row(loci) = dpraddt
            dpradd_row(loci) = dpraddd
            dprada_row(loci) = dpradda
@@ -3071,7 +3099,7 @@ c..store this row
 
 
         erad_row(loci)   = erad
-        if(1) then
+        if(1.eq.1) then
            deradt_row(loci) = deraddt
            deradd_row(loci) = deraddd
            derada_row(loci) = deradda
@@ -3079,7 +3107,7 @@ c..store this row
         end if
 
         srad_row(loci)   = srad 
-        if(1) then
+        if(1.eq.1) then
            dsradt_row(loci) = dsraddt
            dsradd_row(loci) = dsraddd
            dsrada_row(loci) = dsradda
@@ -3116,7 +3144,7 @@ c        spos_row(loci)   = spos !new
         dsepa_row(loci)  = dsepda        
         dsepz_row(loci)  = dsepdz
 
-        if(1) then
+        if(1.eq.1) then
 
            if(whicheleeos.eq.2) then
               xnem_row(loci)   = xne
@@ -3143,7 +3171,7 @@ c        spos_row(loci)   = spos !new
 
         xnp_row(loci)    = xnpfer !new
 
-        if(1) then
+        if(1.eq.1) then
 c     Below was only set in TIMMES EOS
            zeff_row(loci)   = zeff
         end if
@@ -3169,7 +3197,7 @@ c        write(*,*) 'storerow',loci,etaele,etapls,etanls,etanu
         detaz_row(loci)  = detadz
         etapos_row(loci) = etapos !new
 
-        if(1) then
+        if(1.eq.1) then
            if(whicheleeos.eq.2) then
               eip_row(loci)    = eip
               sip_row(loci)    = sip
@@ -3375,7 +3403,7 @@ c..   store this row back into individual variables
       dentrdz =       dsz_row(loci)
 
       prad =       prad_row(loci)
-      if(1) then
+      if(1.eq.1) then
          dpraddt =          dpradt_row(loci)
          dpraddd =          dpradd_row(loci)
          dpradda =          dprada_row(loci)
@@ -3384,7 +3412,7 @@ c..   store this row back into individual variables
 
 
       erad =       erad_row(loci)
-      if(1) then
+      if(1.eq.1) then
          deraddt =          deradt_row(loci)
          deraddd =          deradd_row(loci)
          deradda =          derada_row(loci)
@@ -3392,7 +3420,7 @@ c..   store this row back into individual variables
       end if
 
       srad  =       srad_row(loci)
-      if(1) then
+      if(1.eq.1) then
          dsraddt =          dsradt_row(loci)
          dsraddd =          dsradd_row(loci)
          dsradda =          dsrada_row(loci)
@@ -3429,7 +3457,7 @@ c      spos =       sele_row(loci)
       dsepda         =       dsepa_row(loci)
       dsepdz =       dsepz_row(loci)
 
-      if(1) then
+      if(1.eq.1) then
 
          if(whicheleeos.eq.2) then
             xne =             xnem_row(loci)
@@ -3463,7 +3491,7 @@ c      spos =       sele_row(loci)
 
       xnpfer =       xnp_row(loci) !new
 
-      if(1) then
+      if(1.eq.1) then
 c     Below was only set in TIMMES EOS
          zeff =          zeff_row(loci)
       end if
@@ -3481,7 +3509,7 @@ c     write(*,*) 'storerow',loci,etaele,etapls,etanls,etanu
       detadz =       detaz_row(loci)
       etapos =       etapos_row(loci)!new
 
-      if(1) then
+      if(1.eq.1) then
          if(whicheleeos.eq.2) then
             eip =             eip_row(loci)
             sip =             sip_row(loci)
@@ -4389,12 +4417,12 @@ ccccccccccccccccccccccccccccccccccccc
 
 c     Fix rhob and T near region where LSEOS is bad, but continue using normal rho,T for electron EOS
 c     6.412,   8.87604
-      tmin = 10**9
-      tmax = 10**14
-      rhomin = 10**6.4
-      rhomax = 10**15
-      ypmin=0.04
-      ypmax=0.9
+      tmin = 1.0D9
+      tmax = 1.0D14
+      rhomin = 10.0D0**(6.4D0)
+      rhomax = 1.0D15
+      ypmin=0.04D0
+      ypmax=0.9D0
 
 
 c     Further restrict and change rho,T limits
@@ -4476,7 +4504,7 @@ c      write(*,*) "End Calling inveos"
 
 c..failure
       if (sf .ne. 1) then
-         if(0) then
+         if(0.eq.1) then
             write(6,*) 
             write(6,*) ' eos failed at ye temp den (cgs):'
             write(6,111) ye_inp,temp_cgs_lseos,den_cgs_lseos
@@ -4622,6 +4650,7 @@ c Below contains _cgs and _nuc globals
       real*8 rhoblocal
       real*8 mutotxnuc0,ataunse
       real*8 aorig,pnogas
+      real*8 zero
 
 
 
@@ -4833,7 +4862,7 @@ c      write(*,*) 'dse,dpe,dsp',dse,dpe,dsp
 
 
 
-      if(1) then
+      if(1.eq.1) then
 c     JCM: For LSEOS, at \rho=1.644676...E14g/cc T=5E8-1E11, cp=Inf and cv~-Inf
 c     And sound=Nan
 c     If this happens, assume cp just large or phase transition
@@ -4869,7 +4898,8 @@ c     In any case reset cp to be large
             cv = 1D49
          end if
 
-         cpinf=1.0/0.0
+         zero=0.0d0
+         cpinf=1.0d0/zero
 
          if(abs(cp).eq.abs(cpinf)) then
             cp = 1D49

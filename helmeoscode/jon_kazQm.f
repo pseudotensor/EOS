@@ -141,13 +141,13 @@ cslope=(11.9782-8.30982)/(10.2258-9.31292)
 cfun=8.30982+slope*(lgT-9.31292)
 cmyuse4=((rhobinput>10**8.3).AND.(lgr>fun)) ? 1 : 0
 c
-      if(myuse1) then
+      if(myuse1.eq.1) then
          Ypfalse=1.0
       else
-         if(myuse3) then
+         if(myuse3.eq.1) then
             Ypfalse=0.5
          else
-            if(myuse4) then
+            if(myuse4.eq.1) then
                Ypfalse=1E-3
             else
                Ypfalse=1E30
