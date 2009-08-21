@@ -26,7 +26,7 @@ c     Below is what KAZ now things is good/corrected approximation
       xnuc = 11.3226d0*rho10**(-0.75d0)*T10**1.125d0*exp(-8.20899d0/T10)
 c     xnuc = 26.2d0*rho10**(-0.75d0)*tmev**1.125d0*ex(-7.074d0/tmev)
 c DEBUG:
-      xnuccalc = min(1.d0, max(xnuc,9.d-10)) !check1
+      xnuccalc = min(1.d0, max(xnuc,1.d-49)) !check1
       return
 
 c     For T11<T11min just set xnuc to 0
@@ -99,7 +99,7 @@ c     end if
 c     
 c     
 c     
-      xnuccalc = min(1.d0, max(xnuc,9.d-10)) !check1
+      xnuccalc = min(1.d0, max(xnuc,1.d-49)) !check1
 c     
 c     
 c     

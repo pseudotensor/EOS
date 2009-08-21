@@ -119,6 +119,9 @@ C======================================================================
 c     To be returned:
       real*8 intrhoblocal,inttklocal,inthcmlocal,inttdynoryelocal,inttdynorynulocal
 
+c     Locals:
+      real*8 divisor
+
 c     Bring-in Kaz single global quantities
 c      include 'kazeos.dek'
       include 'kazeos.parms.dek'
@@ -130,20 +133,23 @@ C======================================================================
 
 
       if(nhcm.ne.1) then
-         inthcmlocal=log10(hcmmax/hcmmin)/dble(nhcm-1)
+         divisor=dble(nhcm-1)
+         inthcmlocal=log10(hcmmax/hcmmin)/divisor
       else
          inthcmlocal=0.d0
       end if
 
       if (ntdynorynu.ne.1) then
-         inttdynorynulocal=log10(tdynorynumax/tdynorynumin)/dble(ntdynorynu-1)
+         divisor=dble(ntdynorynu-1)
+         inttdynorynulocal=log10(tdynorynumax/tdynorynumin)/divisor
       else
          inttdynorynulocal=0.d0
       end if
 
 
       if (ntdynorye.ne.1) then
-         inttdynoryelocal=log10(tdynoryemax/tdynoryemin)/dble(ntdynorye-1)
+         divisor=dble(ntdynorye-1)
+         inttdynoryelocal=log10(tdynoryemax/tdynoryemin)/divisor
       else
          inttdynoryelocal=0.d0
       end if
@@ -151,13 +157,15 @@ C======================================================================
 
 
       if (ntk.ne.1) then
-         inttklocal=log10(tkmax/tkmin)/dble(ntk-1)
+         divisor=dble(ntk-1)
+         inttklocal=log10(tkmax/tkmin)/divisor
       else
          inttklocal=0.d0
       end if
       
       if (nrhob.ne.1) then
-         intrhoblocal=log10(rhobmax/rhobmin)/dble(nrhob-1)
+         divisor=dble(nrhob-1)
+         intrhoblocal=log10(rhobmax/rhobmin)/divisor
       else
          intrhoblocal=0.d0
       end if

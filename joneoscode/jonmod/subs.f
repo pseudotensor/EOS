@@ -116,10 +116,10 @@ C=========================PROCEDURE DIVISION==============================
       return
 
 
-c      IF (x.gt.88.0290D0) THEN        !In danger of overflow.
-       IF (x.gt.2.d3) THEN        !In danger of overflow.  !check2
-c          ex1 = dexp(88.0290D0)  
-          ex1 = dexp(2.d3)       !check2
+      IF (x.gt.600.0d0) THEN        !In danger of overflow.
+c       IF (x.gt.1.d3) THEN        !In danger of overflow.  !check2
+          ex1 = dexp(600.0d0)  
+c          ex1 = dexp(1.d3)       !check2
       ELSE
         IF (x.lt.-88.7220D0) THEN     !In danger of underflow.
           ex1 = 0.d0
