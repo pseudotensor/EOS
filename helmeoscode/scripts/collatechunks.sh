@@ -8,6 +8,7 @@
 
 ########### 2 ##############
 #
+# NO LONGER required with new copyjonhelm.sh:
 # scp -rp jon@ki-rh42.slac.stanford.edu:"/data/jon/svneostest/helmeoscode/scripts/collatechunks.sh" .
 
 ########### 3 ##############
