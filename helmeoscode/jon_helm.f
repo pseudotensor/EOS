@@ -82,8 +82,9 @@ c     write(*,*) nrhob,ntk,nhcm,ntdynorye
 
 
 c     Read-in any chunk parameters
-      open(680,file='eoschunk.dat',status='unknown')
-      read(680,*,END=134) CHUNK,TOTALCHUNKS
+c     Can't use fid's larger than 99 with -lg2c
+      open(25,file='eoschunk.dat',status='unknown')
+      read(25,*,END=134) CHUNK,TOTALCHUNKS
       goto 135
  134  CHUNK=1
       TOTALCHUNKS=1
@@ -279,7 +280,8 @@ c     Report convergence for LSEOS
      1     totalnumgoodconverged,'out of',nrhob*ntk
 
 
-      stop 'normal termination'
+c      No, let return
+c      stop 'normal termination'
 
  03   format(1x,t2,a6,I3,t22,a6,I3)
 

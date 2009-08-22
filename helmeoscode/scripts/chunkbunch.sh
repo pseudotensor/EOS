@@ -132,12 +132,12 @@ fi
 ################
 if test -z "$4"
 then
-    #COUNTFAKECHUNKLIST=`seq 1 $truenumprocs $TOTALCHUNKS`
+    #COUNTFAKECHUNKLIST=`seq -s " " 1 $truenumprocs $TOTALCHUNKS`
     echo "No CHUNKLIST given, so generating chunks from 1 to TOTALCHUNKS=$TOTALCHUNKS"
     echo "No CHUNKLIST given, which is ok.  If want, can give CHUNKLIST:"
     echo "sh chunkbunch.sh <SYSTEMTYPE> <DATADIR> <TOTALCHUNKS> <CHUNKLIST>"
     echo "<CHUNKLIST> is optional argument.  Only have to give 3 arguments."
-    CHUNKPOOL=`seq 1 $TOTALCHUNKS`
+    CHUNKPOOL=`seq -s " " 1 $TOTALCHUNKS`
 else
     CHUNKPOOL=$4
     echo "Using TOTALCHUNKS=$TOTALCHUNKS but with arbitrary pool of CHUNKS rather than direct sequence"
@@ -240,7 +240,7 @@ fi
 
 ### LOOP OVER CHUNKS and start jobs
 ii=1
-for CHUNK in `seq 1 $numgroups`
+for CHUNK in `seq -s " " 1 $numgroups`
 do
 
     # for name:
@@ -248,7 +248,7 @@ do
 
     # determine last chunk number
     #LASTCHUNK=$(($CHUNK+$truenumprocs-1))
-    #CHUNKLIST=`seq $CHUNK $LASTCHUNK`
+    #CHUNKLIST=`seq -s " " $CHUNK $LASTCHUNK`
 
     # determine CHUNKLIST
     start=$ii

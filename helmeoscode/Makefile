@@ -125,7 +125,10 @@
 ######################
 # to compile and install and run:
 #
-# 0) Choose options like USEMPI, etc.
+# 0) Choose options like USEMPI, USEGFORTRAN, etc.
+#
+# 0.5) And of course setup options within code like described above (kazeos.parms.dek and kazeos.loopparms.dek)
+#
 # 1) Compile:
 # cd ../joneoscode/jonmod/ ; make clean ; make ; cd ../../helmeoscode/ ; make clean ; make
 #
@@ -158,6 +161,9 @@
 # Choose whether to use MPI
 USEMPI=1
 
+# USEGFORTRAN==1 means any system with gfortran like ki-rh42 or any standard linux system
+# USEGFORTRAN==0 means a system without gfortran like lonestar
+USEGFORTRAN=1
 
 
 all: helmeosc helmeos.exe helmstareos.exe
@@ -173,6 +179,9 @@ KAZDEPS=$(KAZDIR)/kazeos.loopparms.dek $(KAZDIR)/kazeos.loopvars.dek $(KAZDIR)/c
 
 DEPS=Makefile $(OBJS) $(KAZOBJS) $(KAZDEPS) kaz_state.dek kaz_fakestate.dek
 
+
+
+ifeq ($(USEGFORTRAN),1)
 # DEBUG WITH BOUNDS CHECKS
 #FFLAGS=-cm -132 -O0 -C -warn nounused -warn nouncalled -warn
 FFLAGS=-cm -132 -w90 -g
@@ -185,7 +194,7 @@ FFLAGS=-cm -132 -w90 -g
 
 
 #FFLAGS=-ffixed-line-length-none -ff2c
-FFLAGS=-ffixed-line-length-none
+FFLAGS=-ffixed-line-length-none -g
 FC=gfortran 
 #LINKER=gfortran -ff2c -lstdc++
 
@@ -198,14 +207,73 @@ LINKER=gfortran -lstdc++
 endif
 
 # g++ works, but requires extern "C" stuff.  Also not standard on supercomputers.
+ifeq ($(USEMPI),1)
+CC=mpicc -cc=gcc
+CFLAGS=-O2 -Wall -g -DUSINGMPI=$(USEMPI) -DUSINGGFORTRAN=$(USEGFORTRAN)
+endif
+ifeq ($(USEMPI),0)
 #CC=g++
 # gcc doesn't require extern "C" stuff, just normal extern prototype with _ at end of function name works.
 # gcc also standard even on supercomputers and should have MPI support
 CC=gcc
 # icc doesn't work
 #CC=icc
-CFLAGS=-O2 -Wall -g -DUSINGMPI=$(USEMPI)
+CFLAGS=-O2 -Wall -g -DUSINGMPI=$(USEMPI) -DUSINGGFORTRAN=$(USEGFORTRAN)
 #LINKER=g++ $(CFLAGS) -lstdc++
+endif
+
+
+# end if USEGFORTRAN==1
+endif
+
+
+############ BEGIN USEGFORTRAN==0
+ifeq ($(USEGFORTRAN),0)
+
+
+# DEBUG WITH BOUNDS CHECKS
+#FFLAGS=-cm -132 -O0 -C -warn nounused -warn nouncalled -warn
+#FFLAGS=-cm -132 -w90 -g
+# autoparallelization doesn't do well
+#FFLAGS=-cm -parallel -132 -w90
+#FFLAGS=-cm -132 -O0 -C
+# NORMAL WITH OPTS
+#FFLAGS=-cm -w90 -132
+#FC=ifort
+
+
+#FFLAGS=-ffixed-line-length-none -ff2c
+FFLAGS=-ffixed-line-length-none -g
+FC=f77
+#LINKER=ifort -ff2c -lstdc++
+
+ifeq ($(USEMPI),1)
+# mpicc should work perfectly with linking as long as all paths are set as if source'ed relevant lib paths, include paths, etc.  Should be done by system!
+LINKER=mpicc -cc=g77 $(FFLAGS) -lstdc++ -lg2c
+endif
+ifeq ($(USEMPI),0)
+LINKER=g77 $(FFLAGS) -lstdc++ -lg2c
+endif
+
+# g++ works, but requires extern "C" stuff.  Also not standard on supercomputers.
+ifeq ($(USEMPI),1)
+CC=mpicc -cc=gcc
+CFLAGS=-O2 -Wall -g -DUSINGMPI=$(USEMPI) -DUSINGGFORTRAN=$(USEGFORTRAN)
+endif
+ifeq ($(USEMPI),0)
+#CC=g++
+# gcc doesn't require extern "C" stuff, just normal extern prototype with _ at end of function name works.
+# gcc also standard even on supercomputers and should have MPI support
+CC=gcc
+# icc doesn't work
+#CC=icc
+CFLAGS=-O2 -Wall -g -DUSINGMPI=$(USEMPI) -DUSINGGFORTRAN=$(USEGFORTRAN)
+#LINKER=g++ $(CFLAGS) -lstdc++
+endif
+
+
+endif
+
 
 
 #helmeosc: jon_helm_programstartc.o $(DEPS)

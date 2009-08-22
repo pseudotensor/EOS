@@ -121,7 +121,7 @@ c      read(*,*) T11,etae        !check2
       tmev = T11*1.d11/mev2K
 c      JCM: Qt_gAe term different than p+e^- -> n + \nu
 c     From Bruenn (1985) equation C28
-      Qt_gAe = dmax1(Deltamev/tmev + etan - etap,0.0)
+      Qt_gAe = dmax1(Deltamev/tmev + etan - etap,0.0d0)
 c     use above so generally truncated
 c      Qt_gAe = Deltamev/tmev + etan - etap
       met_gAe=memev/tmev

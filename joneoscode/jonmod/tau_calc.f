@@ -586,7 +586,7 @@ c     Perfect thermalization calculation
       else
 c     Setup Fermi blocking correction to estimate blocking factor better
 c     in regimes where neutrinos are (and are not) part of collisional system
-         extrablock = dmax1(0.0,dmin1(1.0d0,Ynu0/Ynuthermal0))
+         extrablock = dmax1(0.0d0,dmin1(1.0d0,Ynu0/Ynuthermal0))
       end if
 
 
@@ -903,14 +903,14 @@ c     New method that is easier to fix-up
 ccccccccccccccccccccccccc
 c     GODMARK: Need Sumi on whether below is correct -- how to define npfree from Xnut,Xprot?
 ccccccccccccccccccccccccc
-c      nbfree=dmax1(1E-30,(npfree*mp+nnfree*mn)/mb)
+c      nbfree=dmax1(1D-30,(npfree*mp+nnfree*mn)/mb)
 c See Shen guide just below equation 18 for definition of $n_b$
-      nbfree=dmax1(1E-30,(npfree+nnfree))
+      nbfree=dmax1(1D-30,(npfree+nnfree))
 c     Note that below is a *definition* for the mass-weighting used
 c     Presumes below is used really for number of free baryons but in "mass form" so that don't really need true total mass-energy
       rho10free=mb*nbfree/1.0D10
-c      nbfreenondeg=dmax1(1E-30,(mp*npfreenondeg+mn*nnfreenondeg)/mb)
-      nbfreenondeg=dmax1(1E-30,(npfreenondeg+nnfreenondeg))
+c      nbfreenondeg=dmax1(1D-30,(mp*npfreenondeg+mn*nnfreenondeg)/mb)
+      nbfreenondeg=dmax1(1D-30,(npfreenondeg+nnfreenondeg))
       rho10freenondeg=mb*nbfreenondeg/1.0D10
 
 c     Free (and non-degen) neutron fraction
@@ -943,12 +943,12 @@ c      npboundnondeg = (nnbound+npbound)*Ypnbound
 c      nnboundnondeg = (nnbound+npbound)*Ynpbound
 
 c     Above compute_old_Ynp_Ypn() takes care of the below now
-c      npfreenondeg = dmax1((nnfree-npfree)/(dexp(etanbruenn-etapbruenn)-1.0),0.0)
-c      nnfreenondeg = dmax1((npfree-nnfree)/(dexp(etapbruenn-etanbruenn)-1.0),0.0)
-c      npheavnondeg = dmax1((nnheav-npheav)/(dexp(etanbruenn-etapbruenn)-1.0),0.0)
-c      nnheavnondeg = dmax1((npheav-nnheav)/(dexp(etapbruenn-etanbruenn)-1.0),0.0)
-c      npboundnondeg = dmax1((nnbound-npbound)/(dexp(etanbruenn-etapbruenn)-1.0),0.0)
-c      nnboundnondeg = dmax1((npbound-nnbound)/(dexp(etapbruenn-etanbruenn)-1.0),0.0)
+c      npfreenondeg = dmax1((nnfree-npfree)/(dexp(etanbruenn-etapbruenn)-1.0d0),0.0d0)
+c      nnfreenondeg = dmax1((npfree-nnfree)/(dexp(etapbruenn-etanbruenn)-1.0d0),0.0d0)
+c      npheavnondeg = dmax1((nnheav-npheav)/(dexp(etanbruenn-etapbruenn)-1.0d0),0.0d0)
+c      nnheavnondeg = dmax1((npheav-nnheav)/(dexp(etapbruenn-etanbruenn)-1.0d0),0.0d0)
+c      npboundnondeg = dmax1((nnbound-npbound)/(dexp(etanbruenn-etapbruenn)-1.0d0),0.0d0)
+c      nnboundnondeg = dmax1((npbound-nnbound)/(dexp(etapbruenn-etanbruenn)-1.0d0),0.0d0)
 
 c     Above compute_old_Ynp_Ypn() takes care of the below now
 c     Limit number density
@@ -979,7 +979,7 @@ c      write(*,*) 'nbound',npbound,nnbound
 c     alpha particles only A=4
       nALPHA = (rhoblocal/mb)*kazxalfa
 c     Apparently alphas can't be degenerately (Fermi block) suppressed?
-c      nALPHAnondeg = nALPHA/dmax1(dexp(etanbruenn-etapbruenn),1.0)
+c      nALPHAnondeg = nALPHA/dmax1(dexp(etanbruenn-etapbruenn),1.0d0)
       nALPHAnondeg = nALPHA
       yealpha = 0.5
       abaralpha = 4.0
@@ -1036,7 +1036,7 @@ c     Shapiro & Teukolsky equation I.46 computed in ruffert_emissionrates.nb
 
          tauphotonscattohcm = KRrhoscatt
 c         tauphotonabsohcm = KRrhoabs
-         tauphotonabsohcm = (1.0/H)*dmax1(tauabs(Qphoton0,u_photon0,H),SMALL)
+         tauphotonabsohcm = (1.0d0/H)*dmax1(tauabs(Qphoton0,u_photon0,H),SMALL)
 
          tauphotonscatt=tauphotonscattohcm*H
          tauphotonabs=tauphotonabsohcm*H
@@ -1357,41 +1357,41 @@ c     Tdiff = 3\tau H/c  -> Vdiff = H/Tdiff  -> Vdiff = c/(3\tau)  VoCdiff = 1/(
 
 c     new way
          VoCthermal_nue = 1.0/(3.0*qtaut_nue)
-         VoCthermal_nue = dmin1(VoCthermal_nue,1.0)
+         VoCthermal_nue = dmin1(VoCthermal_nue,1.0d0)
          qtaulocal_nue = (1.0-dexp(-qtaut_nue))*(1.0-Vocthermal_nue)
 
          VoCthermal_nuebar = 1.0/(3.0*qtaut_nuebar)
-         VoCthermal_nuebar = dmin1(VoCthermal_nuebar,1.0)
+         VoCthermal_nuebar = dmin1(VoCthermal_nuebar,1.0d0)
          qtaulocal_nuebar = (1.0-dexp(-qtaut_nuebar))*(1.0-Vocthermal_nuebar)
 
          qtaut_numutau=0.5*(qtautmu+qtauttau)
          VoCthermal_numutau = 1.0/(3.0*qtaut_numutau)
-         VoCthermal_numutau = dmin1(VoCthermal_numutau,1.0)
+         VoCthermal_numutau = dmin1(VoCthermal_numutau,1.0d0)
          qtaulocal_numutau = (1.0-dexp(-qtaut_numutau))*(1.0-Vocthermal_numutau)
 
 
          VoCthermal_nue = 1.0/(3.0*ntaut_nue)
-         VoCthermal_nue = dmin1(VoCthermal_nue,1.0)
+         VoCthermal_nue = dmin1(VoCthermal_nue,1.0d0)
          ntaulocal_nue = (1.0-dexp(-ntaut_nue))*(1.0-Vocthermal_nue)
 
          VoCthermal_nuebar = 1.0/(3.0*ntaut_nuebar)
-         VoCthermal_nuebar = dmin1(VoCthermal_nuebar,1.0)
+         VoCthermal_nuebar = dmin1(VoCthermal_nuebar,1.0d0)
          ntaulocal_nuebar = (1.0-dexp(-ntaut_nuebar))*(1.0-Vocthermal_nuebar)
 
 
          ntaut_numutau=0.5*(ntautmu+ntauttau)
          VoCthermal_numutau = 1.0/(3.0*ntaut_numutau)
-         VoCthermal_numutau = dmin1(VoCthermal_numutau,1.0)
+         VoCthermal_numutau = dmin1(VoCthermal_numutau,1.0d0)
          ntaulocal_numutau = (1.0-dexp(-ntaut_numutau))*(1.0-Vocthermal_numutau)
 
 c     old way
-c     qtaulocal_nue = ddim((1.0-dexp(-(qtaut_nue))),0.0)
-c     qtaulocal_nuebar = ddim((1.0-dexp(-(qtaut_nuebar))),0.0)
-c     qtaulocal_numutau = ddim((1.0-dexp(-(0.5*(qtautmu+qtauttau)))),0.0)
+c     qtaulocal_nue = ddim((1.0-dexp(-(qtaut_nue))),0.0d0)
+c     qtaulocal_nuebar = ddim((1.0-dexp(-(qtaut_nuebar))),0.0d0)
+c     qtaulocal_numutau = ddim((1.0-dexp(-(0.5*(qtautmu+qtauttau)))),0.0d0)
 
-c     ntaulocal_nue = ddim((1.0-dexp(-(ntaut_nue))),0.0)
-c     ntaulocal_nuebar = ddim((1.0-dexp(-(ntaut_nuebar))),0.0)
-c     ntaulocal_numutau = ddim((1.0-dexp(-(0.5*(ntautmu+ntauttau)))),0.0)
+c     ntaulocal_nue = ddim((1.0-dexp(-(ntaut_nue))),0.0d0)
+c     ntaulocal_nuebar = ddim((1.0-dexp(-(ntaut_nuebar))),0.0d0)
+c     ntaulocal_numutau = ddim((1.0-dexp(-(0.5*(ntautmu+ntauttau)))),0.0d0)
 
 
 c     energy processes
@@ -2079,9 +2079,9 @@ c     end if
 
 c     These are energies of escaping neutrinos
 c     These energies are used for neutrino annihilation heating rates
-      Enuglobal = dmax1(Qm/Nm,0.0)
-      Enueglobal = dmax1(Qm_nue/Nm_nue,0.0)
-      Enuebarglobal = dmax1(Qm_nuebar/Nm_nuebar,0.0)
+      Enuglobal = dmax1(Qm/Nm,0.0d0)
+      Enueglobal = dmax1(Qm_nue/Nm_nue,0.0d0)
+      Enuebarglobal = dmax1(Qm_nuebar/Nm_nuebar,0.0d0)
       end if
 
 
@@ -2136,11 +2136,11 @@ c      eta_nuebar=eta_nuebar_eq*(1.0-dexp(-ntautin_nuebar))
 
 
       VoCthermal_nue = 1.0/(3.0*ntautin_nue)
-      VoCthermal_nue = dmin1(VoCthermal_nue,1.0)
+      VoCthermal_nue = dmin1(VoCthermal_nue,1.0d0)
       eta_nue_factor = (1.0-dexp(-ntautin_nue))*(1.0-Vocthermal_nue)
 
       VoCthermal_nuebar = 1.0/(3.0*ntautin_nuebar)
-      VoCthermal_nuebar = dmin1(VoCthermal_nuebar,1.0)
+      VoCthermal_nuebar = dmin1(VoCthermal_nuebar,1.0d0)
       eta_nuebar_factor = (1.0-dexp(-ntautin_nuebar))*(1.0-Vocthermal_nuebar)
 
 
@@ -2741,7 +2741,7 @@ c      implicit double precision (a-h,o-z)
 C=====================================================================
       real*8 T11,deg
 C=====================================================================
-      real*8 qdotpair_ele
+      real*8 qdotpair_ele_old
       real*8 qdotpairlocal
 
       include 'const.dek'
@@ -2749,7 +2749,7 @@ C=====================================================================
 c     Cooling by pair annihilation processes.  This cooling applies to
 c     all three neutrino species.
 
-      qdotpairlocal = qdotpair_ele(T11,deg)
+      qdotpairlocal = qdotpair_ele_old(T11,deg)
 
 c     JCM: Fake version
       ndotpair_ele_old=qdotpairlocal/(3.15*kerg*T11*1D11)
@@ -2768,7 +2768,7 @@ c      implicit double precision (a-h,o-z)
 C=====================================================================
       real*8 T11,deg
 C=====================================================================
-      real*8 qdotpair_mutau
+      real*8 qdotpair_mutau_old
       real*8 qdotpairlocal
 
       include 'const.dek'
@@ -2776,7 +2776,7 @@ C=====================================================================
 c     Cooling by pair annihilation processes.  This cooling applies to
 c     all three neutrino species.
 
-      qdotpairlocal = qdotpair_mutau(T11,deg)
+      qdotpairlocal = qdotpair_mutau_old(T11,deg)
 
 c     JCM: assumes energy per neutrino of 3.15kbT (true if \eta_\nu=0)
       ndotpair_mutau_old=qdotpairlocal/(3.15*kerg*T11*1D11)
@@ -2815,9 +2815,9 @@ c     neutrino species and accounts for both neutrino and antineutrinos
 
 c     nucleons that are non-degenerate still
 c     divisor causes numerator to vary from 0 to rho10
-c      rho10nondeg=rho10/dmax1(dexp(etanbruenn-etapbruenn),dexp(etapbruenn-etanbruenn),1.0)
+c      rho10nondeg=rho10/dmax1(dexp(etanbruenn-etapbruenn),dexp(etapbruenn-etanbruenn),1.0d0)
 c     nucleons that are degenerate
-      rho10deg=dmax1(rho10-rho10nondeg,0.0)
+      rho10deg=dmax1(rho10-rho10nondeg,0.0d0)
       
 c     JCM: my interpolation of KM02 formulae
 c      qdotbremnondegen=1.5d27*rho10nondeg**2.0*T11**5.5d0
@@ -2932,7 +2932,7 @@ c     See Ruffert et al. (1996)
       kbtk = (kerg*T11*1.0D11)
       Efactor = 0.5*kbtk*(2.0+gammap**2/(1.0+gammap))
 
-      qdotplasmonele = Efactor*ndotplasmonele(T11,etae,eta_nue,eta_nuebar)
+      qdotplasmonele = Efactor*ndotplasmonele(T11,etae)
 
 c     Kaz code:
 c      qdotplasmonele=1.52428d32*T11**9*gammap**6*exp(-gammap)

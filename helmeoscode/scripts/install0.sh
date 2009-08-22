@@ -4,6 +4,14 @@
 # NOW follow (basic things done below after http line):
 # http://harm.unfuddle.com/projects/5/notebooks/8/pages/37/latest
 
+########## 0 ##########
+#
+# Ensure latest tables and codes used:
+#
+# a) cd /data/jon/sheneos.tables.orig_and_processed ; rm -rf sheneos.tables.orig_and_processed.tgz ; tar cvzf sheneos.tables.orig_and_processed.tgz * ; scp sheneos.tables.orig_and_processed.tgz jmckinne@ki-rh39:nfsslac/codebackups/
+#
+# b) cd /data/jon/svneostest/ ; tar cvzf svneostest.tgz * ; scp svneostest.tgz jmckinne@ki-rh39:nfsslac/codebackups/ ; rm -rf svneostest
+
 ########## 1 ##########
 #
 # scp -rp jon@ki-rh42.slac.stanford.edu:"/data/jon/svneostest/helmeoscode/scripts/install0.sh" .

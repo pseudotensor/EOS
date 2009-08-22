@@ -256,7 +256,7 @@ c     As partial iteration (if iterating) now recompute npratiofree using new pa
 c     If not iterating, then below changes nothing
 
 c     Get optical depths used to determine rnp
-         call tau_calc(whichynumethod,rho10,T11,etae,etap,etan,etanu)
+         call tau_calc(whichynumethod,rho10,T11,xnuc,etae,etap,etan,etanu)
 c     Obtain n_n/n_p (free nucleons only)
          npratiofree=rnp(tdynorye,ntauael,ntaustotel,T11,etae,etap,etan,etanu)
          yefree = 1.0/(1.0+npratiofree)
