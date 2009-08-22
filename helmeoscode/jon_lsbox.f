@@ -1549,7 +1549,7 @@ cccccccccccccccccccccccccccccccccccccccccccccccccccccccc
       double precision nblocal
       real*8 xnuccalc
       real*8 yelocal
-      real*8 xconsistent,yeconsistent
+      integer xconsistent,yeconsistent
 
       include 'eosparms.f'
 
@@ -2049,7 +2049,7 @@ c     First setup globals used by kaz_eos()
 
          
 
-         call preparecall2kazeos()
+         call preparecall2kazeos(kazindex)
 
 
 c         write(*,*) kazindex,jlo_eos,jhi_eos,rhob,tk,hcm,tdynorye,tdynorynu
@@ -4905,7 +4905,7 @@ c     In any case reset cp to be large
             cp = 1D49
          end if
 
-         if(abs(cp).gt.huge(cp)) then
+         if(abs(cp).gt.1D49) then
             cp = 1D49
          end if
 

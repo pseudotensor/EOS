@@ -16,7 +16,7 @@ jobprefix=$4
 # check that all old processes have died
 NUMTRIES=10
 SUCCESSKILL=0
-for jj in `seq 1 $NUMTRIES`
+for jj in `seq -s " " 1 $NUMTRIES`
 do
     NUMPIDS=`pidof helmeos.exe | wc -w`
     if [ $NUMPIDS -eq 0 ]
@@ -69,7 +69,7 @@ done
 # check that all old processes have completed
 NUMTRIES=1000000
 SUCCESSKILL=0
-for jj in `seq 1 $NUMTRIES`
+for jj in `seq -s " " 1 $NUMTRIES`
 do
     NUMPIDS=`pidof helmeos.exe | wc -w`
     if [ $NUMPIDS -eq 0 ]

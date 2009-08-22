@@ -67,9 +67,18 @@
 // http://www.physiology.wisc.edu/comp/docs/notes/not017.html
 
 // Prototype for Fortran function:
+
+// below doesn't seem to work ever
 //extern "C" {  extern void teos_helm_(); }
 
-extern void teos_helm_(void); // Fortran prototype
+// Fortran prototype
+#if(USINGGFORTRAN)
+// below seems to work for gfortran
+extern void teos_helm_(void);
+#else
+// below seems to be required if using g77 as compiled in Makefile
+extern void teos_helm__(void);
+#endif
 
 
 // C prototypes:
@@ -88,6 +97,7 @@ int truenumprocs,myid;
 char processor_name[MPI_MAX_PROCESSOR_NAME];
 int procnamelen;
 
+int getchunklistfromfile;
 int totalchunks;
 char chunkliststring[MAXCHUNKSTRING];
 int chunklist[MAXCHUNKSTRING];
@@ -108,9 +118,9 @@ char cwdnew[MAXGENNAME];
 int main(int argc, char *argv[])
 {
 
-  int kflavour=3;
-  float energy=90.0;
-  float result;
+  //  int kflavour=3;
+  //  float energy=90.0;
+  //  float result;
   
   ///////////////////////////////////
   //
@@ -145,7 +155,11 @@ int main(int argc, char *argv[])
   // Note that only myid==0's Fortran call will necessarily show Fortran code output.  Rest of CPU's output may not be redirected (i.e. that's implementation dependent)
   myffprintf(stdout,"C EOS Begin: myid=%d.\n",myid);
 
+#if(USINGGFORTRAN)
   teos_helm_();
+#else
+  teos_helm__();
+#endif
 
   myffprintf(stdout,"C EOS Done: myid=%d.\n",myid);
 
@@ -154,7 +168,20 @@ int main(int argc, char *argv[])
 
   myffprintf(stdout,"Done with jon_helm_programstart.c.\n");
 
-  return(1);
+#if(USEMPI)
+  // finish up MPI
+  // Barrier required
+  MPI_Barrier(MPI_COMM_WORLD);
+  MPI_Finalize();
+#endif
+
+  fprintf(stderr, "END\n");
+  fflush(stderr);
+  exit(0);
+  
+  
+  return(0);
+
 
 
 }
@@ -163,9 +190,9 @@ int main(int argc, char *argv[])
 // Note we pass pointers since MPI_init() modifies the values
 static int init_mpi(int *argc, char **argv[])
 {
-  int ierr;
 
 #if(USEMPI)
+  int ierr;
   ierr=MPI_Init(argc, argv);
 
   if(ierr!=0){
@@ -196,8 +223,9 @@ static void myargs(int argc, char *argv[])
 {
   int argi,numargs,numextraargs;
   size_t strsize;
+  int i;
 
-  numargs=4; // number of user arguments
+  numargs=1+4; // number of user arguments
 
   ////////////////
   //
@@ -205,9 +233,14 @@ static void myargs(int argc, char *argv[])
   //
   ////////////////
   if(argc!=1+numargs){ // 1 is normal command-line argument
-    myffprintf(stderr,"Not enough args given!\n");
-    myffprintf(stderr,"Expected: <binaryname> \"string of chunk numbers separated by spaces.\" <totalchunks> <DATADIR> <jobprefix>\n");
-    myffprintf(stderr,"E.g.: mpirun -np 4 ./helmeosc \"1 2 3 4\" 4 . eoschunk\n");
+    myffprintf(stderr,"Not enough args given! argc=%d\n",argc);
+    for(i=0;i<argc;i++){
+      myffprintf(stderr,"argv[%d]=%s\n",i,argv[i]);
+    }
+    myffprintf(stderr,"Expected: <binaryname> 0 \"string of chunk numbers separated by spaces.\" <totalchunks> <DATADIR> <jobprefix>\n");
+    myffprintf(stderr,"OR:\n");
+    myffprintf(stderr,"Expected: <binaryname> 1 chunklistfile.txt <totalchunks> <DATADIR> <jobprefix>\n");
+    myffprintf(stderr,"E.g.: mpirun -np 4 ./helmeosc 0 \"1 2 3 4\" 4 . eoschunk\n");
     exit(1);
   }
   else{
@@ -216,20 +249,66 @@ static void myargs(int argc, char *argv[])
     argi=1; // 1 is first true argument after command line and MPI extracted stuff
     // argi=1:
     myffprintf(stderr,"argv[%d]=%s\n",argi,argv[argi]);
-    strcpy(chunkliststring,argv[argi]); argi++;
-    strsize=strlen(chunkliststring);
-    if(strsize>MAXCHUNKSTRING){
-      myffprintf(stderr,"Increase MAXCHUNKSTRING or use malloc!\n");
-      exit(1);
+    getchunklistfromfile=atoi(argv[argi]); argi++;
+    if(getchunklistfromfile==0){
+      // argi=2:
+      myffprintf(stderr,"argv[%d]=%s\n",argi,argv[argi]);
+      strcpy(chunkliststring,argv[argi]); argi++;
+      strsize=strlen(chunkliststring);
+      if(strsize>MAXCHUNKSTRING){
+	myffprintf(stderr,"Increase MAXCHUNKSTRING or use malloc!\n");
+	exit(1);
+      }
+      myffprintf(stderr,"strsize=%d chunkliststring=%s\n",(int)strsize,chunkliststring);
     }
-    myffprintf(stderr,"strsize=%d chunkliststring=%s\n",(int)strsize,chunkliststring);
-    // argi=2:
-    myffprintf(stderr,"argv[%d]=%s\n",argi,argv[argi]);
-    totalchunks = atoi(argv[argi]); argi++;
+    else{
+      // argi=2:
+      // Then 2nd argument is filename from where to get CHUNKLIST
+      char chunkliststringfilename[MAXGENNAME];
+      myffprintf(stderr,"argv[%d]=%s\n",argi,argv[argi]);
+      strcpy(chunkliststringfilename,argv[argi]); argi++;
+      myffprintf(stderr,"chunkliststringfilename=%s\n",chunkliststringfilename);
+      FILE* chunklistfile;
+      chunklistfile=fopen(chunkliststringfilename,"rt");
+      if(chunklistfile==NULL){
+	myffprintf(stderr,"Cannot open %s\n",chunkliststringfilename);
+	exit(1);
+      }
+      else{
+	// then create chunkliststring
+	int index=0;
+	char ch;
+	while(!feof(chunklistfile)){
+	  ch=fgetc(chunklistfile);
+	  if(ch=='\n'){
+	    chunkliststring[index]='\0';
+	    break; // then done!
+	  }
+	  else{
+	    chunkliststring[index]=ch;
+	    index++;
+	  }
+	}// end while if !feof()
+	fclose(chunklistfile);
+      }//end else if can open file
+
+      // get string information like when chunklist on command line
+      strsize=strlen(chunkliststring);
+      if(strsize>MAXCHUNKSTRING){
+	myffprintf(stderr,"Increase MAXCHUNKSTRING or use malloc!\n");
+	exit(1);
+      }
+      myffprintf(stderr,"strsize=%d chunkliststring=%s\n",(int)strsize,chunkliststring);
+
+
+    }// end else if reading in chunklist from a file
     // argi=3:
     myffprintf(stderr,"argv[%d]=%s\n",argi,argv[argi]);
-    strcpy(DATADIR,argv[argi]); argi++;
+    totalchunks = atoi(argv[argi]); argi++;
     // argi=4:
+    myffprintf(stderr,"argv[%d]=%s\n",argi,argv[argi]);
+    strcpy(DATADIR,argv[argi]); argi++;
+    // argi=5:
     myffprintf(stderr,"argv[%d]=%s\n",argi,argv[argi]);
     strcpy(jobprefix,argv[argi]); argi++;
 
@@ -332,6 +411,13 @@ static int setup_teos_helm(int myid, int *chunklist, int totalchunks, char *jobp
   }
 
 
+  // At the end, will need to wait for all processes to end.   Do so via a file for each myid.  Here we remove old file if it exists.
+  // ensure to use same name when creating and checking in finish_teos_helm()
+  char finishname[MAXGENNAME];
+  sprintf(finishname,"finish.%d",myid);
+  remove(finishname);
+
+
   /////////////////////
   //
   // Change directory
@@ -405,9 +491,52 @@ static int setup_teos_helm(int myid, int *chunklist, int totalchunks, char *jobp
 // do things like in runchunkn.sh script AFTER binary is called
 static int finish_teos_helm(int myid, int *chunklist, int totalchunks, char *jobprefix, char *cwdold, char *cwdnew)
 {
+  char finishname[MAXGENNAME];
+  FILE *myfinishfile;
 
-  // change back to old working directory (not necessary currently)
+
+  // change back to old working directory (this is where finish files will be located)
   chdir(cwdold);
+
+
+  // first create my file since this CPU is done.
+  sprintf(finishname,"finish.%d",myid);
+  myfinishfile=fopen(finishname,"wt");
+  if(myfinishfile==NULL){
+    myffprintf(stderr,"Could not open %s file\n",finishname);
+    exit(1);
+  }
+  myffprintf(myfinishfile,"1\n"); // stick a 1 in there so non-zero size
+  fclose(myfinishfile);
+
+  // now check if all other id's have created such a file
+  int finished;
+  while(1){
+
+    finished=1; // guess that finished
+    int i;
+    for(i=0;i<numchunks;i++){
+      sprintf(finishname,"finish.%d",i);
+      myfinishfile=fopen(finishname,"rt");
+      if(myfinishfile==NULL){
+	finished=0;
+	break; // no point in checking rest of files, so exit for loop
+      }
+      else{
+	// then file exists, so no missing files so far
+	fclose(myfinishfile);
+      }
+    }
+    if(finished==0){
+      // then pause before checking again
+      sleep(60);
+    }
+    else{
+      // then done!  So break
+      break; // this exits the while(1) loop
+    }
+
+  }// end while(1)
 
 
   return(0);

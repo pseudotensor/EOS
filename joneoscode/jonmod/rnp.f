@@ -309,9 +309,9 @@ c      real*8 nbtotal
 C======================================================================
 
 c     GODMARK: What to do?
-c         taulocal = ddim(ex(-expind/(tautel+1.d-40)),0.0)
+c         taulocal = ddim(ex(-expind/(tautel+1.d-40)),0.0d0)
 c     GODMARK: How should I combine the optical depths?
-c         taulocal = ddim((1.0-ex(-(tautel+tauael))),0.0)
+c         taulocal = ddim((1.0-ex(-(tautel+tauael))),0.0d0)
 
 c     JCM: Below are per baryon rates, so processes that only operate on free nucleons or only bound nuclei need to be accounted for
 c         nbtotal = rhob/mb

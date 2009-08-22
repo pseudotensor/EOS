@@ -52,7 +52,7 @@ rm -rf eoscoulomb.final.dat ; touch eoscoulomb.final.dat
 rm -rf eosazbar.final.dat ; touch eosazbar.final.dat
 
 ### LOOP OVER CHUNKS and collate
-for CHUNK in `seq 1 $truenumprocs $TOTALCHUNKS`
+for CHUNK in `seq -s " " 1 $truenumprocs $TOTALCHUNKS`
 do
 
     # then jobnumber indicates starting chunk when doing multiple subchunks

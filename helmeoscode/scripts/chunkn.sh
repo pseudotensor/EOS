@@ -93,7 +93,9 @@ then
 	then
 	bsub -n 1 -x -R span[ptile=1] -q kipac-ibq -J $jobname -o $outputfile -e $errorfile -a openmpi $JOBDIR/runchunkone.sh $JOBDIR
     else
-	bsub -n $truenumprocs -x -R span[ptile=4] -q kipac-ibq -J $jobname -o $outputfile -e $errorfile -a openmpi $JOBDIR/helmeosc "$CHUNKLIST" $TOTALCHUNKS $DATADIR $jobprefix
+	# forced to use file since supercomputers messed up
+	echo "$CHUNKLIST" > chunklistfile.txt
+	bsub -n $truenumprocs -x -R span[ptile=4] -q kipac-ibq -J $jobname -o $outputfile -e $errorfile -a openmpi $JOBDIR/helmeosc 1 chunklistfile.txt $TOTALCHUNKS $DATADIR $jobprefix
     fi
 fi
 
@@ -114,7 +116,12 @@ then
     then
 	bsub -B -N -u jmckinne@stanford.edu -P TG-AST080025N -x -W 47:59 -n $truenumprocs -x -o $outputfile -e $errorfile -R span[ptile=1] -q normal -J $jobname $DATADIR/runchunkn.sh "$CHUNKLIST" $TOTALCHUNKS $DATADIR $jobprefix
     else
-	bsub -B -N -u jmckinne@stanford.edu -P TG-AST080025N -x -W 47:59 -n $truenumprocs -x -o $outputfile -e $errorfile -R span[ptile=4] -q normal -J $jobname $DATADIR/helmeosc "$CHUNKLIST" $TOTALCHUNKS $DATADIR $jobprefix
+	#MYIBRUN=pam -g 1 mvapich_wrapper
+	#bsub -B -N -u jmckinne@stanford.edu -P TG-AST080025N -x -W 47:59 -n $truenumprocs -x -o $outputfile -e $errorfile -R span[ptile=4] -q normal -J $jobname myibrun $DATADIR/helmeosc "$CHUNKLIST" $TOTALCHUNKS $DATADIR $jobprefix
+
+	# forced to use file since supercomputers messed up
+	echo "$CHUNKLIST" > chunklistfile.txt
+	bsub -B -N -u jmckinne@stanford.edu -P TG-AST080025N -x -W 47:59 -n $truenumprocs -x -o $outputfile -e $errorfile -R span[ptile=4] -q normal -J $jobname ibrun $DATADIR/helmeosc 1 chunklistfile.txt $TOTALCHUNKS $DATADIR $jobprefix
     fi
 fi
 
@@ -128,7 +135,12 @@ then
     then
 	$DATADIR/runchunkn.sh "$CHUNKLIST" $TOTALCHUNKS $DATADIR $jobprefix
     else
-	mpirun -np $truenumprocs $DATADIR/helmeosc "$CHUNKLIST" $TOTALCHUNKS $DATADIR $jobprefix
+	# below works, but testing other way:
+	#mpirun -np $truenumprocs $DATADIR/helmeosc 0 "$CHUNKLIST" $TOTALCHUNKS $DATADIR $jobprefix
+
+	echo "$CHUNKLIST" > chunklistfile.txt
+	mpirun -np $truenumprocs $DATADIR/helmeosc 1 chunklistfile.txt $TOTALCHUNKS $DATADIR $jobprefix
+
     fi
 fi
 

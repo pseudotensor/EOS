@@ -243,9 +243,9 @@ c     can be negative due to optical depth supression
 
 c     These are energies of *escaping* neutrinos
 c     These energies are used for neutrino annihilation heating rates
-      Enu = dmax1(Qm/(Nm+SMALL),0.0)
-      Enue = dmax1(Qm_nue/(Nm_nue+SMALL),0.0)
-      Enuebar = dmax1(Qm_nuebar/(Nm_nuebar+SMALL),0.0)
+      Enu = dmax1(Qm/(Nm+SMALL),0.0d0)
+      Enue = dmax1(Qm_nue/(Nm_nue+SMALL),0.0d0)
+      Enuebar = dmax1(Qm_nuebar/(Nm_nuebar+SMALL),0.0d0)
 
 
       return
