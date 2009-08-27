@@ -31,6 +31,8 @@ function varargout = myinterp1(whichvar, varargin)
 % extrapolation seems possibly best for iterative inversion too so can temporarily step out of validity -- but no guarantee that doesn't keep going away from valid EOS
 if (whichvar~=29 && whichvar~=30 && whichvar~=31 && whichvar~=32)
 
+  % first consolidate
+  
 
   % DO EXTRAPOLATION
   varargout{:}=extrap1(varargin{:});
