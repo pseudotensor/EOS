@@ -227,7 +227,7 @@ function eos_extract()
   file6nn=strcat(dir,prefix3nn,suf2);
   file6neut=strcat(dir,prefix3neut,suf2);
   
-  % eosparms.dat:
+  % eosparms.head:
   file7=strcat(dir,prefix4,suf1);
 
   % output eosmonotonized.dat:
@@ -450,7 +450,7 @@ function eos_extract()
     hcmminoutnn=hcmminin;
     hcmmaxoutnn=hcmmaxin;
   else
-    fprintf('Using 2nd line in eosparms.dat\n');
+    fprintf('Using 2nd line in eosparms.head\n');
   end
   
   
@@ -530,7 +530,7 @@ function eos_extract()
   if inisout==0 && whichdatatype==4
     % For whichdatatype==4, allow rho and T dimensions to be different for non-neutrino and neutrino tables.  And non-neutrino table is then never function of Y_\nu or H
     % then can accept 2nd version
-    fprintf('Using 3nd line in eosparms.dat\n');
+    fprintf('Using 3nd line in eosparms.head\n');
   else
     % then override read-in values
     nrhoboutneut=nrhobin;
@@ -4066,27 +4066,53 @@ function eos_extract()
                 for n=1:nutotdiffout
                   for m=1:nrhobout
                     
-                    
+
+                    %%%%%%%%%%%%%%%%%%
+                    %
+                    % always print out this non-stored-in-HARM information that's used for consistency check
+                    %
+                    %%%%%%%%%%%%%%%%%%
+                    %            0                  +5                                                      +8                              +4
+                    fprintf(fid3,'%3d %3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
+                            m-1, n-1, titer-1, ynuiter-1, hiter-1,...
+                            rhobout(m,n,o,p), lutotdiffoutgrid(n), lptotdiffoutgrid(n), lchidiffoutgrid(n), lstotdiffoutgrid(n), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
+                            UofUdiffout(m,n,o,p), PofPdiffout(m,n,o,p), CHIofCHIdiffout(m,n,o,p), SofSdiffout(m,n,o,p) ...
+                            );
+
+                    %%%%%%%%%%%%%%%%%%
+                    %
                     % don't print all columns if splitting table
+                    %
+                    %%%%%%%%%%%%%%%%%%
                     if neutloopendtrue==2 && neutloop==1 || neutloopendtrue==1
 
-                      %            0                  +5                                                      +8                              +4      +1               +2              +2      +1                     +3                      +3                      +3                              +4 
-                      fprintf(fid3,'%3d %3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
-                              m-1, n-1, titer-1, ynuiter-1, hiter-1,...
-                              rhobout(m,n,o,p), lutotdiffoutgrid(n), lptotdiffoutgrid(n), lchidiffoutgrid(n), lstotdiffoutgrid(n), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
-                              UofUdiffout(m,n,o,p), PofPdiffout(m,n,o,p), CHIofCHIdiffout(m,n,o,p), SofSdiffout(m,n,o,p), ...
+                      %                  +1               +2              +2      +1                     +3                      +3                      +3                              +4 
+                      fprintf(fid3,'%21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
                               PofUdiffout(m,n,o,p), ...
                               UofPdiffout(m,n,o,p), UofSdiffout(m,n,o,p), ...
                               dPofUdiffdrho0out(m,n,o,p), dPofUdiffduout(m,n,o,p), ...
                               cs2ofUdiffcgsout(m,n,o,p), ...
                               SofUdiffout(m,n,o,p), dSofUdiffdrho0out(m,n,o,p), dSofUdiffduout(m,n,o,p), ...
                               SSofCHIdiffout(m,n,o,p), dSSofCHIdiffdrho0out(m,n,o,p), dSSofCHIdiffdchiout(m,n,o,p), ...
-                              PofCHIdiffout(m,n,o,p), dPofCHIdiffdrho0out(m,n,o,p), dPofCHIdiffdchiout(m,n,o,p), ...
-                              tkofUdiffout(m,n,o,p),tkofPdiffout(m,n,o,p),tkofCHIdiffout(m,n,o,p),tkofSdiffout(m,n,o,p) ...
+                              PofCHIdiffout(m,n,o,p), dPofCHIdiffdrho0out(m,n,o,p), dPofCHIdiffdchiout(m,n,o,p) ...
                               );
                     end %%% end if neutloopendtrue==2 && neutloop==1 || neutloopendtrue==1
 
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %
+                    % all split tables get temperatures for lookup validity check
+                    %
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %                                            +4 
+                    fprintf(fid3,' %21.15g %21.15g %21.15g %21.15g ', ...
+                              tkofUdiffout(m,n,o,p),tkofPdiffout(m,n,o,p),tkofCHIdiffout(m,n,o,p),tkofSdiffout(m,n,o,p) ...
+                              );
+
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %
                     % don't print all columns if splitting table
+                    %
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     if neutloopendtrue==2 && neutloop==2 || neutloopendtrue==1
                       % mynewdata(:,:,:,:,ei)
                       for ei=1:numextras
@@ -4094,7 +4120,11 @@ function eos_extract()
                       end
                     end %%% end if neutloopendtrue==2 && neutloop==2 || neutloopendtrue==1
                     
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                    %
                     % print out return
+                    %
+                    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                     fprintf(fid3,'\n');
                   end
                 end
@@ -4397,14 +4427,13 @@ function eos_extract()
         NUMTEMP=4;
 
         % don't print all columns if splitting table
-        NUMOUTCOLUMNS=0;
+        NUMOUTCOLUMNS=NUMINDEPDIMENS+NUMEOSINDEPS+NUMVAR1;
         if neutloopendtrue==2 && neutloop==1 || neutloopendtrue==1
-          % 29
-          NUMOUTCOLUMNS=NUMOUTCOLUMNS+  NUMINDEPDIMENS+NUMEOSINDEPS+NUMVAR1+NUMFUN1+NUMCS+NUMFUN2+NUMTEMP;
+          NUMOUTCOLUMNS=NUMOUTCOLUMNS+  NUMFUN1+NUMCS+NUMFUN2+NUMTEMP;
         end
         if neutloopendtrue==2 && neutloop==2 || neutloopendtrue==1
-          % numextras
-          NUMOUTCOLUMNS=NUMOUTCOLUMNS+  numextras;
+          % extras include base-non-stored-in-HARM quantities and extras
+          NUMOUTCOLUMNS=NUMOUTCOLUMNS +  numextras +NUMTEMP;
         end
 
         
