@@ -48,7 +48,7 @@ c     Open data files first time, to be append to later (i.e. not appending to p
       close(17)
       close(18)
       close(19)
-      close(120)
+      close(20)
 
 c      open(21,file='eosdebug.dat',status='unknown')
 c      close(21)

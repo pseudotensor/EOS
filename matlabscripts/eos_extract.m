@@ -363,6 +363,8 @@ function eos_extract()
 
 
 
+
+  
   
   
 
@@ -371,11 +373,13 @@ function eos_extract()
   %
   % E.g., eosparms.head contains (e.g. for latest /data/jon/testfulleostable4 that starts at 200x200x50x10x1)
   % 0
-  % 200 1E5 1E15 200 1E5 1E13  50 1E-2 0.56  1 1E-9 10  1 1E-15 1E-15
-  % 100 1E5 1E15  50 1E5 1E13  50 1E-2 0.56  1 1E-9 10  1 1E-15 1E-15
+  % 200 1E0 1E15 200 1E5 1E13  50 1E-2 0.56  1 1E-9 10  1 1E-15 1E-15
+  % 100 1E7 1E15  50 1E5 1E13  50 1E-2 0.56  1 1E-9 10  1 1E-15 1E-15
   % 1E-8 1E-8 1E-8 1E-3 1E-13 1E-13 1E-13 1E-6
   % 1E-16 1E-16 1E-16 1E-16 1E-1 1E-1 1E-1 1E-1
   % 1.1E5 1.1E5 1.1E5 1.1E5 1E8 1E8 1E8 1E8
+  
+  % much more complicated to allow different degeneracy for normal and extra split tables since then all interpolations change instead of just outputs.  Unless somehow translate "lutotdiff"'s.
   %
   numparms=1+15+15+8+8+8;
   
@@ -658,6 +662,9 @@ function eos_extract()
   %
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   
+  
+  
+
   
   
   
@@ -3417,7 +3424,11 @@ function eos_extract()
             clear extraofUdifftempout
             % Now can create these freshly
            
+            % also clear non-temperature dependent stuff
             clear rhobout rhobcsqout
+            clear utotoffsetout ptotoffsetout chioffsetout stotoffsetout
+            clear utotinout ptotinout chiinout stotinout
+            clear utotoutout ptotoutout chioutout stotoutout
             
             
             %%%%%%%%%%
@@ -3519,19 +3530,44 @@ function eos_extract()
             % 13) change (e.g.) UofUdiff -> UofUdiffout on RHS  of equation inside interpolation so above temperature-like down-sample result used
             %%%%%%%%%%
             
-            if(nrhobin~=nrhobout)
+            %if(nrhobin~=nrhobout)
+            if(1==1) % while size may be same, range may not be, so just interpolate in general for now unless put in more complicated conditional with ranges that detect within machine error
 
               %for p=1:nrhobin
               for tklike=1:nutotdiffout % assume all diffout's are same size!
                 for q=1:ntdynoryein
                   for r=1:nhcmin
                     
-
+                    %%%%%%%%%%%%%%%%
                     % original rhob different size in tk slot, so just use 1 for that slot
                     % This assumes rhob doesn't depend upon tk, which is true.
+                    %%%%%%%%%%%%%%%%
                     rhobout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(rhob(:,1,q,r))),lrhobgridout',interptype));
                     rhobcsqout(:,tklike,q,r)       =     10.^(interp1(lrhobgridin,log10(squeeze(rhobcsq(:,1,q,r))),lrhobgridout',interptype));
 
+                    %%%%%%%%%%%%%%%%%%%%%%%%
+                    %  Down-sample (or re-sample) degeneracy stuff since for density the number of points or range may be different than input data
+                    %%%%%%%%%%%%%%%%%%%%%%%
+                    utotoffsetout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(utotoffset(:,1,q,r))),lrhobgridout',interptype));
+                    ptotoffsetout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(ptotoffset(:,1,q,r))),lrhobgridout',interptype));
+                    chioffsetout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(chioffset(:,1,q,r))),lrhobgridout',interptype));
+                    stotoffsetout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(stotoffset(:,1,q,r))),lrhobgridout',interptype));
+
+                    utotinout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(utotin(:,1,q,r))),lrhobgridout',interptype));
+                    ptotinout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(ptotin(:,1,q,r))),lrhobgridout',interptype));
+                    chiinout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(chiin(:,1,q,r))),lrhobgridout',interptype));
+                    stotinout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(stotin(:,1,q,r))),lrhobgridout',interptype));
+                    
+                    utotoutout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(utotout(:,1,q,r))),lrhobgridout',interptype));
+                    ptotoutout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(ptotout(:,1,q,r))),lrhobgridout',interptype));
+                    chioutout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(chiout(:,1,q,r))),lrhobgridout',interptype));
+                    stotoutout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(stotout(:,1,q,r))),lrhobgridout',interptype));
+
+                    %%%%%%%%%%%%%%
+                    %
+                    % Now other things that were also temperature-dependence
+                    %
+                    %%%%%%%%%%%%%%%
 
                     % for degen checks in HARM
                     UofUdiffout(:,tklike,q,r)          = 10.^(myinterp1(1,lrhobgridin, log10(UofUdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
@@ -4161,18 +4197,13 @@ function eos_extract()
               for o=1:ntdynoryein
                 for m=1:nrhobout
                   
-                  if 1
-                    %utotoffset(m,n,o,p) = UofUdiffout(m,n,o,p) - utotdiffoutgrid(n) NO!
-                    
-                  end
-                  
                   %           +0              +4                              +4                              +4                              +4                              +4
                   fprintf(fid6,'%3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
                           m-1, titer-1, ynuiter-1, hiter-1, ...
                           rhobout(m,n,o,p), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
-                          utotoffset(m,n,o,p), ptotoffset(m,n,o,p), chioffset(m,n,o,p), stotoffset(m,n,o,p), ...
-                          utotin(m,n,o,p), ptotin(m,n,o,p), chiin(m,n,o,p), stotin(m,n,o,p), ...
-                          utotout(m,n,o,p), ptotout(m,n,o,p), chiout(m,n,o,p), stotout(m,n,o,p) ...
+                          utotoffsetout(m,n,o,p), ptotoffsetout(m,n,o,p), chioffsetout(m,n,o,p), stotoffsetout(m,n,o,p), ...
+                          utotinout(m,n,o,p), ptotinout(m,n,o,p), chiinout(m,n,o,p), stotinout(m,n,o,p), ...
+                          utotoutout(m,n,o,p), ptotoutout(m,n,o,p), chioutout(m,n,o,p), stotoutout(m,n,o,p) ...
                           );
                   fprintf(fid6,'\n');
                 end
@@ -4180,7 +4211,7 @@ function eos_extract()
             end
             
 
-            %  Should have utotdiffoutgrid + utotoffset = UofUdiffout
+            %  Should have utotdiffoutgrid + utotoffset = UofUdiffout, which is tested in HARM
 
 
 
@@ -4251,7 +4282,9 @@ function eos_extract()
         
         if neutloop==1
           fid5=fopen(file5nn,'w');
+          % table non dependent upon Ynu or H if split table if neutloopendtrue==2
 
+          
           % non-neutrino outputs
           
           nrhobout=nrhoboutnn;
@@ -4428,12 +4461,14 @@ function eos_extract()
 
         % don't print all columns if splitting table
         NUMOUTCOLUMNS=NUMINDEPDIMENS+NUMEOSINDEPS+NUMVAR1;
+        truenumextras=0;
         if neutloopendtrue==2 && neutloop==1 || neutloopendtrue==1
           NUMOUTCOLUMNS=NUMOUTCOLUMNS+  NUMFUN1+NUMCS+NUMFUN2+NUMTEMP;
         end
         if neutloopendtrue==2 && neutloop==2 || neutloopendtrue==1
           % extras include base-non-stored-in-HARM quantities and extras
           NUMOUTCOLUMNS=NUMOUTCOLUMNS +  numextras +NUMTEMP;
+          truenumextras=truenumextras+   numextras;
         end
 
         
@@ -4466,7 +4501,7 @@ function eos_extract()
 
         % method, number of output colums, num extras
         fprintf(fid5,'%d %d %d\n',whichrnpmethod,whichynumethod,whichhcmmethod);
-        fprintf(fid5,'%d %d %d %d\n',whichdatatype,utotdegencut,NUMOUTCOLUMNS,numextras);
+        fprintf(fid5,'%d %d %d %d\n',whichdatatype,utotdegencut,NUMOUTCOLUMNS,truenumextras);
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nrhobout,lrhobminout,lrhobmaxout,steplrhobout,baselrhob,linearoffsetlrhob);
 
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nutotdiffout,lutotdiffoutmin,lutotdiffoutmax,steplutotdiffout,baselutotdiffout,linearoffsetlutotdiffout);
@@ -4474,10 +4509,10 @@ function eos_extract()
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nchidiffout,lchidiffoutmin,lchidiffoutmax,steplchidiffout,baselchidiffout,linearoffsetlchidiffout);
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nstotdiffout,lstotdiffoutmin,lstotdiffoutmax,steplstotdiffout,baselstotdiffout,linearoffsetlstotdiffout);
 
-        % don't allow Y_e, Y_\nu, or H to be different size than "in", so keep as "in" instead of as "out" versions
-        fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',truentdynoryein,ltdynoryeminin,ltdynoryemaxin,stepltdynoryein,baseltdynorye,linearoffsetltdynorye);
-        fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',truentdynorynuin,ltdynorynuminin,ltdynorynumaxin,stepltdynorynuin,baseltdynorynu,linearoffsetltdynorynu);
-        fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',truenhcmin,lhcmminin,lhcmmaxin,steplhcmin,baselhcm,linearoffsetlhcm);
+        % note that currently different size for "in" and "out" for Ye,Ynu,H are not because of interpolation but because of including or not that dimension.  So it's either total number as in original table or just n=1.
+        fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',ntdynoryeout,ltdynoryeminout,ltdynoryemaxout,stepltdynoryeout,baseltdynorye,linearoffsetltdynorye);
+        fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',ntdynorynuout,ltdynorynuminout,ltdynorynumaxout,stepltdynorynuout,baseltdynorynu,linearoffsetltdynorynu);
+        fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nhcmout,lhcmminout,lhcmmaxout,steplhcmout,baselhcm,linearoffsetlhcm);
 
         fprintf(fid5,'%21.15g %21.15g\n',lsoffset,fakelsoffset);
 
