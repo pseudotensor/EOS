@@ -50,9 +50,9 @@ scp matlab@ki-rh42.slac.stanford.edu:$REMOTEDIR/eosdegennew.dat $LOCALDIR/eosdeg
 scp matlab@ki-rh42.slac.stanford.edu:$REMOTEDIR/eosnew.head $LOCALDIR/eosnew${POSTFIX}.head
 #
 # extras table:
-scp matlab@ki-rh42.slac.stanford.edu:$REMOTEDIR/eosnew.dat $LOCALDIR/eosextranew${POSTFIX}.dat
-scp matlab@ki-rh42.slac.stanford.edu:$REMOTEDIR/eosdegennew.dat $LOCALDIR/eosextradegennew${POSTFIX}.dat
-scp matlab@ki-rh42.slac.stanford.edu:$REMOTEDIR/eosnew.head $LOCALDIR/eosextranew${POSTFIX}.head
+scp matlab@ki-rh42.slac.stanford.edu:$REMOTEDIR/eosextranew.dat $LOCALDIR/eosextranew${POSTFIX}.dat
+scp matlab@ki-rh42.slac.stanford.edu:$REMOTEDIR/eosextradegennew.dat $LOCALDIR/eosextradegennew${POSTFIX}.dat
+scp matlab@ki-rh42.slac.stanford.edu:$REMOTEDIR/eosextranew.head $LOCALDIR/eosextranew${POSTFIX}.head
 
 #
 echo End transfering files
