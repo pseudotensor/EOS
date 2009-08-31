@@ -4093,6 +4093,7 @@ function eos_extract()
 
 
             
+            
             % large-memory
             %m-1, n-1, o-1, p-1, ...
             % small-memory
@@ -4107,11 +4108,14 @@ function eos_extract()
                     %
                     % always print out this non-stored-in-HARM information that's used for consistency check
                     %
+                    % use tdynorye(1,1,o,1) since otherwise have to interpolate it in m,n, but it's constant in m,n,p
+                    % use tdynorynu(1,1,1,p) since otherwise have to interpolate it in m,n, but it's constant in m,n,o
+                    %
                     %%%%%%%%%%%%%%%%%%
                     %            0                  +5                                                      +8                              +4
                     fprintf(fid3,'%3d %3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
                             m-1, n-1, titer-1, ynuiter-1, hiter-1,...
-                            rhobout(m,n,o,p), lutotdiffoutgrid(n), lptotdiffoutgrid(n), lchidiffoutgrid(n), lstotdiffoutgrid(n), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
+                            rhobout(m,n,o,p), lutotdiffoutgrid(n), lptotdiffoutgrid(n), lchidiffoutgrid(n), lstotdiffoutgrid(n), tdynorye(1,1,o,1), tdynorynu(1,1,1,p), hcm(m,n,o,p), ...
                             UofUdiffout(m,n,o,p), PofPdiffout(m,n,o,p), CHIofCHIdiffout(m,n,o,p), SofSdiffout(m,n,o,p) ...
                             );
 
@@ -4181,6 +4185,8 @@ function eos_extract()
             %
             %  Output utot,ptot,chi as functions of rhob for T=0
             %
+            % use tdynorye(1,1,o,1) since otherwise have to interpolate it in m,n, but it's constant in m,n,p
+            % use tdynorynu(1,1,1,p) since otherwise have to interpolate it in m,n, but it's constant in m,n,o
             %
             %%%%%%%%%%%%%%%%%%%%%%%
 
@@ -4190,8 +4196,6 @@ function eos_extract()
 
             % corresponds to n=1 solution since u~0 implies T~0.  Reduced to degenerate solution independent of temperature
             
-            
-            
             n=1;
             for p=1:nhcmin
               for o=1:ntdynoryein
@@ -4200,7 +4204,7 @@ function eos_extract()
                   %           +0              +4                              +4                              +4                              +4                              +4
                   fprintf(fid6,'%3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
                           m-1, titer-1, ynuiter-1, hiter-1, ...
-                          rhobout(m,n,o,p), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
+                          rhobout(m,n,o,p), tdynorye(1,1,o,1), tdynorynu(1,1,1,p), hcm(1,1,1,1), ...
                           utotoffsetout(m,n,o,p), ptotoffsetout(m,n,o,p), chioffsetout(m,n,o,p), stotoffsetout(m,n,o,p), ...
                           utotinout(m,n,o,p), ptotinout(m,n,o,p), chiinout(m,n,o,p), stotinout(m,n,o,p), ...
                           utotoutout(m,n,o,p), ptotoutout(m,n,o,p), chioutout(m,n,o,p), stotoutout(m,n,o,p) ...
