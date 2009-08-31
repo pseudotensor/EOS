@@ -4110,12 +4110,13 @@ function eos_extract()
                     %
                     % use tdynorye(1,1,o,1) since otherwise have to interpolate it in m,n, but it's constant in m,n,p
                     % use tdynorynu(1,1,1,p) since otherwise have to interpolate it in m,n, but it's constant in m,n,o
+                    % use hcm(1,1,1,1) since otherwise have to interpolate it in m,n, but it's constant in m,n,o,p
                     %
                     %%%%%%%%%%%%%%%%%%
                     %            0                  +5                                                      +8                              +4
                     fprintf(fid3,'%3d %3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
                             m-1, n-1, titer-1, ynuiter-1, hiter-1,...
-                            rhobout(m,n,o,p), lutotdiffoutgrid(n), lptotdiffoutgrid(n), lchidiffoutgrid(n), lstotdiffoutgrid(n), tdynorye(1,1,o,1), tdynorynu(1,1,1,p), hcm(m,n,o,p), ...
+                            rhobout(m,n,o,p), lutotdiffoutgrid(n), lptotdiffoutgrid(n), lchidiffoutgrid(n), lstotdiffoutgrid(n), tdynorye(1,1,o,1), tdynorynu(1,1,1,p), hcm(1,1,1,1), ...
                             UofUdiffout(m,n,o,p), PofPdiffout(m,n,o,p), CHIofCHIdiffout(m,n,o,p), SofSdiffout(m,n,o,p) ...
                             );
 
@@ -4187,6 +4188,7 @@ function eos_extract()
             %
             % use tdynorye(1,1,o,1) since otherwise have to interpolate it in m,n, but it's constant in m,n,p
             % use tdynorynu(1,1,1,p) since otherwise have to interpolate it in m,n, but it's constant in m,n,o
+            % use hcm(1,1,1,1) since otherwise have to interpolate it in m,n, but it's constant in m,n,o,p
             %
             %%%%%%%%%%%%%%%%%%%%%%%
 
