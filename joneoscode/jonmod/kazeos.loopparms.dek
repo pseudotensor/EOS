@@ -1,30 +1,26 @@
-c Expand by 1% the grid of rho and T so borders are well-defined when take derivatives
-c Or just expand in T
-c Or not at all
-
 ccccccccc
-      parameter(nrhob=100)      !number of doloop steps, 5 in 1 order of mag.
-      parameter(rhobmin=1.0D0) !minimum value of rhob in g/cc
-      parameter(rhobmax=1.0D15)  !maximum value of rhob in g/cc
+      parameter(nrhob=1)      !number of doloop steps, 5 in 1 order of mag.
+      parameter(rhobmin=3698268044.70451d0) !minimum value of rhob in g/cc
+      parameter(rhobmax=3698268044.70451d0)  !maximum value of rhob in g/cc
 ccccccccc
-      parameter(ntk=50)         !number of doloop steps, 5 in 1 order of mag.
-      parameter(tkmin=0.99D5)     !minimum value of temperature in K
-      parameter(tkmax=1.01D13)    !maximum value of temperature in K
+      parameter(ntk=1)         !number of doloop steps, 5 in 1 order of mag.
+      parameter(tkmin=8183138022.48367d0)     !minimum value of temperature in K
+      parameter(tkmax=8183138022.48367d0)    !maximum value of temperature in K
 ccccccccc
       parameter(nhcm=1)        !number of doloop steps, 5 in 1 order of mag.
-      parameter(hcmmin=1E-15)   !minimum value of Hcm in cm
-      parameter(hcmmax=1E-15)    !maximum value of Hcm in cm
+      parameter(hcmmin=0.38730771092310503125D+00008)   !minimum value of Hcm in cm 
+      parameter(hcmmax=0.38730771092310503125D+00008)    !maximum value of Hcm in cm 
 ccccccccc
       parameter(ntdynorye=1)       !number of doloop steps, 5 in 1 order of mag.
-      parameter(tdynoryemin=0.43)  !minimum value of tdynorye in sec
-      parameter(tdynoryemax=0.44)   !maximum value of tdynorye in sec
+      parameter(tdynoryemin=0.428493d0)  !minimum value of tdynorye in sec 
+      parameter(tdynoryemax=0.428493d0)   !maximum value of tdynorye in sec 
 ccccccccc
 c TOTAL:
 ccccccccc
       parameter(ntdynorynu=1)       !number of doloop steps, 5 in 1 order of mag.
-      parameter(tdynorynumin=1.0d-9)  !minimum value of tdynorynu in sec
-      parameter(tdynorynumax=1.0d-9)   !maximum value of tdynorynu in sec
+      parameter(tdynorynumin=0.22703249033971029114E-00001)  !minimum value of tdynorynu in sec 
+      parameter(tdynorynumax=0.22703249033971029114E-00001)   !maximum value of tdynorynu in sec 
 
 c      parameter(ntdynorynu=1)       !number of doloop steps, 5 in 1 order of mag.
-c      parameter(tdynorynumin=1.0D0)  !minimum value of tdynorynu in sec
-c      parameter(tdynorynumax=1.0D0)   !maximum value of tdynorynu in sec
+c      parameter(tdynorynumin=1.0D0)  !minimum value of tdynorynu in sec 
+c      parameter(tdynorynumax=1.0D0)   !maximum value of tdynorynu in sec 

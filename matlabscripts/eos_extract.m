@@ -126,11 +126,31 @@ function eos_extract()
 
 
 
-
-
+  % whether to allow ye interpolation
+  allowyeinterpolation=1;
   
   
+  % factor by which to enhance resolution of internal values before downgrading to output resolution
+  if allowyeinterpolation==0
+    factor=10;
+  else
+    % then 4X-10X uses too much memory even on 8GB machine, so use 2X which should still be pretty good for derivatives
+    factor=2;
+  end
 
+  
+  % whether to output monotonized table.  After things are obviously working, no need for this.
+  outputmonotonizedtable=0;
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
 
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
   %
@@ -359,6 +379,7 @@ function eos_extract()
 
   % setup in version of rho grid for density "down"-sampling for input points
   lrhobgridin=lrhobminin:steplrhobin:lrhobmaxin;
+  ltdynoryegridin=ltdynoryeminin:stepltdynoryein:ltdynoryemaxin;
 
 
 
@@ -500,6 +521,7 @@ function eos_extract()
 
   % setup nn version of rho grid for density "down"-sampling
   lrhobgridoutnn=lrhobminoutnn:steplrhoboutnn:lrhobmaxoutnn;
+  ltdynoryegridoutnn=ltdynoryeminoutnn:stepltdynoryeoutnn:ltdynoryemaxoutnn;
 
   
   
@@ -605,6 +627,7 @@ function eos_extract()
   
   % setup neut version of rho grid for density "down"-sampling
   lrhobgridoutneut=lrhobminoutneut:steplrhoboutneut:lrhobmaxoutneut;
+  ltdynoryegridoutneut=ltdynoryeminoutneut:stepltdynoryeoutneut:ltdynoryemaxoutneut;
 
   
   
@@ -677,16 +700,27 @@ function eos_extract()
   % 
   % BIG LOOP OVER EXTRA INDEPENDENT VARIABLES not used for complicated tasks like derivatives or interpolation
   %
-  
-  truentdynoryein=ntdynoryein;
-  truentdynorynuin=ntdynorynuin;
-  truenhcmin=nhcmin;
-  
   % fake so don't have to change interior code from old way where did full memory at once
   % assuming never doing big memory method with ntdynorynuin>1
-  ntdynoryein=1;
-  ntdynorynuin=1; % actually not used
-  nhcmin=1;
+
+  %%%%%% Y_e
+  if allowyeinterpolation==0
+    truentdynoryein=ntdynoryein;
+    % now interpolation in Ye, so leave Ye alone
+    ntdynoryein=1;
+  else
+    % Now allow interpolation in Ye, so have to treat rho,T,Ye the same, so leav ntdynoryein alone
+    % ensure truentdynoryein=1 as well.
+    truentdynoryein=1;
+  end
+
+  %%%%%% Y_\nu
+  truentdynorynuin=ntdynorynuin;
+  ntdynorynuin=1;
+
+  %%%%%% H
+  truenhcmin=nhcmin;
+  nhcmin=1; % not used because last variable that is always assumed to be read-in 1 element at a time
   
 
   
@@ -765,10 +799,10 @@ function eos_extract()
         % open eos.dat
         %
         %
-        [mydata,count]=fscanf(fid2,'%g',[nc*nrhobin*ntkin*ntdynoryein*nhcmin]);
+        [mydata,count]=fscanf(fid2,'%g',[nc*nrhobin*ntkin*ntdynoryein*ntdynorynuin]);
 
         % make vector into 6-D array
-        temp=reshape(mydata,[nc,nrhobin,ntkin,ntdynoryein,nhcmin]);
+        temp=reshape(mydata,[nc,nrhobin,ntkin,ntdynoryein,ntdynorynuin]);
         clear mydata;
         % set primary matricies to be each column(field) read in from SM data (i.e.
         % read data is setup with column / nx / ny / nz order
@@ -790,7 +824,7 @@ function eos_extract()
         for p=1:nrhobin
           for q=1:ntkin
             for r=1:ntdynoryein
-              for s=1:nhcmin
+              for s=1:ntdynorynuin
                 nanonline=0;
                 for t=1:nc
                   nanonline=nanonline+isnan(mynewdata(p,q,r,s,t));
@@ -808,7 +842,7 @@ function eos_extract()
             end
           end
         end
-
+      
         
         
         
@@ -844,7 +878,7 @@ function eos_extract()
           % BEGIN DEBUG:
           % will use sspec to check stot
           %sspecdimless = stot./(rhob./mb);
-%          for p=1:nhcmin
+%          for p=1:ntdynorynuin
 %            for o=1:ntdynoryein
 %              for n=1:ntkin
 %                for m=1:nrhobin
@@ -880,7 +914,7 @@ function eos_extract()
           % Note that entropy offset at nuclear-to-nonnuclear EOS boundary is unchanged, so above accounts for all new EOS changes
 
           % BEGIN DEBUG:
-%          for p=1:nhcmin
+%          for p=1:ntdynorynuin
 %            for o=1:ntdynoryein
 %              for n=1:ntkin
 %                for m=1:nrhobin
@@ -906,7 +940,11 @@ function eos_extract()
             quit
           end
 
+                  
           %stot = stot/kb; % TEMPORARILY CONVERT ENTROPY TO 1/cc form for table that was in erg/K/cc form
+          
+          % clean-up
+          clear sspecdimless
 
         end
         
@@ -945,7 +983,7 @@ function eos_extract()
         if smoothinputs
           
           for q=1:ntdynoryein
-            for r=1:nhcmin
+            for r=1:ntdynorynuin
               
               % assumes p,u,s >0
               roughlptot(:,:)=log10(ptot(:,:,q,r));
@@ -959,6 +997,9 @@ function eos_extract()
 
             end
           end
+          
+          % clean-up
+          clear roughlptot roughlutot roughlstot
           
           % recomptue for independents still
           chi = utot+ptot;
@@ -995,7 +1036,7 @@ function eos_extract()
 
           for p=1:nrhobin
             for q=1:ntdynoryein
-              for r=1:nhcmin
+              for r=1:ntdynorynuin
                 % only need to force these to be monotonic so chi is monotonic so can have single-valued inversion
                 % ptot and utot (and so chi)  need to be monotonically increasing functions of temperature in order to obtain a single temperature for a single ptot,utot,chi
                 utot(p,:,q,r)=monotonize(utot(p,:,q,r));
@@ -1133,7 +1174,7 @@ function eos_extract()
 
           if(1)
             % don't assume monotonicity
-            for p=1:nhcmin
+            for p=1:ntdynorynuin
               for o=1:ntdynoryein
                 for m=1:nrhobin
 
@@ -1287,7 +1328,7 @@ function eos_extract()
           TKSTOTIND=10.^(log10(TKSTOTIN0) + (log10(rhob)-lrhobminin)./(lrhobmaxin-lrhobminin).*(log10(TKSTOTINF)-log10(TKSTOTIN0)));
 
           % find u(TK????IND)
-          for p=1:nhcmin
+          for p=1:ntdynorynuin
             for o=1:ntdynoryein
               for m=1:nrhobin
                 
@@ -1330,7 +1371,7 @@ function eos_extract()
           else
             % then use similar procedure with (e.g.) utotin for (e.g.) utotout but with temperature fixed for all rhob and u,p,chi,s types
             % find u(TK????IND)
-            for p=1:nhcmin
+            for p=1:ntdynorynuin
               for o=1:ntdynoryein
                 for m=1:nrhobin
 
@@ -1489,7 +1530,7 @@ function eos_extract()
             
             % get derivatives
             for q=1:ntdynoryein
-              for r=1:nhcmin
+              for r=1:ntdynorynuin
 
 
                 if smoothbeforederivativestep1==1
@@ -1563,6 +1604,11 @@ function eos_extract()
 
               end
             end
+            
+
+            % clean-up
+            clear roughptot roughener roughtemp roughden
+            clear myptot myener mytemp myden
 
             
             %      dP/dT|rhob
@@ -1599,12 +1645,12 @@ function eos_extract()
             
             % Because of how computed, this may be negative or >1.0, so at least
             % enforce not negative
-            cs2rhoT=abs(cs2rhoT)+1E-20;
+            cs2rhoT=abs(cs2rhoT)+1E-30;
 
             
           
             % adjust speed of sound to be no smaller than 0 and no larger than 1
-            for p=1:nhcmin
+            for p=1:ntdynorynuin
               for o=1:ntdynoryein
                 for n=1:ntkin % really ntkin!  Still in T-space
                   for m=1:nrhobin
@@ -1621,62 +1667,78 @@ function eos_extract()
               end
             end
 
+            clear den pres temp ener
+            clear deni zz zzi chit chid cv x gam3 gam1 nabad gam2 cp z
             
             
           end  %%%%%% end if 1
 
 
-          
 
-          %%%%%%%%%%%%%%%%%%%%%%%%
-          %
-          % Output monotonized EOS so can check in SM
-          %
-          % Assumes nutotdiffout is same size as nptotout and nchiout
-          %
-          % 22 + extras
-          %
-          % Note that stot (and so its children quantities) may be modified if stotfix==1
-          %
-          % Treat chi as independent
-          %
-          %
-          %%%%%%%%%%%%%%%%%%%%%%%
           
-          fprintf(fiddebug,'Outputting monotinized EOS %d %d %d\n',hiter,titer,ynuiter);
-          
-          % for large memory method
-          %m-1, n-1, o-1, p-1, ...
-          % for small memory method
-          
-          for o=1:nhcmin
-            for p=1:ntdynoryein
-              for n=1:ntkin
-                for m=1:nrhobin %+0                 +5                                      +5                                      +5                                      +5                                       +5                                      +5                                     +5                                      +5      +1
-                  fprintf(fid8,'%3d %3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
-                          m-1, n-1, titer-1, ynuiter-1, hiter-1, ...
-                          rhob(m,n,o,p), tk(m,n,o,p), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
-                          utot(m,n,o,p), ptot(m,n,o,p), chi(m,n,o,p), stot(m,n,o,p), sspec(m,n,o,p), ...
-                          utotdegenfit(m,n,o,p), ptotdegenfit(m,n,o,p), chidegenfit(m,n,o,p), stotdegenfit(m,n,o,p), sspecdegenfit(m,n,o,p), ...
-                          utotoffset(m,n,o,p), ptotoffset(m,n,o,p), chioffset(m,n,o,p), stotoffset(m,n,o,p), sspecoffset(m,n,o,p), ...
-                          utotin(m,n,o,p), ptotin(m,n,o,p), chiin(m,n,o,p), stotin(m,n,o,p), sspecin(m,n,o,p), ...
-                          utotout(m,n,o,p), ptotout(m,n,o,p), chiout(m,n,o,p), stotout(m,n,o,p), sspecout(m,n,o,p), ...
-                          lutotdiff(m,n,o,p), lptotdiff(m,n,o,p), lchidiff(m,n,o,p), lstotdiff(m,n,o,p), lsspecdiff(m,n,o,p), ...
-                          cs2rhoT(m,n,o,p) ...
-                          );
-                  for ei=extraii:extraii+numextras-1
-                    fprintf(fid8,'%21.15g ', mynewdata(m,n,o,p,ei));
+          if outputmonotonizedtable==1
+
+            %%%%%%%%%%%%%%%%%%%%%%%%
+            %
+            % Output monotonized EOS so can check in SM
+            %
+            % Assumes nutotdiffout is same size as nptotout and nchiout
+            %
+            % 22 + extras
+            %
+            % Note that stot (and so its children quantities) may be modified if stotfix==1
+            %
+            % Treat chi as independent
+            %
+            %
+            %%%%%%%%%%%%%%%%%%%%%%%
+            
+            fprintf(fiddebug,'Outputting monotinized EOS %d %d %d\n',titer,ynuiter,hiter);
+            
+            % for large memory method
+            %m-1, n-1, o-1, p-1, ...
+            % for small memory method
+            
+            for p=1:ntdynorynuin
+              for o=1:ntdynoryein
+                for n=1:ntkin
+                  for m=1:nrhobin %+0                 +5                                      +5                                      +5                                      +5                                       +5                                      +5                                     +5                                      +5      +1
+                    
+                    if allowyeinterpolation==1
+                      yeiter=p;
+                    else
+                      yeiter=titer;
+                    end
+                    
+                    fprintf(fid8,'%3d %3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
+                            m-1, n-1, yeiter-1, ynuiter-1, hiter-1, ...
+                            rhob(m,n,o,p), tk(m,n,o,p), tdynorye(m,n,o,p), tdynorynu(m,n,o,p), hcm(m,n,o,p), ...
+                            utot(m,n,o,p), ptot(m,n,o,p), chi(m,n,o,p), stot(m,n,o,p), sspec(m,n,o,p), ...
+                            utotdegenfit(m,n,o,p), ptotdegenfit(m,n,o,p), chidegenfit(m,n,o,p), stotdegenfit(m,n,o,p), sspecdegenfit(m,n,o,p), ...
+                            utotoffset(m,n,o,p), ptotoffset(m,n,o,p), chioffset(m,n,o,p), stotoffset(m,n,o,p), sspecoffset(m,n,o,p), ...
+                            utotin(m,n,o,p), ptotin(m,n,o,p), chiin(m,n,o,p), stotin(m,n,o,p), sspecin(m,n,o,p), ...
+                            utotout(m,n,o,p), ptotout(m,n,o,p), chiout(m,n,o,p), stotout(m,n,o,p), sspecout(m,n,o,p), ...
+                            lutotdiff(m,n,o,p), lptotdiff(m,n,o,p), lchidiff(m,n,o,p), lstotdiff(m,n,o,p), lsspecdiff(m,n,o,p), ...
+                            cs2rhoT(m,n,o,p) ...
+                            );
+                    for ei=extraii:extraii+numextras-1
+                      fprintf(fid8,'%21.15g ', mynewdata(m,n,o,p,ei));
+                    end
+                    %                fprintf(fid8,'%3d %3d %3d %3d', ...
+                    %                m-1, n-1, o-1, p-1 ...
+                    %		);
+                    
+                    fprintf(fid8,'\n');
                   end
-                  %                fprintf(fid8,'%3d %3d %3d %3d', ...
-                  %                m-1, n-1, o-1, p-1 ...
-                  %		);
-                  
-                  fprintf(fid8,'\n');
                 end
               end
             end
-          end
 
+          end % end if outputmonotonizedtable==1
+
+          
+          % clean-up
+          clear utotdegenfit ptotdegenfit chidegenfit stotdegenfit sspecdegenfit
 
 
         end % end passiter==2 || require2passes==0 section
@@ -1699,10 +1761,8 @@ function eos_extract()
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %        rhobcsq		= rhob.*c.*c;
 
-        wtot = (rhobcsq+chi);
-
         % hspec is dimensionless
-        hspec = wtot./rhobcsq;
+        hspec = (rhobcsq+chi)./rhobcsq;
         
 
         % stot is entropy density (erg/K/cc)
@@ -1737,10 +1797,10 @@ function eos_extract()
           % open q_volume.dat (GODMARK: outdated)
           if 0
 
-            [mydata,count]=fscanf(fid4,'%g',[nco*nrhobin*ntkin*ntdynoryein*nhcmin]);
+            [mydata,count]=fscanf(fid4,'%g',[nco*nrhobin*ntkin*ntdynoryein*ntdynorynuin]);
 
             % make vector into 5-D array
-            temp=reshape(mydata,[nco,ntkin,nrhobin,ntdynoryein,nhcmin]);
+            temp=reshape(mydata,[nco,ntkin,nrhobin,ntdynoryein,ntdynorynuin]);
             clear mydata;
             % set primary matricies to be each column(field) read in from SM data (i.e.
             % read data is setup with column / nx / ny / nz order
@@ -1819,12 +1879,9 @@ function eos_extract()
         %
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-        % factor by which to enhance resolution of internal values before downgrading to output resolution
-        factor=10;
-        %factor=1;
 
 
-        nutotdiff=max(max(ntkin,ntkoutnn),ntkoutneut)*factor;
+        nutotdiff=max(max(ntkin,ntkoutnn),ntkoutneut)*factor; % note that the use of the max() in this way means if only wanted "extra" table, then should choose ntkoutnn small
         nptotdiff=nutotdiff;
         nchidiff=nutotdiff;
         nstotdiff=nutotdiff;
@@ -2052,7 +2109,7 @@ function eos_extract()
         if(passiter==2 || require2passes==0)
 
 
-          fprintf(fiddebug,'Begin Interpolate %d %d %d\n',hiter,titer,ynuiter);
+          fprintf(fiddebug,'Begin Interpolate %d %d %d\n',titer,ynuiter,hiter);
 
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
           %
@@ -2065,13 +2122,13 @@ function eos_extract()
           % clear any old-defined quantities (only really needed if running at
           % command line where old values exist and mismatch in dimensions can occur)
           clear extraofUdiff;
-          extraofUdiff=zeros(nrhobin,nutotdiff,ntdynoryein,nhcmin,numextras);
+          extraofUdiff=zeros(nrhobin,nutotdiff,ntdynoryein,ntdynorynuin,numextras);
 
           
           % say X, Y, Xi and get Yi
           for p=1:nrhobin
             for q=1:ntdynoryein
-              for r=1:nhcmin
+              for r=1:ntdynorynuin
 
                 %p
                 %q
@@ -2461,7 +2518,7 @@ function eos_extract()
           
           
 
-          fprintf(fiddebug,'End Interpolate %d %d %d\n',hiter,titer,ynuiter);
+          fprintf(fiddebug,'End Interpolate %d %d %d\n',titer,ynuiter,hiter);
 
 
           %DEBUG
@@ -2480,7 +2537,7 @@ function eos_extract()
           
           for p=1:nutotdiff
             for q=1:ntdynoryein
-              for r=1:nhcmin
+              for r=1:ntdynorynuin
                 % using 1 instead of p because of size of p is different
                 rhobgrid4d(:,p,q,r)    = rhob(:,1,q,r);
                 rhobcsqgrid4d(:,p,q,r) = rhobcsq(:,1,q,r);
@@ -2489,7 +2546,7 @@ function eos_extract()
           end
           for p=1:nrhobin
             for q=1:ntdynoryein
-              for r=1:nhcmin
+              for r=1:ntdynorynuin
                 % diff values
                 lutotdiffgrid4d(p,:,q,r)  = lutotdiffgrid(:);
                 lptotdiffgrid4d(p,:,q,r)  = lptotdiffgrid(:);
@@ -2637,7 +2694,7 @@ function eos_extract()
                 for p=1:nrhobin
                   for q=1:nutotdiff
                     for r=1:ntdynoryein
-                      for s=1:nhcmin
+                      for s=1:ntdynorynuin
                         %              p
                         %              q
                         %              r
@@ -2740,6 +2797,7 @@ function eos_extract()
           
           
           
+          fprintf(fiddebug,'Begin Compute Derivatives %d %d %d\n',titer,ynuiter,hiter);
           
 
 
@@ -2804,7 +2862,7 @@ function eos_extract()
           
           % say X, Y, Xi and get Yi
           for q=1:ntdynoryein
-            for r=1:nhcmin
+            for r=1:ntdynorynuin
               % NOTE
               % The first output FX is always the gradient along the 2nd dimension of F, going across columns. The second output FY is always the gradient along the 1st dimension of F, going across rows. For the third output FZ and the outputs that follow, the Nth output is the gradient along the Nth dimension of F. 
 
@@ -2851,6 +2909,10 @@ function eos_extract()
                 mySSofCHIdiff(:,:)=moving_average2(roughSSofCHIdiff(:,:),1,1);
 
                 mySofUdiff(:,:)=moving_average2(roughSofUdiff(:,:),1,1);
+                
+                % clean-up
+                clear roughUofUdiff roughPofPdiff roughCHIofCHIdiff roughSofSdiff roughSSofSSdiff roughPofSSdiff roughPofUdiff roughPofCHIdiff roughSSofCHIdiff roughSofUdiff
+                
               else
                 myUofUdiff(:,:)=UofUdiff(:,:,q,r);
                 myPofPdiff(:,:)=PofPdiff(:,:,q,r);
@@ -2866,6 +2928,7 @@ function eos_extract()
 
                 mySofUdiff(:,:)=SofUdiff(:,:,q,r);
               end
+
               
 
               % below are change of variable
@@ -2891,6 +2954,8 @@ function eos_extract()
               [dSofUdiffdludiff(:,:,q,r), dSofUdiffdlrho0(:,:,q,r)] = gradient(mySofUdiff(:,:), lutotdiffi,lrhocsqi);
               
 
+              % clean-up
+              clear myUofUdiff myPofPdiff myCHIofCHIdiff mySofSdiff mySSofSSdiff myPofSSdiff myPofUdiff myPofCHIdiff mySSofCHIdiff mySofUdiff
               
               
               % Now obtain true derivative for those derivatives that used diff instead of explicit variable
@@ -2938,6 +3003,7 @@ function eos_extract()
           %figure; plot(chidiff(1,:,1,1),gradPofCHIdiff)
 
 
+          fprintf(fiddebug,'End Compute Derivatives %d %d %d\n',titer,ynuiter,hiter);
 
 
 
@@ -2971,7 +3037,7 @@ function eos_extract()
           % say X, Y, Xi and get Yi
           for p=1:nrhobin
             for q=1:ntdynoryein
-              for r=1:nhcmin
+              for r=1:ntdynorynuin
                 
                 
                 % HACK
@@ -2980,7 +3046,7 @@ function eos_extract()
                 
                 % BEGIN DEBUG:
                 %hiter
-                %truenhcmin
+                %truentdynorynuin
 
                 %ynuiter
                 %truentdynorynuin
@@ -3065,6 +3131,8 @@ function eos_extract()
 
 
 
+          fprintf(fiddebug,'Begin Clean cs2 %d %d %d\n',titer,ynuiter,hiter);
+
 
           
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3088,7 +3156,7 @@ function eos_extract()
 
           if preinterpsoundspeed==2
             % Use cs2post to fix cs2
-            for p=1:nhcmin
+            for p=1:ntdynorynuin
               for o=1:ntdynoryein
                 for n=1:nutotdiff % supersampled so far
                   for m=1:nrhobin
@@ -3131,7 +3199,7 @@ function eos_extract()
 
           % adjust speed of sound to be no smaller than 0 and no larger than 1
 
-          for p=1:nhcmin
+          for p=1:ntdynorynuin
             for o=1:ntdynoryein
               for n=1:nutotdiff
                 for m=1:nrhobin
@@ -3166,7 +3234,15 @@ function eos_extract()
           
           
           
+          fprintf(fiddebug,'End Clean cs2 %d %d %d\n',titer,ynuiter,hiter);
           
+          
+
+          
+          
+          
+          
+          fprintf(fiddebug,'Begin Downsample %d %d %d\n',titer,ynuiter,hiter);
           
 
           %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3269,6 +3345,7 @@ function eos_extract()
               steplhcmout=steplhcmoutnn;
               
               lrhobgridout=lrhobgridoutnn;
+              ltdynoryegridout=ltdynoryegridoutnn;
 
               % temperature-like outputs
               nutotdiffout=nutotdiffoutnn;
@@ -3345,6 +3422,7 @@ function eos_extract()
               steplhcmout=steplhcmoutneut;
 
               lrhobgridout=lrhobgridoutneut;
+              ltdynoryegridout=ltdynoryegridoutneut;
 
               % temperature-like outputs
               nutotdiffout=nutotdiffoutneut;
@@ -3393,42 +3471,10 @@ function eos_extract()
             % Exception made for cs2ofUdiff that should be positive
             %
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            fprintf(fiddebug,'Begin Downsample: neutloop=%d : %d %d %d\n',neutloop,hiter,titer,ynuiter);
+            fprintf(fiddebug,'Begin Downsample In1: neutloop=%d : %d %d %d\n',neutloop,titer,ynuiter,hiter);
             
             
-            % Clear any old result as required now that use (e.g.) UofUdiffout() for 2 different resolutions
-            clear UofUdiffout PofPdiffout CHIofCHIdiffout SofSdiffout SSofSSdiffout
-            clear PofUdiffout HofUdiffout
-            clear UofPdiffout UofSdiffout
-            clear dPofUdiffdrho0out dPofUdiffduout
-            clear cs2ofUdiffout cs2ofUdiffcgsout
-            clear SofUdiffout dSofUdiffdrho0out dSofUdiffduout
-            clear PofCHIdiffout dPofCHIdiffdrho0out dPofCHIdiffdchiout
-            clear SSofCHIdiffout dSSofCHIdiffdrho0out dSSofCHIdiffdchiout
-            clear tkofUdiffout tkofPdiffout tkofCHIdiffout tkofSdiffout
-            clear faketkofUdiffout faketkofPdiffout faketkofCHIdiffout faketkofSdiffout
-            clear extraofUdiffout
-            % Now can create these freshly
 
-            % Clear any old result as required now that use (e.g.) UofUdifftempout() for 2 different resolutions
-            clear UofUdifftempout PofPdifftempout CHIofCHIdifftempout SofSdifftempout SSofSSdifftempout
-            clear PofUdifftempout HofUdifftempout
-            clear UofPdifftempout UofSdifftempout
-            clear dPofUdiffdrho0tempout dPofUdiffdutempout
-            clear cs2ofUdifftempout cs2ofUdiffcgstempout
-            clear SofUdifftempout dSofUdiffdrho0tempout dSofUdiffdutempout
-            clear PofCHIdifftempout dPofCHIdiffdrho0tempout dPofCHIdiffdchitempout
-            clear SSofCHIdifftempout dSSofCHIdiffdrho0tempout dSSofCHIdiffdchitempout
-            clear tkofUdifftempout tkofPdifftempout tkofCHIdifftempout tkofSdifftempout
-            clear faketkofUdifftempout faketkofPdifftempout faketkofCHIdifftempout faketkofSdifftempout
-            clear extraofUdifftempout
-            % Now can create these freshly
-           
-            % also clear non-temperature dependent stuff
-            clear rhobout rhobcsqout
-            clear utotoffsetout ptotoffsetout chioffsetout stotoffsetout
-            clear utotinout ptotinout chiinout stotinout
-            clear utotoutout ptotoutout chioutout stotoutout
             
             
             %%%%%%%%%%
@@ -3439,65 +3485,63 @@ function eos_extract()
 
             for p=1:nrhobin
               for q=1:ntdynoryein
-                for r=1:nhcmin
+                for r=1:ntdynorynuin
 
                   % for degen checks in HARM
-                  UofUdifftempout(p,:,q,r)          = 10.^(myinterp1(1,lutotdiffgrid, log10(UofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype));
-                  PofPdifftempout(p,:,q,r)          = 10.^(myinterp1(2,lptotdiffgrid, log10(PofPdiff(p,:,q,r)), lptotdiffoutgrid',interptype));
-                  CHIofCHIdifftempout(p,:,q,r)      = 10.^(myinterp1(3,lchidiffgrid, log10(CHIofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptype));
-                  SofSdifftempout(p,:,q,r)      = 10.^(myinterp1(3,lstotdiffgrid, log10(SofSdiff(p,:,q,r)), lstotdiffoutgrid',interptype));
-                  %SSofSSdifftempout(p,:,q,r)      = 10.^(myinterp1(3,lsspecdiffgrid, log10(SSofSSdiff(p,:,q,r)), lsspecdiffoutgrid',interptype)); % not needed in output
+                  UofUdifftemptempout(p,:,q,r)          = 10.^(myinterp1(1,lutotdiffgrid, log10(UofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype));
+                  PofPdifftemptempout(p,:,q,r)          = 10.^(myinterp1(2,lptotdiffgrid, log10(PofPdiff(p,:,q,r)), lptotdiffoutgrid',interptype));
+                  CHIofCHIdifftemptempout(p,:,q,r)      = 10.^(myinterp1(3,lchidiffgrid, log10(CHIofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptype));
+                  SofSdifftemptempout(p,:,q,r)      = 10.^(myinterp1(3,lstotdiffgrid, log10(SofSdiff(p,:,q,r)), lstotdiffoutgrid',interptype));
+                  %SSofSSdifftemptempout(p,:,q,r)      = 10.^(myinterp1(3,lsspecdiffgrid, log10(SSofSSdiff(p,:,q,r)), lsspecdiffoutgrid',interptype)); % not needed in output
                   
                   
-                  %            [lutotdpx,lutotdpy] = consolidator(log10(UofS(p,:,q,r)),log10(dPofSdrho0(p,:,q,r)),'mean',CONTOL);
+                  PofUdifftemptempout(p,:,q,r)          = 10.^(myinterp1(1,lutotdiffgrid, log10(PofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype));
+                  HofUdifftemptempout(p,:,q,r)          = 10.^(myinterp1(2,lutotdiffgrid, log10(HofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype));
 
-                  PofUdifftempout(p,:,q,r)          = 10.^(myinterp1(1,lutotdiffgrid, log10(PofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype));
-                  HofUdifftempout(p,:,q,r)          = 10.^(myinterp1(2,lutotdiffgrid, log10(HofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype));
+                  UofPdifftemptempout(p,:,q,r)          = 10.^(myinterp1(3,lptotdiffgrid, log10(UofPdiff(p,:,q,r)), lptotdiffoutgrid',interptype));
+                  UofSdifftemptempout(p,:,q,r)          = 10.^(myinterp1(3,lstotdiffgrid, log10(UofSdiff(p,:,q,r)), lstotdiffoutgrid',interptype));
 
-                  UofPdifftempout(p,:,q,r)          = 10.^(myinterp1(3,lptotdiffgrid, log10(UofPdiff(p,:,q,r)), lptotdiffoutgrid',interptype));
-                  UofSdifftempout(p,:,q,r)          = 10.^(myinterp1(3,lstotdiffgrid, log10(UofSdiff(p,:,q,r)), lstotdiffoutgrid',interptype));
+                  % dPofUdiffdrho0temptempout(p,:,q,r)   = 10.^(myinterp1(20,lutotdiffgrid, log10(dPofUdiffdrho0(p,:,q,r)), lutotdiffoutgrid',interptype));
+                  % dPofUdiffdutemptempout(p,:,q,r)      = 10.^(myinterp1(21,lutotdiffgrid, log10(dPofUdiffdu(p,:,q,r)), lutotdiffoutgrid',interptype));
+                  dPofUdiffdrho0temptempout(p,:,q,r)    = myinterp1(20,lutotdiffgrid, dPofUdiffdrho0(p,:,q,r), lutotdiffoutgrid',interptype);
+                  dPofUdiffdutemptempout(p,:,q,r)       = myinterp1(21,lutotdiffgrid, dPofUdiffdu(p,:,q,r), lutotdiffoutgrid',interptype);
 
-                  % dPofUdiffdrho0tempout(p,:,q,r)   = 10.^(myinterp1(20,lutotdiffgrid, log10(dPofUdiffdrho0(p,:,q,r)), lutotdiffoutgrid',interptype));
-                  % dPofUdiffdutempout(p,:,q,r)      = 10.^(myinterp1(21,lutotdiffgrid, log10(dPofUdiffdu(p,:,q,r)), lutotdiffoutgrid',interptype));
-                  dPofUdiffdrho0tempout(p,:,q,r)    = myinterp1(20,lutotdiffgrid, dPofUdiffdrho0(p,:,q,r), lutotdiffoutgrid',interptype);
-                  dPofUdiffdutempout(p,:,q,r)       = myinterp1(21,lutotdiffgrid, dPofUdiffdu(p,:,q,r), lutotdiffoutgrid',interptype);
+                  cs2ofUdifftemptempout(p,:,q,r)           = 10.^(myinterp1(22,lutotdiffgrid, log10(cs2ofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype2));
+                  cs2ofUdiffcgstemptempout(p,:,q,r)        = 10.^(myinterp1(23,lutotdiffgrid, log10(cs2ofUdiffcgs(p,:,q,r)), lutotdiffoutgrid',interptype2));
 
-                  cs2ofUdifftempout(p,:,q,r)           = 10.^(myinterp1(22,lutotdiffgrid, log10(cs2ofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype2));
-                  cs2ofUdiffcgstempout(p,:,q,r)        = 10.^(myinterp1(23,lutotdiffgrid, log10(cs2ofUdiffcgs(p,:,q,r)), lutotdiffoutgrid',interptype2));
+                  SofUdifftemptempout(p,:,q,r)          = 10.^(myinterp1(8,lutotdiffgrid, log10(SofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype));
+                  % dSofUdiffdrho0temptempout(p,:,q,r)   = 10.^(myinterp1(24,lutotdiffgrid, log10(dSofUdiffdrho0(p,:,q,r)), lutotdiffoutgrid',interptype));
+                  % dSofUdiffdutemptempout(p,:,q,r)      = 10.^(myinterp1(25,lutotdiffgrid, log10(dSofUdiffdu(p,:,q,r)), lutotdiffoutgrid',interptype));
+                  dSofUdiffdrho0temptempout(p,:,q,r)    = myinterp1(24,lutotdiffgrid, dSofUdiffdrho0(p,:,q,r), lutotdiffoutgrid',interptype);
+                  dSofUdiffdutemptempout(p,:,q,r)       = myinterp1(25,lutotdiffgrid, dSofUdiffdu(p,:,q,r), lutotdiffoutgrid',interptype);
 
-                  SofUdifftempout(p,:,q,r)          = 10.^(myinterp1(8,lutotdiffgrid, log10(SofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype));
-                  % dSofUdiffdrho0tempout(p,:,q,r)   = 10.^(myinterp1(24,lutotdiffgrid, log10(dSofUdiffdrho0(p,:,q,r)), lutotdiffoutgrid',interptype));
-                  % dSofUdiffdutempout(p,:,q,r)      = 10.^(myinterp1(25,lutotdiffgrid, log10(dSofUdiffdu(p,:,q,r)), lutotdiffoutgrid',interptype));
-                  dSofUdiffdrho0tempout(p,:,q,r)    = myinterp1(24,lutotdiffgrid, dSofUdiffdrho0(p,:,q,r), lutotdiffoutgrid',interptype);
-                  dSofUdiffdutempout(p,:,q,r)       = myinterp1(25,lutotdiffgrid, dSofUdiffdu(p,:,q,r), lutotdiffoutgrid',interptype);
+                  PofCHIdifftemptempout(p,:,q,r)        = 10.^(myinterp1(4,lchidiffgrid, log10(PofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptype));
+                  % dPofCHIdiffdrho0temptempout(p,:,q,r) = 10.^(myinterp1(26,lchidiffgrid, log10(dPofCHIdiffdrho0(p,:,q,r)), lchidiffoutgrid',interptype));
+                  % dPofCHIdiffdchitemptempout(p,:,q,r)  = 10.^(myinterp1(27,lchidiffgrid, log10(dPofCHIdiffdchi(p,:,q,r)), lchidiffoutgrid',interptype));
+                  dPofCHIdiffdrho0temptempout(p,:,q,r)  = myinterp1(26,lchidiffgrid, dPofCHIdiffdrho0(p,:,q,r), lchidiffoutgrid',interptype);
+                  dPofCHIdiffdchitemptempout(p,:,q,r)   = myinterp1(27,lchidiffgrid, dPofCHIdiffdchi(p,:,q,r), lchidiffoutgrid',interptype);
 
-                  PofCHIdifftempout(p,:,q,r)        = 10.^(myinterp1(4,lchidiffgrid, log10(PofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptype));
-                  % dPofCHIdiffdrho0tempout(p,:,q,r) = 10.^(myinterp1(26,lchidiffgrid, log10(dPofCHIdiffdrho0(p,:,q,r)), lchidiffoutgrid',interptype));
-                  % dPofCHIdiffdchitempout(p,:,q,r)  = 10.^(myinterp1(27,lchidiffgrid, log10(dPofCHIdiffdchi(p,:,q,r)), lchidiffoutgrid',interptype));
-                  dPofCHIdiffdrho0tempout(p,:,q,r)  = myinterp1(26,lchidiffgrid, dPofCHIdiffdrho0(p,:,q,r), lchidiffoutgrid',interptype);
-                  dPofCHIdiffdchitempout(p,:,q,r)   = myinterp1(27,lchidiffgrid, dPofCHIdiffdchi(p,:,q,r), lchidiffoutgrid',interptype);
+                  SSofCHIdifftemptempout(p,:,q,r)        = 10.^(myinterp1(4,lchidiffgrid, log10(SSofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptype));
+                  % dSSofCHIdiffdrho0temptempout(p,:,q,r) = 10.^(myinterp1(26,lchidiffgrid, log10(dSSofCHIdiffdrho0(p,:,q,r)), lchidiffoutgrid',interptype));
+                  % dSSofCHIdiffdchitemptempout(p,:,q,r)  = 10.^(myinterp1(27,lchidiffgrid, log10(dSSofCHIdiffdchi(p,:,q,r)), lchidiffoutgrid',interptype));
+                  dSSofCHIdiffdrho0temptempout(p,:,q,r)  = myinterp1(26,lchidiffgrid, dSSofCHIdiffdrho0(p,:,q,r), lchidiffoutgrid',interptype);
+                  dSSofCHIdiffdchitemptempout(p,:,q,r)   = myinterp1(27,lchidiffgrid, dSSofCHIdiffdchi(p,:,q,r), lchidiffoutgrid',interptype);
 
-                  SSofCHIdifftempout(p,:,q,r)        = 10.^(myinterp1(4,lchidiffgrid, log10(SSofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptype));
-                  % dSSofCHIdiffdrho0tempout(p,:,q,r) = 10.^(myinterp1(26,lchidiffgrid, log10(dSSofCHIdiffdrho0(p,:,q,r)), lchidiffoutgrid',interptype));
-                  % dSSofCHIdiffdchitempout(p,:,q,r)  = 10.^(myinterp1(27,lchidiffgrid, log10(dSSofCHIdiffdchi(p,:,q,r)), lchidiffoutgrid',interptype));
-                  dSSofCHIdiffdrho0tempout(p,:,q,r)  = myinterp1(26,lchidiffgrid, dSSofCHIdiffdrho0(p,:,q,r), lchidiffoutgrid',interptype);
-                  dSSofCHIdiffdchitempout(p,:,q,r)   = myinterp1(27,lchidiffgrid, dSSofCHIdiffdchi(p,:,q,r), lchidiffoutgrid',interptype);
-
-                  tkofUdifftempout(p,:,q,r)         = 10.^(myinterp1(29,lutotdiffgrid, log10(tkofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype));
-                  tkofPdifftempout(p,:,q,r)         = 10.^(myinterp1(30,lptotdiffgrid, log10(tkofPdiff(p,:,q,r)), lptotdiffoutgrid',interptype));
-                  tkofCHIdifftempout(p,:,q,r)       = 10.^(myinterp1(31,lchidiffgrid, log10(tkofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptype));
-                  tkofSdifftempout(p,:,q,r)         = 10.^(myinterp1(30,lstotdiffgrid, log10(tkofSdiff(p,:,q,r)), lstotdiffoutgrid',interptype));
+                  tkofUdifftemptempout(p,:,q,r)         = 10.^(myinterp1(29,lutotdiffgrid, log10(tkofUdiff(p,:,q,r)), lutotdiffoutgrid',interptype));
+                  tkofPdifftemptempout(p,:,q,r)         = 10.^(myinterp1(30,lptotdiffgrid, log10(tkofPdiff(p,:,q,r)), lptotdiffoutgrid',interptype));
+                  tkofCHIdifftemptempout(p,:,q,r)       = 10.^(myinterp1(31,lchidiffgrid, log10(tkofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptype));
+                  tkofSdifftemptempout(p,:,q,r)         = 10.^(myinterp1(30,lstotdiffgrid, log10(tkofSdiff(p,:,q,r)), lstotdiffoutgrid',interptype));
 
                   % NOTE: Below will produce warning's about NaN found in interp1, but that's correct behavior since we use those NaN's to decide if really within reasonable part of table rather than using the extrapolation
-                  faketkofUdifftempout(p,:,q,r)         = 10.^(interp1(lutotdiffgrid, log10(faketkofUdiff(p,:,q,r)), lutotdiffoutgrid',interptypefaketemp));
-                  faketkofPdifftempout(p,:,q,r)         = 10.^(interp1(lptotdiffgrid, log10(faketkofPdiff(p,:,q,r)), lptotdiffoutgrid',interptypefaketemp));
-                  faketkofCHIdifftempout(p,:,q,r)       = 10.^(interp1(lchidiffgrid, log10(faketkofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptypefaketemp));
-                  faketkofSdifftempout(p,:,q,r)         = 10.^(interp1(lstotdiffgrid, log10(faketkofSdiff(p,:,q,r)), lstotdiffoutgrid',interptypefaketemp));
+                  faketkofUdifftemptempout(p,:,q,r)         = 10.^(interp1(lutotdiffgrid, log10(faketkofUdiff(p,:,q,r)), lutotdiffoutgrid',interptypefaketemp));
+                  faketkofPdifftemptempout(p,:,q,r)         = 10.^(interp1(lptotdiffgrid, log10(faketkofPdiff(p,:,q,r)), lptotdiffoutgrid',interptypefaketemp));
+                  faketkofCHIdifftemptempout(p,:,q,r)       = 10.^(interp1(lchidiffgrid, log10(faketkofCHIdiff(p,:,q,r)), lchidiffoutgrid',interptypefaketemp));
+                  faketkofSdifftemptempout(p,:,q,r)         = 10.^(interp1(lstotdiffgrid, log10(faketkofSdiff(p,:,q,r)), lstotdiffoutgrid',interptypefaketemp));
 
                   % extras:
                   % mynewdata(:,:,:,:,ei)
                   for ei=1:numextras
-                    extraofUdifftempout(p,:,q,r,ei) = 10.^(myinterp1(28,lutotdiffgrid, log10(extraofUdiff(p,:,q,r,ei)), lutotdiffoutgrid',interptype));
+                    extraofUdifftemptempout(p,:,q,r,ei) = 10.^(myinterp1(28,lutotdiffgrid, log10(extraofUdiff(p,:,q,r,ei)), lutotdiffoutgrid',interptype));
                   end
                   
                   
@@ -3505,7 +3549,33 @@ function eos_extract()
               end
             end
 
+
             
+            if neutloop==neutloopend % only clear on final pass of neutloop -- i.e. once done with pre-interpolated values
+              
+              %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+              %
+              % Clear interpolated but pre-output version of variables
+              %
+              %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+              clear UofUdiff PofPdiff CHIofCHIdiff SofSdiff SSofSSdiff
+              clear PofUdiff HofUdiff
+              clear UofPdiff UofSdiff
+              clear dPofUdiffdrho0 dPofUdiffdu cs2ofUdiff cs2ofUdiffcgs SofUdiff
+              clear dSofUdiffdrho0 dSofUdiffdu PofCHIdiff dPofCHIdiffdrho0 dPofCHIdiffdchi SSofCHIdiff dSSofCHIdiffdrho0 dSSofCHIdiffdchi tkofUdiff tkofPdiff tkofCHIdiff tkofSdiff
+              clear HofU cs2 PofU UofP dPofUdrho0 dPofUdu cs2cgs SofU dSofUdrho0 dSofUdu PofCHI dPofCHIdrho0 dPofCHIdchi SSofCHI dSSofCHIdrho0 dSSofCHIdchi
+              %tkofU tkofP tkofCHI tkofS;
+              clear extraofUdiff;
+            end %%%%% end if neutloop==neutloopend
+
+
+            
+            
+            
+            
+            fprintf(fiddebug,'Begin Downsample In2: neutloop=%d : %d %d %d\n',neutloop,titer,ynuiter,hiter);
+
             
             %%%%%%%%%%
             %
@@ -3531,186 +3601,291 @@ function eos_extract()
             %%%%%%%%%%
             
             %if(nrhobin~=nrhobout)
-            if(1==1) % while size may be same, range may not be, so just interpolate in general for now unless put in more complicated conditional with ranges that detect within machine error
+            % while size may be same, range may not be, so just interpolate in general for now unless put in more complicated conditional with ranges that detect within machine error
+            
 
-              %for p=1:nrhobin
-              for tklike=1:nutotdiffout % assume all diffout's are same size!
-                for q=1:ntdynoryein
-                  for r=1:nhcmin
-                    
-                    %%%%%%%%%%%%%%%%
-                    % original rhob different size in tk slot, so just use 1 for that slot
-                    % This assumes rhob doesn't depend upon tk, which is true.
-                    %%%%%%%%%%%%%%%%
-                    rhobout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(rhob(:,1,q,r))),lrhobgridout',interptype));
-                    rhobcsqout(:,tklike,q,r)       =     10.^(interp1(lrhobgridin,log10(squeeze(rhobcsq(:,1,q,r))),lrhobgridout',interptype));
 
-                    %%%%%%%%%%%%%%%%%%%%%%%%
-                    %  Down-sample (or re-sample) degeneracy stuff since for density the number of points or range may be different than input data
-                    %%%%%%%%%%%%%%%%%%%%%%%
-                    utotoffsetout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(utotoffset(:,1,q,r))),lrhobgridout',interptype));
-                    ptotoffsetout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(ptotoffset(:,1,q,r))),lrhobgridout',interptype));
-                    chioffsetout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(chioffset(:,1,q,r))),lrhobgridout',interptype));
-                    stotoffsetout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(stotoffset(:,1,q,r))),lrhobgridout',interptype));
+            %for p=1:nrhobin
+            for tklike=1:nutotdiffout % assume all diffout's are same size!
+              for q=1:ntdynoryein
+                for r=1:ntdynorynuin
+                  
+                  %%%%%%%%%%%%%%%%
+                  % original rhob different size in tk slot, so just use 1 for that slot
+                  % This assumes rhob doesn't depend upon tk, which is true.
+                  %%%%%%%%%%%%%%%%
+                  rhobtempout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(rhob(:,1,q,r))),lrhobgridout',interptype));
+                  rhobcsqtempout(:,tklike,q,r)       =     10.^(interp1(lrhobgridin,log10(squeeze(rhobcsq(:,1,q,r))),lrhobgridout',interptype));
 
-                    utotinout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(utotin(:,1,q,r))),lrhobgridout',interptype));
-                    ptotinout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(ptotin(:,1,q,r))),lrhobgridout',interptype));
-                    chiinout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(chiin(:,1,q,r))),lrhobgridout',interptype));
-                    stotinout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(stotin(:,1,q,r))),lrhobgridout',interptype));
-                    
-                    utotoutout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(utotout(:,1,q,r))),lrhobgridout',interptype));
-                    ptotoutout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(ptotout(:,1,q,r))),lrhobgridout',interptype));
-                    chioutout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(chiout(:,1,q,r))),lrhobgridout',interptype));
-                    stotoutout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(stotout(:,1,q,r))),lrhobgridout',interptype));
+                  %%%%%%%%%%%%%%%%%%%%%%%%
+                  %  Down-sample (or re-sample) degeneracy stuff since for density the number of points or range may be different than input data
+                  %%%%%%%%%%%%%%%%%%%%%%%
+                  utotoffsettempout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(utotoffset(:,1,q,r))),lrhobgridout',interptype));
+                  ptotoffsettempout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(ptotoffset(:,1,q,r))),lrhobgridout',interptype));
+                  chioffsettempout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(chioffset(:,1,q,r))),lrhobgridout',interptype));
+                  stotoffsettempout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(stotoffset(:,1,q,r))),lrhobgridout',interptype));
 
-                    %%%%%%%%%%%%%%
-                    %
-                    % Now other things that were also temperature-dependence
-                    %
-                    %%%%%%%%%%%%%%%
+                  utotintempout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(utotin(:,1,q,r))),lrhobgridout',interptype));
+                  ptotintempout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(ptotin(:,1,q,r))),lrhobgridout',interptype));
+                  chiintempout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(chiin(:,1,q,r))),lrhobgridout',interptype));
+                  stotintempout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(stotin(:,1,q,r))),lrhobgridout',interptype));
+                  
+                  utotouttempout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(utotout(:,1,q,r))),lrhobgridout',interptype));
+                  ptotouttempout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(ptotout(:,1,q,r))),lrhobgridout',interptype));
+                  chiouttempout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(chiout(:,1,q,r))),lrhobgridout',interptype));
+                  stotouttempout(:,tklike,q,r)          =     10.^(interp1(lrhobgridin,log10(squeeze(stotout(:,1,q,r))),lrhobgridout',interptype));
 
-                    % for degen checks in HARM
-                    UofUdiffout(:,tklike,q,r)          = 10.^(myinterp1(1,lrhobgridin, log10(UofUdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    PofPdiffout(:,tklike,q,r)          = 10.^(myinterp1(2,lrhobgridin, log10(PofPdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    CHIofCHIdiffout(:,tklike,q,r)      = 10.^(myinterp1(3,lrhobgridin, log10(CHIofCHIdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    SofSdiffout(:,tklike,q,r)      = 10.^(myinterp1(3,lrhobgridin, log10(SofSdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    %SSofSSdiffout(:,tklike,q,r)      = 10.^(myinterp1(3,lrhobgridin, log10(SSofSSdifftempout(:,tklike,q,r)), lrhobgridout',interptype)); % not needed in output
-                    
-                    
+                  %%%%%%%%%%%%%%
+                  %
+                  % Now other things that were also temperature-dependence
+                  %
+                  %%%%%%%%%%%%%%%
 
-                    PofUdiffout(:,tklike,q,r)          = 10.^(myinterp1(1,lrhobgridin, log10(PofUdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    HofUdiffout(:,tklike,q,r)          = 10.^(myinterp1(2,lrhobgridin, log10(HofUdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  % for degen checks in HARM
+                  UofUdifftempout(:,tklike,q,r)          = 10.^(myinterp1(1,lrhobgridin, log10(UofUdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  PofPdifftempout(:,tklike,q,r)          = 10.^(myinterp1(2,lrhobgridin, log10(PofPdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  CHIofCHIdifftempout(:,tklike,q,r)      = 10.^(myinterp1(3,lrhobgridin, log10(CHIofCHIdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  SofSdifftempout(:,tklike,q,r)      = 10.^(myinterp1(3,lrhobgridin, log10(SofSdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  %SSofSSdifftempout(:,tklike,q,r)      = 10.^(myinterp1(3,lrhobgridin, log10(SSofSSdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  
+                  
 
-                    UofPdiffout(:,tklike,q,r)          = 10.^(myinterp1(3,lrhobgridin, log10(UofPdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    UofSdiffout(:,tklike,q,r)          = 10.^(myinterp1(3,lrhobgridin, log10(UofSdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  PofUdifftempout(:,tklike,q,r)          = 10.^(myinterp1(1,lrhobgridin, log10(PofUdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  HofUdifftempout(:,tklike,q,r)          = 10.^(myinterp1(2,lrhobgridin, log10(HofUdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
 
-                    % dPofUdiffdrho0out(:,tklike,q,r)   = 10.^(myinterp1(20,lrhobgridin, log10(dPofUdiffdrho0tempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    % dPofUdiffduout(:,tklike,q,r)      = 10.^(myinterp1(21,lrhobgridin, log10(dPofUdiffdutempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    dPofUdiffdrho0out(:,tklike,q,r)    = myinterp1(20,lrhobgridin, dPofUdiffdrho0tempout(:,tklike,q,r), lrhobgridout',interptype);
-                    dPofUdiffduout(:,tklike,q,r)       = myinterp1(21,lrhobgridin, dPofUdiffdutempout(:,tklike,q,r), lrhobgridout',interptype);
+                  UofPdifftempout(:,tklike,q,r)          = 10.^(myinterp1(3,lrhobgridin, log10(UofPdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  UofSdifftempout(:,tklike,q,r)          = 10.^(myinterp1(3,lrhobgridin, log10(UofSdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
 
-                    cs2ofUdiffout(:,tklike,q,r)           = 10.^(myinterp1(22,lrhobgridin, log10(cs2ofUdifftempout(:,tklike,q,r)), lrhobgridout',interptype2));
-                    cs2ofUdiffcgsout(:,tklike,q,r)        = 10.^(myinterp1(23,lrhobgridin, log10(cs2ofUdiffcgstempout(:,tklike,q,r)), lrhobgridout',interptype2));
+                  % dPofUdiffdrho0tempout(:,tklike,q,r)   = 10.^(myinterp1(20,lrhobgridin, log10(dPofUdiffdrho0temptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  % dPofUdiffdutempout(:,tklike,q,r)      = 10.^(myinterp1(21,lrhobgridin, log10(dPofUdiffdutemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  dPofUdiffdrho0tempout(:,tklike,q,r)    = myinterp1(20,lrhobgridin, dPofUdiffdrho0temptempout(:,tklike,q,r), lrhobgridout',interptype);
+                  dPofUdiffdutempout(:,tklike,q,r)       = myinterp1(21,lrhobgridin, dPofUdiffdutemptempout(:,tklike,q,r), lrhobgridout',interptype);
 
-                    SofUdiffout(:,tklike,q,r)          = 10.^(myinterp1(8,lrhobgridin, log10(SofUdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    % dSofUdiffdrho0out(:,tklike,q,r)   = 10.^(myinterp1(24,lrhobgridin, log10(dSofUdiffdrho0tempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    % dSofUdiffduout(:,tklike,q,r)      = 10.^(myinterp1(25,lrhobgridin, log10(dSofUdiffdutempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    dSofUdiffdrho0out(:,tklike,q,r)    = myinterp1(24,lrhobgridin, dSofUdiffdrho0tempout(:,tklike,q,r), lrhobgridout',interptype);
-                    dSofUdiffduout(:,tklike,q,r)       = myinterp1(25,lrhobgridin, dSofUdiffdutempout(:,tklike,q,r), lrhobgridout',interptype);
+                  cs2ofUdifftempout(:,tklike,q,r)           = 10.^(myinterp1(22,lrhobgridin, log10(cs2ofUdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype2));
+                  cs2ofUdiffcgstempout(:,tklike,q,r)        = 10.^(myinterp1(23,lrhobgridin, log10(cs2ofUdiffcgstemptempout(:,tklike,q,r)), lrhobgridout',interptype2));
 
-                    PofCHIdiffout(:,tklike,q,r)        = 10.^(myinterp1(4,lrhobgridin, log10(PofCHIdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    % dPofCHIdiffdrho0out(:,tklike,q,r) = 10.^(myinterp1(26,lrhobgridin, log10(dPofCHIdiffdrho0tempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    % dPofCHIdiffdchiout(:,tklike,q,r)  = 10.^(myinterp1(27,lrhobgridin, log10(dPofCHIdiffdchitempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    dPofCHIdiffdrho0out(:,tklike,q,r)  = myinterp1(26,lrhobgridin, dPofCHIdiffdrho0tempout(:,tklike,q,r), lrhobgridout',interptype);
-                    dPofCHIdiffdchiout(:,tklike,q,r)   = myinterp1(27,lrhobgridin, dPofCHIdiffdchitempout(:,tklike,q,r), lrhobgridout',interptype);
+                  SofUdifftempout(:,tklike,q,r)          = 10.^(myinterp1(8,lrhobgridin, log10(SofUdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  % dSofUdiffdrho0tempout(:,tklike,q,r)   = 10.^(myinterp1(24,lrhobgridin, log10(dSofUdiffdrho0temptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  % dSofUdiffdutempout(:,tklike,q,r)      = 10.^(myinterp1(25,lrhobgridin, log10(dSofUdiffdutemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  dSofUdiffdrho0tempout(:,tklike,q,r)    = myinterp1(24,lrhobgridin, dSofUdiffdrho0temptempout(:,tklike,q,r), lrhobgridout',interptype);
+                  dSofUdiffdutempout(:,tklike,q,r)       = myinterp1(25,lrhobgridin, dSofUdiffdutemptempout(:,tklike,q,r), lrhobgridout',interptype);
 
-                    SSofCHIdiffout(:,tklike,q,r)        = 10.^(myinterp1(4,lrhobgridin, log10(SSofCHIdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    % dSSofCHIdiffdrho0out(:,tklike,q,r) = 10.^(myinterp1(26,lrhobgridin, log10(dSSofCHIdiffdrho0tempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    % dSSofCHIdiffdchiout(:,tklike,q,r)  = 10.^(myinterp1(27,lrhobgridin, log10(dSSofCHIdiffdchitempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    dSSofCHIdiffdrho0out(:,tklike,q,r)  = myinterp1(26,lrhobgridin, dSSofCHIdiffdrho0tempout(:,tklike,q,r), lrhobgridout',interptype);
-                    dSSofCHIdiffdchiout(:,tklike,q,r)   = myinterp1(27,lrhobgridin, dSSofCHIdiffdchitempout(:,tklike,q,r), lrhobgridout',interptype);
+                  PofCHIdifftempout(:,tklike,q,r)        = 10.^(myinterp1(4,lrhobgridin, log10(PofCHIdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  % dPofCHIdiffdrho0tempout(:,tklike,q,r) = 10.^(myinterp1(26,lrhobgridin, log10(dPofCHIdiffdrho0temptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  % dPofCHIdiffdchitempout(:,tklike,q,r)  = 10.^(myinterp1(27,lrhobgridin, log10(dPofCHIdiffdchitemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  dPofCHIdiffdrho0tempout(:,tklike,q,r)  = myinterp1(26,lrhobgridin, dPofCHIdiffdrho0temptempout(:,tklike,q,r), lrhobgridout',interptype);
+                  dPofCHIdiffdchitempout(:,tklike,q,r)   = myinterp1(27,lrhobgridin, dPofCHIdiffdchitemptempout(:,tklike,q,r), lrhobgridout',interptype);
 
-                    tkofUdiffout(:,tklike,q,r)         = 10.^(myinterp1(29,lrhobgridin, log10(tkofUdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    tkofPdiffout(:,tklike,q,r)         = 10.^(myinterp1(30,lrhobgridin, log10(tkofPdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    tkofCHIdiffout(:,tklike,q,r)       = 10.^(myinterp1(31,lrhobgridin, log10(tkofCHIdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
-                    tkofSdiffout(:,tklike,q,r)         = 10.^(myinterp1(30,lrhobgridin, log10(tkofSdifftempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  SSofCHIdifftempout(:,tklike,q,r)        = 10.^(myinterp1(4,lrhobgridin, log10(SSofCHIdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  % dSSofCHIdiffdrho0tempout(:,tklike,q,r) = 10.^(myinterp1(26,lrhobgridin, log10(dSSofCHIdiffdrho0temptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  % dSSofCHIdiffdchitempout(:,tklike,q,r)  = 10.^(myinterp1(27,lrhobgridin, log10(dSSofCHIdiffdchitemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  dSSofCHIdiffdrho0tempout(:,tklike,q,r)  = myinterp1(26,lrhobgridin, dSSofCHIdiffdrho0temptempout(:,tklike,q,r), lrhobgridout',interptype);
+                  dSSofCHIdiffdchitempout(:,tklike,q,r)   = myinterp1(27,lrhobgridin, dSSofCHIdiffdchitemptempout(:,tklike,q,r), lrhobgridout',interptype);
 
-                    % NOTE: Below will produce warning's about NaN found in interp1, but that's correct behavior since we use those NaN's to decide if really within reasonable part of table rather than using the extrapolation
-                    faketkofUdiffout(:,tklike,q,r)         = 10.^(interp1(lrhobgridin, log10(faketkofUdifftempout(:,tklike,q,r)), lrhobgridout',interptypefaketemp));
-                    faketkofPdiffout(:,tklike,q,r)         = 10.^(interp1(lrhobgridin, log10(faketkofPdifftempout(:,tklike,q,r)), lrhobgridout',interptypefaketemp));
-                    faketkofCHIdiffout(:,tklike,q,r)       = 10.^(interp1(lrhobgridin, log10(faketkofCHIdifftempout(:,tklike,q,r)), lrhobgridout',interptypefaketemp));
-                    faketkofSdiffout(:,tklike,q,r)         = 10.^(interp1(lrhobgridin, log10(faketkofSdifftempout(:,tklike,q,r)), lrhobgridout',interptypefaketemp));
+                  tkofUdifftempout(:,tklike,q,r)         = 10.^(myinterp1(29,lrhobgridin, log10(tkofUdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  tkofPdifftempout(:,tklike,q,r)         = 10.^(myinterp1(30,lrhobgridin, log10(tkofPdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  tkofCHIdifftempout(:,tklike,q,r)       = 10.^(myinterp1(31,lrhobgridin, log10(tkofCHIdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
+                  tkofSdifftempout(:,tklike,q,r)         = 10.^(myinterp1(30,lrhobgridin, log10(tkofSdifftemptempout(:,tklike,q,r)), lrhobgridout',interptype));
 
-                    % extras:
-                    % mynewdata(:,:,:,:,ei)
-                    for ei=1:numextras
-                      extraofUdiffout(:,tklike,q,r,ei) = 10.^(myinterp1(28,lrhobgridin, log10(extraofUdifftempout(:,tklike,q,r,ei)), lrhobgridout',interptype));
-                    end
-                    
-                    
+                  % NOTE: Below will produce warning's about NaN found in interp1, but that's correct behavior since we use those NaN's to decide if really within reasonable part of table rather than using the extrapolation
+                  faketkofUdifftempout(:,tklike,q,r)         = 10.^(interp1(lrhobgridin, log10(faketkofUdifftemptempout(:,tklike,q,r)), lrhobgridout',interptypefaketemp));
+                  faketkofPdifftempout(:,tklike,q,r)         = 10.^(interp1(lrhobgridin, log10(faketkofPdifftemptempout(:,tklike,q,r)), lrhobgridout',interptypefaketemp));
+                  faketkofCHIdifftempout(:,tklike,q,r)       = 10.^(interp1(lrhobgridin, log10(faketkofCHIdifftemptempout(:,tklike,q,r)), lrhobgridout',interptypefaketemp));
+                  faketkofSdifftempout(:,tklike,q,r)         = 10.^(interp1(lrhobgridin, log10(faketkofSdifftemptempout(:,tklike,q,r)), lrhobgridout',interptypefaketemp));
+
+                  % extras:
+                  % mynewdata(:,:,:,:,ei)
+                  for ei=1:numextras
+                    extraofUdifftempout(:,tklike,q,r,ei) = 10.^(myinterp1(28,lrhobgridin, log10(extraofUdifftemptempout(:,tklike,q,r,ei)), lrhobgridout',interptype));
                   end
+                  
+                  
                 end
               end
+            end
 
-            else %%%%%%% end if(nrhobin~=nrhobout)
+
             
-              % then just assign
-              
-              %for p=1:nrhobin
+            
+            
+            
+            
+            
+            
+            % Clear any old result as required now that use (e.g.) UofUdifftemptempout() for 2 different resolutions
+            clear UofUdifftemptempout PofPdifftemptempout CHIofCHIdifftemptempout SofSdifftemptempout SSofSSdifftemptempout
+            clear PofUdifftemptempout HofUdifftemptempout
+            clear UofPdifftemptempout UofSdifftemptempout
+            clear dPofUdiffdrho0temptempout dPofUdiffdutemptempout
+            clear cs2ofUdifftemptempout cs2ofUdiffcgstemptempout
+            clear SofUdifftemptempout dSofUdiffdrho0temptempout dSofUdiffdutemptempout
+            clear PofCHIdifftemptempout dPofCHIdiffdrho0temptempout dPofCHIdiffdchitemptempout
+            clear SSofCHIdifftemptempout dSSofCHIdiffdrho0temptempout dSSofCHIdiffdchitemptempout
+            clear tkofUdifftemptempout tkofPdifftemptempout tkofCHIdifftemptempout tkofSdifftemptempout
+            clear faketkofUdifftemptempout faketkofPdifftemptempout faketkofCHIdifftemptempout faketkofSdifftemptempout
+            clear extraofUdifftemptempout
+            % Now can create these freshly
+
+            
+
+            
+            fprintf(fiddebug,'Begin Downsample In3: neutloop=%d : %d %d %d\n',neutloop,titer,ynuiter,hiter);
+
+            
+            %%%%%%%%%%
+            %
+            % Down-sample in ye quantity third (if required)
+            %
+            % just like temperature down-sample code just above, but change:
+            % 1) (:,1,q,r) -> (p,tklike,:,r)
+            % 2) (:,tklike,q,r) -> (p,tklike,:,r)
+            % 2.5) and (:,tklike,q,r,ei) -> (p,tklike,:,r,ei)
+            % 3) except new tdynoryeout(p,tklike,:,r) which uses tdynorye(1,1,:,1)
+            % 4) lrhobgridin -> ltdynoryegridin
+            % 5) lrhobgridout -> ltdynoryegridout
+            % AND
+            % 3) change "for q=1:ntdynoryein" and replace with outer look for density of "for p=1:nrhobout"
+            % 12) and loop changes from "for p=1:nrhobin" to "for tklike=1:nutotdiffout"
+            % AND
+            % 13) change (e.g.) UofUdiff -> UofUdiffout on RHS  of equation inside interpolation so above temperature-like down-sample result used
+            %%%%%%%%%%
+            
+            % while size may be same, range may not be, so just interpolate in general for now unless put in more complicated conditional with ranges that detect within machine error
+
+            for p=1:nrhobout
               for tklike=1:nutotdiffout % assume all diffout's are same size!
-                for q=1:ntdynoryein
-                  for r=1:nhcmin
+                for r=1:ntdynorynuin
+                  
+                  %%%%%%%%%%%%%%%%
+                  % original tdynorye different size in tk and rhob slot, so just use 1 for those slots
+                  % This assumes tdynorye doesn't depend upon rhob or tk, which is true.
+                  %%%%%%%%%%%%%%%%
+                  tdynoryeout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(tdynorye(1,1,:,r))),ltdynoryegridout',interptype));
 
-                    % assumes rhob doesn't depend upon tk
-                    rhobout(:,tklike,q,r)          =              rhob(:,1,q,r);          
-                    rhobcsqout(:,tklike,q,r)        =              rhobcsq(:,1,q,r);          
+                  %%%%%%%%%%%%%%%%
+                  % original rhob different size in tk slot, so just use 1 for that slot
+                  % This assumes rhob doesn't depend upon tk, which is true.
+                  %%%%%%%%%%%%%%%%
+                  rhobout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(rhobtempout(p,tklike,:,r))),ltdynoryegridout',interptype));
+                  rhobcsqout(p,tklike,:,r)       =     10.^(interp1(ltdynoryegridin,log10(squeeze(rhobcsqtempout(p,tklike,:,r))),ltdynoryegridout',interptype));
 
-                    
-                    UofUdiffout(:,tklike,q,r)          =              UofUdifftempout(:,tklike,q,r);          
-                    PofPdiffout(:,tklike,q,r)          =              PofPdifftempout(:,tklike,q,r);          
-                    CHIofCHIdiffout(:,tklike,q,r)      =              CHIofCHIdifftempout(:,tklike,q,r);      
-                    SofSdiffout(:,tklike,q,r)      =              SofSdifftempout(:,tklike,q,r);      
-                    %SSofSSdiffout(:,tklike,q,r)      =SSofSSdifftempout(:,tklike,q,r);      
-                    
-                    
+                  %%%%%%%%%%%%%%%%%%%%%%%%
+                  %  Down-sample (or re-sample) degeneracy stuff since for density the number of points or range may be different than input data
+                  %%%%%%%%%%%%%%%%%%%%%%%
+                  utotoffsetout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(utotoffsettempout(p,tklike,:,r))),ltdynoryegridout',interptype));
+                  ptotoffsetout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(ptotoffsettempout(p,tklike,:,r))),ltdynoryegridout',interptype));
+                  chioffsetout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(chioffsettempout(p,tklike,:,r))),ltdynoryegridout',interptype));
+                  stotoffsetout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(stotoffsettempout(p,tklike,:,r))),ltdynoryegridout',interptype));
 
-                    PofUdiffout(:,tklike,q,r)          =              PofUdifftempout(:,tklike,q,r);          
-                    HofUdiffout(:,tklike,q,r)          =              HofUdifftempout(:,tklike,q,r);          
+                  utotinout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(utotintempout(p,tklike,:,r))),ltdynoryegridout',interptype));
+                  ptotinout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(ptotintempout(p,tklike,:,r))),ltdynoryegridout',interptype));
+                  chiinout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(chiintempout(p,tklike,:,r))),ltdynoryegridout',interptype));
+                  stotinout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(stotintempout(p,tklike,:,r))),ltdynoryegridout',interptype));
+                  
+                  utotoutout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(utotouttempout(p,tklike,:,r))),ltdynoryegridout',interptype));
+                  ptotoutout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(ptotouttempout(p,tklike,:,r))),ltdynoryegridout',interptype));
+                  chioutout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(chiouttempout(p,tklike,:,r))),ltdynoryegridout',interptype));
+                  stotoutout(p,tklike,:,r)          =     10.^(interp1(ltdynoryegridin,log10(squeeze(stotouttempout(p,tklike,:,r))),ltdynoryegridout',interptype));
 
-                    UofPdiffout(:,tklike,q,r)          =              UofPdifftempout(:,tklike,q,r);          
-                    UofSdiffout(:,tklike,q,r)          =              UofSdifftempout(:,tklike,q,r);          
+                  %%%%%%%%%%%%%%
+                  %
+                  % Now other things that were also temperature-dependence
+                  %
+                  %%%%%%%%%%%%%%%
 
-                    % dPofUdiffdrho0out(:,tklike,q,r)   = dPofUdiffdrho0tempout(:,tklike,q,r);   
-                    % dPofUdiffduout(:,tklike,q,r)      = dPofUdiffdutempout(:,tklike,q,r);      
-                    dPofUdiffdrho0out(:,tklike,q,r)    =              dPofUdiffdrho0tempout(:,tklike,q,r);    
-                    dPofUdiffduout(:,tklike,q,r)       =              dPofUdiffdutempout(:,tklike,q,r);       
+                  % for degen checks in HARM
+                  UofUdiffout(p,tklike,:,r)          = 10.^(myinterp1(1,ltdynoryegridin, squeeze(log10(UofUdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  PofPdiffout(p,tklike,:,r)          = 10.^(myinterp1(2,ltdynoryegridin, squeeze(log10(PofPdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  CHIofCHIdiffout(p,tklike,:,r)      = 10.^(myinterp1(3,ltdynoryegridin, squeeze(log10(CHIofCHIdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  SofSdiffout(p,tklike,:,r)      = 10.^(myinterp1(3,ltdynoryegridin, squeeze(log10(SofSdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  %SSofSSdiffout(p,tklike,:,r)      = 10.^(myinterp1(3,ltdynoryegridin, squeeze(log10(SSofSSdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype)); % not needed in output
+                  
+                  
 
-                    cs2ofUdiffout(:,tklike,q,r)           =              cs2ofUdifftempout(:,tklike,q,r);           
-                    cs2ofUdiffcgsout(:,tklike,q,r)        =              cs2ofUdiffcgstempout(:,tklike,q,r);        
+                  PofUdiffout(p,tklike,:,r)          = 10.^(myinterp1(1,ltdynoryegridin, squeeze(log10(PofUdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  HofUdiffout(p,tklike,:,r)          = 10.^(myinterp1(2,ltdynoryegridin, squeeze(log10(HofUdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
 
-                    SofUdiffout(:,tklike,q,r)          =              SofUdifftempout(:,tklike,q,r);          
-                    % dSofUdiffdrho0out(:,tklike,q,r)   = dSofUdiffdrho0tempout(:,tklike,q,r);   
-                    % dSofUdiffduout(:,tklike,q,r)      = dSofUdiffdutempout(:,tklike,q,r);      
-                    dSofUdiffdrho0out(:,tklike,q,r)    =              dSofUdiffdrho0tempout(:,tklike,q,r);    
-                    dSofUdiffduout(:,tklike,q,r)       =              dSofUdiffdutempout(:,tklike,q,r);       
+                  UofPdiffout(p,tklike,:,r)          = 10.^(myinterp1(3,ltdynoryegridin, squeeze(log10(UofPdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  UofSdiffout(p,tklike,:,r)          = 10.^(myinterp1(3,ltdynoryegridin, squeeze(log10(UofSdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
 
-                    PofCHIdiffout(:,tklike,q,r)        =              PofCHIdifftempout(:,tklike,q,r);        
-                    % dPofCHIdiffdrho0out(:,tklike,q,r) = dPofCHIdiffdrho0tempout(:,tklike,q,r); 
-                    % dPofCHIdiffdchiout(:,tklike,q,r)  = dPofCHIdiffdchitempout(:,tklike,q,r);  
-                    dPofCHIdiffdrho0out(:,tklike,q,r)  =              dPofCHIdiffdrho0tempout(:,tklike,q,r);  
-                    dPofCHIdiffdchiout(:,tklike,q,r)   =              dPofCHIdiffdchitempout(:,tklike,q,r);   
+                  % dPofUdiffdrho0out(p,tklike,:,r)   = 10.^(myinterp1(20,ltdynoryegridin, squeeze(log10(dPofUdiffdrho0tempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  % dPofUdiffduout(p,tklike,:,r)      = 10.^(myinterp1(21,ltdynoryegridin, squeeze(log10(dPofUdiffdutempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  dPofUdiffdrho0out(p,tklike,:,r)    = myinterp1(20,ltdynoryegridin, squeeze(dPofUdiffdrho0tempout(p,tklike,:,r)), ltdynoryegridout',interptype);
+                  dPofUdiffduout(p,tklike,:,r)       = myinterp1(21,ltdynoryegridin, squeeze(dPofUdiffdutempout(p,tklike,:,r)), ltdynoryegridout',interptype);
 
-                    SSofCHIdiffout(:,tklike,q,r)        =              SSofCHIdifftempout(:,tklike,q,r);        
-                    % dSSofCHIdiffdrho0out(:,tklike,q,r) = dSSofCHIdiffdrho0tempout(:,tklike,q,r); 
-                    % dSSofCHIdiffdchiout(:,tklike,q,r)  = dSSofCHIdiffdchitempout(:,tklike,q,r);  
-                    dSSofCHIdiffdrho0out(:,tklike,q,r)  =              dSSofCHIdiffdrho0tempout(:,tklike,q,r);  
-                    dSSofCHIdiffdchiout(:,tklike,q,r)   =              dSSofCHIdiffdchitempout(:,tklike,q,r);   
+                  cs2ofUdiffout(p,tklike,:,r)           = 10.^(myinterp1(22,ltdynoryegridin, squeeze(log10(cs2ofUdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype2));
+                  cs2ofUdiffcgsout(p,tklike,:,r)        = 10.^(myinterp1(23,ltdynoryegridin, squeeze(log10(cs2ofUdiffcgstempout(p,tklike,:,r))), ltdynoryegridout',interptype2));
 
-                    tkofUdiffout(:,tklike,q,r)         =              tkofUdifftempout(:,tklike,q,r);         
-                    tkofPdiffout(:,tklike,q,r)         =              tkofPdifftempout(:,tklike,q,r);         
-                    tkofCHIdiffout(:,tklike,q,r)       =              tkofCHIdifftempout(:,tklike,q,r);       
-                    tkofSdiffout(:,tklike,q,r)         =              tkofSdifftempout(:,tklike,q,r);         
+                  SofUdiffout(p,tklike,:,r)          = 10.^(myinterp1(8,ltdynoryegridin, squeeze(log10(SofUdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  % dSofUdiffdrho0out(p,tklike,:,r)   = 10.^(myinterp1(24,ltdynoryegridin, squeeze(log10(dSofUdiffdrho0tempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  % dSofUdiffduout(p,tklike,:,r)      = 10.^(myinterp1(25,ltdynoryegridin, squeeze(log10(dSofUdiffdutempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  dSofUdiffdrho0out(p,tklike,:,r)    = myinterp1(24,ltdynoryegridin, squeeze(dSofUdiffdrho0tempout(p,tklike,:,r)), ltdynoryegridout',interptype);
+                  dSofUdiffduout(p,tklike,:,r)       = myinterp1(25,ltdynoryegridin, squeeze(dSofUdiffdutempout(p,tklike,:,r)), ltdynoryegridout',interptype);
 
-                    faketkofUdiffout(:,tklike,q,r)         =              faketkofUdifftempout(:,tklike,q,r);         
-                    faketkofPdiffout(:,tklike,q,r)         =              faketkofPdifftempout(:,tklike,q,r);         
-                    faketkofCHIdiffout(:,tklike,q,r)       =              faketkofCHIdifftempout(:,tklike,q,r);       
-                    faketkofSdiffout(:,tklike,q,r)         =              faketkofSdifftempout(:,tklike,q,r);         
+                  PofCHIdiffout(p,tklike,:,r)        = 10.^(myinterp1(4,ltdynoryegridin, squeeze(log10(PofCHIdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  % dPofCHIdiffdrho0out(p,tklike,:,r) = 10.^(myinterp1(26,ltdynoryegridin, squeeze(log10(dPofCHIdiffdrho0tempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  % dPofCHIdiffdchiout(p,tklike,:,r)  = 10.^(myinterp1(27,ltdynoryegridin, squeeze(log10(dPofCHIdiffdchitempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  dPofCHIdiffdrho0out(p,tklike,:,r)  = myinterp1(26,ltdynoryegridin, squeeze(dPofCHIdiffdrho0tempout(p,tklike,:,r)), ltdynoryegridout',interptype);
+                  dPofCHIdiffdchiout(p,tklike,:,r)   = myinterp1(27,ltdynoryegridin, squeeze(dPofCHIdiffdchitempout(p,tklike,:,r)), ltdynoryegridout',interptype);
 
-                    % extras:
-                    % mynewdata(:,:,:,:,ei)
-                    for ei=1:numextras
-                        extraofUdiffout(:,tklike,q,r,ei) =                extraofUdifftempout(:,tklike,q,r,ei); 
-                    end
+                  SSofCHIdiffout(p,tklike,:,r)        = 10.^(myinterp1(4,ltdynoryegridin, squeeze(log10(SSofCHIdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  % dSSofCHIdiffdrho0out(p,tklike,:,r) = 10.^(myinterp1(26,ltdynoryegridin, squeeze(log10(dSSofCHIdiffdrho0tempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  % dSSofCHIdiffdchiout(p,tklike,:,r)  = 10.^(myinterp1(27,ltdynoryegridin, squeeze(log10(dSSofCHIdiffdchitempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  dSSofCHIdiffdrho0out(p,tklike,:,r)  = myinterp1(26,ltdynoryegridin, squeeze(dSSofCHIdiffdrho0tempout(p,tklike,:,r)), ltdynoryegridout',interptype);
+                  dSSofCHIdiffdchiout(p,tklike,:,r)   = myinterp1(27,ltdynoryegridin, squeeze(dSSofCHIdiffdchitempout(p,tklike,:,r)), ltdynoryegridout',interptype);
 
+                  tkofUdiffout(p,tklike,:,r)         = 10.^(myinterp1(29,ltdynoryegridin, squeeze(log10(tkofUdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  tkofPdiffout(p,tklike,:,r)         = 10.^(myinterp1(30,ltdynoryegridin, squeeze(log10(tkofPdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  tkofCHIdiffout(p,tklike,:,r)       = 10.^(myinterp1(31,ltdynoryegridin, squeeze(log10(tkofCHIdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+                  tkofSdiffout(p,tklike,:,r)         = 10.^(myinterp1(30,ltdynoryegridin, squeeze(log10(tkofSdifftempout(p,tklike,:,r))), ltdynoryegridout',interptype));
+
+                  % NOTE: Below will produce warning's about NaN found in interp1, but that's correct behavior since we use those NaN's to decide if really within reasonable part of table rather than using the extrapolation
+                  faketkofUdiffout(p,tklike,:,r)         = 10.^(interp1(ltdynoryegridin, squeeze(log10(faketkofUdifftempout(p,tklike,:,r))), ltdynoryegridout',interptypefaketemp));
+                  faketkofPdiffout(p,tklike,:,r)         = 10.^(interp1(ltdynoryegridin, squeeze(log10(faketkofPdifftempout(p,tklike,:,r))), ltdynoryegridout',interptypefaketemp));
+                  faketkofCHIdiffout(p,tklike,:,r)       = 10.^(interp1(ltdynoryegridin, squeeze(log10(faketkofCHIdifftempout(p,tklike,:,r))), ltdynoryegridout',interptypefaketemp));
+                  faketkofSdiffout(p,tklike,:,r)         = 10.^(interp1(ltdynoryegridin, squeeze(log10(faketkofSdifftempout(p,tklike,:,r))), ltdynoryegridout',interptypefaketemp));
+
+                  % extras:
+                  % mynewdata(:,:,:,:,ei)
+                  for ei=1:numextras
+                    extraofUdiffout(p,tklike,:,r,ei) = 10.^(myinterp1(28,ltdynoryegridin, squeeze(log10(extraofUdifftempout(p,tklike,:,r,ei))), ltdynoryegridout',interptype));
                   end
+                  
+                  
                 end
               end
-              
+            end
+
+
             
-            end %%%%%%% end else for if(nrhobin~=nrhobout)
+            % Clear any old result as required now that use (e.g.) UofUdifftempout() for 2 different resolutions
+            clear UofUdifftempout PofPdifftempout CHIofCHIdifftempout SofSdifftempout SSofSSdifftempout
+            clear PofUdifftempout HofUdifftempout
+            clear UofPdifftempout UofSdifftempout
+            clear dPofUdiffdrho0tempout dPofUdiffdutempout
+            clear cs2ofUdifftempout cs2ofUdiffcgstempout
+            clear SofUdifftempout dSofUdiffdrho0tempout dSofUdiffdutempout
+            clear PofCHIdifftempout dPofCHIdiffdrho0tempout dPofCHIdiffdchitempout
+            clear SSofCHIdifftempout dSSofCHIdiffdrho0tempout dSSofCHIdiffdchitempout
+            clear tkofUdifftempout tkofPdifftempout tkofCHIdifftempout tkofSdifftempout
+            clear faketkofUdifftempout faketkofPdifftempout faketkofCHIdifftempout faketkofSdifftempout
+            clear extraofUdifftempout
+            % Now can create these freshly
+
+
+            
+            % clean-up
+            clear rhobtempout rhobcsqtempout
+            clear utotoffsettempout ptotoffsettempout chioffsettempout stotoffsettempout
+            clear utotintempout ptotintempout chiintempout stotintempout
+            clear utotouttempout ptotouttempout chiouttempout stotouttempout
             
             
-            fprintf(fiddebug,'End Downsample neutloop=%d : %d %d %d\n',neutloop,hiter,titer,ynuiter);
+            
+            
+            
+            
+            fprintf(fiddebug,'End Downsample neutloop=%d : %d %d %d\n',neutloop,titer,ynuiter,hiter);
 
             
             
@@ -3747,8 +3922,8 @@ function eos_extract()
             
             % generate down-sampled rho
             for p=1:nutotdiffout
-              for q=1:ntdynoryein
-                for r=1:nhcmin
+              for q=1:ntdynoryeout
+                for r=1:ntdynorynuin
                   % using 1 instead of p because of size of p is different
                   rhobgrid4dout(:,p,q,r)    = rhobout(:,1,q,r);
                   rhobcsqgrid4dout(:,p,q,r) = rhobcsqout(:,1,q,r);
@@ -3756,8 +3931,8 @@ function eos_extract()
               end
             end
             for p=1:nrhobout
-              for q=1:ntdynoryein
-                for r=1:nhcmin
+              for q=1:ntdynoryeout
+                for r=1:ntdynorynuin
                   % diff values
                   lutotdiffgrid4dout(p,:,q,r)  = lutotdiffoutgrid(:);
                   lptotdiffgrid4dout(p,:,q,r)  = lptotdiffoutgrid(:);
@@ -3801,11 +3976,11 @@ function eos_extract()
             % Below is done because S(T) need not be monotonic, but U(S) and U(T) should be.  So can't force monotonicity of S(T) like did at top of this file with U(T) and P(T) and CHI(T)
             % NOT sure if necessary since no derivatives needed of it, so don't require monotonicity.
             % Below used in HARM for entropy-tracking of same fluid element.  Entropy lookup can be arbitrary and non-monotonic and that's fine.
-            %          fprintf(fiddebug,'Begin monotonize of final output for U(S) %d %d %d\n',hiter,titer,ynuiter);
+            %          fprintf(fiddebug,'Begin monotonize of final output for U(S) %d %d %d\n',titer,ynuiter,hiter);
             %
             %          for p=1:nrhobout
-            %            for q=1:ntdynoryein
-            %              for r=1:nhcmin
+            %            for q=1:ntdynoryeout
+            %              for r=1:ntdynorynuin
             %
             %                UofSdiffout(p,:,q,r) = monotonize(UofSdiffout(p,:,q,r));
             %
@@ -3813,7 +3988,7 @@ function eos_extract()
             %            end
             %          end
             %          
-            %          fprintf(fiddebug,'End monotonize of final output for U(S) %d %d %d\n',hiter,titer,ynuiter);
+            %          fprintf(fiddebug,'End monotonize of final output for U(S) %d %d %d\n',titer,ynuiter,hiter);
             
             
             
@@ -3822,24 +3997,8 @@ function eos_extract()
             
             
 
-            if neutloop==neutloopend % only clear on final pass of neutloop -- i.e. once done with pre-interpolated values
 
-              %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-              %
-              % Clear interpolated but pre-output version of variables
-              %
-              %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-              clear UofUdiff PofPdiff CHIofCHIdiff SofSdiff SSofSSdiff
-              clear PofUdiff HofUdiff
-              clear UofPdiff UofSdiff
-              clear dPofUdiffdrho0 dPofUdiffdu cs2ofUdiff cs2ofUdiffcgs SofUdiff
-              clear dSofUdiffdrho0 dSofUdiffdu PofCHIdiff dPofCHIdiffdrho0 dPofCHIdiffdchi SSofCHIdiff dSSofCHIdiffdrho0 dSSofCHIdiffdchi tkofUdiff tkofPdiff tkofCHIdiff tkofSdiff
-              clear HofU cs2 PofU UofP dPofUdrho0 dPofUdu cs2cgs SofU dSofUdrho0 dSofUdu PofCHI dPofCHIdrho0 dPofCHIdchi SSofCHI dSSofCHIdrho0 dSSofCHIdchi
-              %tkofU tkofP tkofCHI tkofS;
-              clear extraofU;
-            end %%%%% end if neutloop==neutloopend
-
+            fprintf(fiddebug,'Begin Clean cs2 et al. in output: neutloop=%d : %d %d %d\n',neutloop,titer,ynuiter,hiter);
 
             
             
@@ -3864,8 +4023,8 @@ function eos_extract()
             
             % adjust speed of sound to be no smaller than 0 and no larger than 1
 
-            for p=1:nhcmin
-              for o=1:ntdynoryein
+            for p=1:ntdynorynuin
+              for o=1:ntdynoryeout
                 for n=1:nutotdiffout
                   for m=1:nrhobout
                     
@@ -3982,8 +4141,8 @@ function eos_extract()
             
             if finaldoclean
               
-              for p=1:nhcmin
-                for o=1:ntdynoryein
+              for p=1:ntdynorynuin
+                for o=1:ntdynoryeout
                   for n=1:nutotdiffout
 
                     for m=1:nrhobout
@@ -4073,6 +4232,7 @@ function eos_extract()
             end
 
 
+            fprintf(fiddebug,'End Clean cs2 et al. in output: neutloop=%d : %d %d %d\n',neutloop,titer,ynuiter,hiter);
             
             
             
@@ -4089,7 +4249,7 @@ function eos_extract()
             % Assumes nutotdiffout is same size as nptotout and nchiout
             %
             %%%%%%%%%%%%%%%%%%%%%%%
-            fprintf(fiddebug,'Begin final output: neutloop=%d : %d %d %d',neutloop,hiter,titer,ynuiter);
+            fprintf(fiddebug,'Begin final output: neutloop=%d : %d %d %d',neutloop,titer,ynuiter,hiter);
 
 
             
@@ -4098,25 +4258,31 @@ function eos_extract()
             %m-1, n-1, o-1, p-1, ...
             % small-memory
             
-            for p=1:nhcmin
-              for o=1:ntdynoryein
+            for p=1:ntdynorynu
+              for o=1:ntdynoryeout
                 for n=1:nutotdiffout
                   for m=1:nrhobout
                     
+                    
+                    if allowyeinterpolation==1
+                      yeiter=o;
+                    else
+                      yeiter=titer;
+                    end
+
 
                     %%%%%%%%%%%%%%%%%%
                     %
                     % always print out this non-stored-in-HARM information that's used for consistency check
                     %
-                    % use tdynorye(1,1,o,1) since otherwise have to interpolate it in m,n, but it's constant in m,n,p
                     % use tdynorynu(1,1,1,p) since otherwise have to interpolate it in m,n, but it's constant in m,n,o
                     % use hcm(1,1,1,1) since otherwise have to interpolate it in m,n, but it's constant in m,n,o,p
                     %
                     %%%%%%%%%%%%%%%%%%
                     %            0                  +5                                                      +8                              +4
                     fprintf(fid3,'%3d %3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
-                            m-1, n-1, titer-1, ynuiter-1, hiter-1,...
-                            rhobout(m,n,o,p), lutotdiffoutgrid(n), lptotdiffoutgrid(n), lchidiffoutgrid(n), lstotdiffoutgrid(n), tdynorye(1,1,o,1), tdynorynu(1,1,1,p), hcm(1,1,1,1), ...
+                            m-1, n-1, yeiter-1, ynuiter-1, hiter-1,...
+                            rhobout(m,n,o,p), lutotdiffoutgrid(n), lptotdiffoutgrid(n), lchidiffoutgrid(n), lstotdiffoutgrid(n), tdynoryeout(m,n,o,p), tdynorynu(1,1,1,p), hcm(1,1,1,1), ...
                             UofUdiffout(m,n,o,p), PofPdiffout(m,n,o,p), CHIofCHIdiffout(m,n,o,p), SofSdiffout(m,n,o,p) ...
                             );
 
@@ -4178,7 +4344,6 @@ function eos_extract()
 
 
 
-
             
             
             %%%%%%%%%%%%%%%%%%%%%%%%
@@ -4186,7 +4351,6 @@ function eos_extract()
             %
             %  Output utot,ptot,chi as functions of rhob for T=0
             %
-            % use tdynorye(1,1,o,1) since otherwise have to interpolate it in m,n, but it's constant in m,n,p
             % use tdynorynu(1,1,1,p) since otherwise have to interpolate it in m,n, but it's constant in m,n,o
             % use hcm(1,1,1,1) since otherwise have to interpolate it in m,n, but it's constant in m,n,o,p
             %
@@ -4199,14 +4363,20 @@ function eos_extract()
             % corresponds to n=1 solution since u~0 implies T~0.  Reduced to degenerate solution independent of temperature
             
             n=1;
-            for p=1:nhcmin
-              for o=1:ntdynoryein
+            for p=1:ntdynorynu
+              for o=1:ntdynoryeout
                 for m=1:nrhobout
                   
+                  if allowyeinterpolation==1
+                    yeiter=o;
+                  else
+                    yeiter=titer;
+                  end
+
                   %           +0              +4                              +4                              +4                              +4                              +4
                   fprintf(fid6,'%3d %3d %3d %3d %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g %21.15g ', ...
-                          m-1, titer-1, ynuiter-1, hiter-1, ...
-                          rhobout(m,n,o,p), tdynorye(1,1,o,1), tdynorynu(1,1,1,p), hcm(1,1,1,1), ...
+                          m-1, yeiter-1, ynuiter-1, hiter-1, ...
+                          rhobout(m,n,o,p), tdynoryeout(m,n,o,p), tdynorynu(1,1,1,p), hcm(1,1,1,1), ...
                           utotoffsetout(m,n,o,p), ptotoffsetout(m,n,o,p), chioffsetout(m,n,o,p), stotoffsetout(m,n,o,p), ...
                           utotinout(m,n,o,p), ptotinout(m,n,o,p), chiinout(m,n,o,p), stotinout(m,n,o,p), ...
                           utotoutout(m,n,o,p), ptotoutout(m,n,o,p), chioutout(m,n,o,p), stotoutout(m,n,o,p) ...
@@ -4220,18 +4390,44 @@ function eos_extract()
             %  Should have utotdiffoutgrid + utotoffset = UofUdiffout, which is tested in HARM
 
 
+            
+            % Clear any old result as required now that use (e.g.) UofUdiffout() for 2 different resolutions
+            clear UofUdiffout PofPdiffout CHIofCHIdiffout SofSdiffout SSofSSdiffout
+            clear PofUdiffout HofUdiffout
+            clear UofPdiffout UofSdiffout
+            clear dPofUdiffdrho0out dPofUdiffduout
+            clear cs2ofUdiffout cs2ofUdiffcgsout
+            clear SofUdiffout dSofUdiffdrho0out dSofUdiffduout
+            clear PofCHIdiffout dPofCHIdiffdrho0out dPofCHIdiffdchiout
+            clear SSofCHIdiffout dSSofCHIdiffdrho0out dSSofCHIdiffdchiout
+            clear tkofUdiffout tkofPdiffout tkofCHIdiffout tkofSdiffout
+            clear faketkofUdiffout faketkofPdiffout faketkofCHIdiffout faketkofSdiffout
+            clear extraofUdiffout
+            % Now can create these freshly
 
-
-
-            % some debug stuff:
+            
+            % also clear non-temperature dependent stuff
+            clear rhobout rhobcsqout
+            clear utotoffsetout ptotoffsetout chioffsetout stotoffsetout
+            clear utotinout ptotinout chiinout stotinout
+            clear utotoutout ptotoutout chioutout stotoutout
             %
-            % for ii=1:48 fprintf(fiddebug,'%21.15g %21.15g\n',log10(utot(28,ii,1,1)),log10(tk(28,ii,1,1)));end
+
+            % clean-up
+            clear tdynoryeout
+
+            
+            
+            
+            
+            
 
 
+            fprintf(fiddebug,'End final output neutloop=%d : %d %d %d\n',neutloop,titer,ynuiter,hiter);
 
-
-            fprintf(fiddebug,'End final output neutloop=%d : %d %d %d\n',neutloop,hiter,titer,ynuiter);
-
+            
+            
+            
             
             
           end %%%%% end over neutloop
@@ -4326,7 +4522,7 @@ function eos_extract()
           
           stepltkout=stepltkoutnn;
           steplrhobout=steplrhoboutnn;
-          stepltdynoryeout=stepltdynoryeoutnn;
+          stepltdynoryegridout=stepltdynoryegridoutnn;
           stepltdynorynuout=stepltdynorynuoutnn;
           steplhcmout=steplhcmoutnn;
 
@@ -4401,7 +4597,7 @@ function eos_extract()
           
           stepltkout=stepltkoutneut;
           steplrhobout=steplrhoboutneut;
-          stepltdynoryeout=stepltdynoryeoutneut;
+          stepltdynoryegridout=stepltdynoryegridoutneut;
           stepltdynorynuout=stepltdynorynuoutneut;
           steplhcmout=steplhcmoutneut;
 
@@ -4515,7 +4711,7 @@ function eos_extract()
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nchidiffout,lchidiffoutmin,lchidiffoutmax,steplchidiffout,baselchidiffout,linearoffsetlchidiffout);
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nstotdiffout,lstotdiffoutmin,lstotdiffoutmax,steplstotdiffout,baselstotdiffout,linearoffsetlstotdiffout);
 
-        % note that currently different size for "in" and "out" for Ye,Ynu,H are not because of interpolation but because of including or not that dimension.  So it's either total number as in original table or just n=1.
+        % note that currently different size for "in" and "out" for Ynu,H are not because of interpolation but because of including or not that dimension.  So it's either total number as in original table or just n=1.
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',ntdynoryeout,ltdynoryeminout,ltdynoryemaxout,stepltdynoryeout,baseltdynorye,linearoffsetltdynorye);
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',ntdynorynuout,ltdynorynuminout,ltdynorynumaxout,stepltdynorynuout,baseltdynorynu,linearoffsetltdynorynu);
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nhcmout,lhcmminout,lhcmmaxout,steplhcmout,baselhcm,linearoffsetlhcm);

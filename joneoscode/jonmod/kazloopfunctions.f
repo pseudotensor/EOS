@@ -231,9 +231,9 @@ c      write(15,105) tdynoryemin,inttdynorye,itdynorye,tdynorye
 c     Choose dummy hcm of 1 since hcm scales out of problem
 
 c     DEBUG:
-c         hcm = 36497750.345734d0
+c         hcm = 0.38730771092310503125D+00008
 
-         hcm = 1.0d0
+c         hcm = 1.0d0
       else
          hcm=hcmmin*10.d0**(inthcm*dble(ihcm-1))
       end if
