@@ -2274,6 +2274,7 @@ c     1     ,nminustau,nlambda_nutau
 
 c     DEBUG: (compare to harm extras/processed)
 c     Both should be in the same order as in HARM table/output
+c      write(*,*) 'DEBUGFORHARM',tauiter
 c      write(*,*) 'extras'
 c     1	,qtautnueohcm
 c     1	,qtauanueohcm
