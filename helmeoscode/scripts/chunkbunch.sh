@@ -39,7 +39,7 @@
 # To operate in MPI mode, use system type 3 or 4 or 5
 # In that case, number of chunks in CHUNKLIST (not totalchunks unless no CHUNKLIST given) is used as truenumprocs
 #
-# sh chunkbunch.sh 5 . 160
+# sh chunkbunch.sh 5 . 256
 #
 
 

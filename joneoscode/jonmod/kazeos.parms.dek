@@ -12,6 +12,15 @@ c  1 = Choose Y_e and assume user scales out HCM if nhcm=1
 c      parameter (whichrnpmethod = 0)
       parameter (whichrnpmethod = 1)
 
+c.. Set type of loop in Y_e
+c   0 = normal log
+c   1 = linear
+c   2 = broken-linear to focus on sharp change around ye=0.37 to 0.46 in opacities for extras
+      integer whichyelooptype
+c      parameter (whichyelooptype = 0)
+c      parameter (whichyelooptype = 1)
+      parameter (whichyelooptype = 2)
+
 
 c..Sets which method to use to set Y_\nu
 c  Must be careful with below option if whichhcmmethod==1 since can converge to another solution at large absolute \eta_nu

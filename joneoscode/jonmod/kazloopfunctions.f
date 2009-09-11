@@ -56,7 +56,8 @@ c      end if
 
 c     Output header file
       open(50,file='eos.head',status='unknown')
-      write(50,*) whichrnpmethod,whichynumethod,whichhcmmethod
+      write(50,*) whichrnpmethod,whichynumethod
+     1     ,whichhcmmethod,whichyelooptype
 c     First row indicates:
 c     1) which data output type (column stuff same, then same number)
 c     2) number independent variables
@@ -94,19 +95,44 @@ c     Ranges of quantities outputted
       write(50,102) ntdynorynu,tdynorynumin,tdynorynumax
       write(50,102) nhcm,hcmmin,hcmmax
 
+c     Get ye grid parameters in case haven't yet
+      call setyegrid()
+
+
 c     Output other quantities
       write(50,103) lsoffset,fakelsoffset,fakeentropylsoffset
+      write(50,104) yegrid1,yegrid2,xgrid1,xgrid2
       close(50)
 
 
  102  format(I4,1x,1pe30.20E5,1x,1pe30.20E5,1x,1pe30.20E5,1x)
  103  format(1pe30.20E5,1x,1pe30.20E5,1x,1pe30.20E5)
+ 104  format(1pe30.20E5,1x,1pe30.20E5,1x,1pe30.20E5,1x,1pe30.20E5)
 
       return
       end
 
 
 c 18         format(1x,t2,a6,1pe12.5,t22,a6,1pe12.5,t42,a6,1pe12.5,a6,1pe12.5)
+
+
+
+
+
+      subroutine setyegrid()
+      implicit none
+
+      include 'kazeos4.dek'
+
+c     Setup advanced Ye grid
+      yegrid1=0.37d0
+      yegrid2=0.46d0
+      xgrid1=1.0d0/5.0d0
+      xgrid2=4.0d0/5.0d0
+
+
+      return
+      end
 
 
 
@@ -123,13 +149,16 @@ c     Locals:
       real*8 divisor
 
 c     Bring-in Kaz single global quantities
-c      include 'kazeos.dek'
+      include 'kazeos4.dek'
       include 'kazeos.parms.dek'
 C======================================================================
 c     Loop quantities
       include 'kazeos.loopvars1.dek'
       include 'kazeos.loopparms.dek'
 C======================================================================
+
+c     Get ye grid parameters in case haven't yet
+      call setyegrid()
 
 
       if(nhcm.ne.1) then
@@ -147,6 +176,7 @@ C======================================================================
       end if
 
 
+c     below only used if whichyelooptype.eq.0
       if (ntdynorye.ne.1) then
          divisor=dble(ntdynorye-1)
          inttdynoryelocal=log10(tdynoryemax/tdynoryemin)/divisor
@@ -189,9 +219,13 @@ C======================================================================
       integer irhob,itk,ihcm,itdynorye,itdynorynu
       real*8 intrhob,inttk,inthcm,inttdynorye,inttdynorynu
       real*8 rhob,tk,hcm,tdynorye,tdynorynu
+      
+      real*8 divisor
+      real*8 x,yei,yef
 
 c     Bring-in Kaz single global quantities
 c      include 'kazeos.dek'
+      include 'kazeos4.dek'
       include 'kazeos.parms.dek'
 C======================================================================
 c     Loop quantities
@@ -217,12 +251,61 @@ c     Choose dummy hcm of 1 since hcm scales out of problem
          tdynorynu=tdynorynumin*10.d0**(inttdynorynu*dble(itdynorynu-1))
       end if
 
-      if(whichrnpmethod.eq.0) then
+
+c     Get ye grid parameters in case haven't yet
+      call setyegrid()
+
+
+      if(whichyelooptype.eq.0) then
+         if(whichrnpmethod.eq.0) then
 c     Choose dummy hcm of 1 since hcm scales out of problem
-         tdynorye = 1.0
-      else
-         tdynorye=tdynoryemin*10.d0**(inttdynorye*dble(itdynorye-1))
+            tdynorye = 1.0
+         else
+            tdynorye=tdynoryemin*10.d0**(inttdynorye*dble(itdynorye-1))
+         end if
       end if
+
+
+      if(whichyelooptype.eq.1) then
+         if(whichrnpmethod.eq.0) then
+c     Choose dummy hcm of 1 since hcm scales out of problem
+            tdynorye = 1.0
+         else
+
+            divisor=dble(ntdynorye-1)
+            tdynorye=tdynoryemin
+     1           + (tdynoryemax-tdynoryemin)/divisor*dble(itdynorye-1)
+         end if
+      end if
+
+      if(whichyelooptype.eq.2) then
+         if(whichrnpmethod.eq.0) then
+c     Choose dummy hcm of 1 since hcm scales out of problem
+            tdynorye = 1.0
+         else
+
+c     x varies from 0 to 1
+            x = dble(itdynorye-1)/dble(ntdynorye-1)
+            yei=tdynoryemin
+            yef=tdynoryemax
+
+            if(x.le.xgrid1) then
+               tdynorye=yei*(yegrid1/yei)**(x/xgrid1)
+            end if
+            if(x.gt.xgrid1 .AND. x.le.xgrid2) then
+               tdynorye=(x*yegrid1-xgrid2*yegrid1-x*yegrid2+xgrid1*yegrid2)/(xgrid1-xgrid2)
+            end if
+            if(x.gt.xgrid2) then
+               tdynorye=((x-1.0d0)*yegrid2 + (xgrid2-x)*yef)/(xgrid2-1.0d0)
+            end if
+
+            
+
+         end if
+      end if
+
+
+
 
 c      write(15,105) tdynoryemin,inttdynorye,itdynorye,tdynorye
 
@@ -233,7 +316,7 @@ c     Choose dummy hcm of 1 since hcm scales out of problem
 c     DEBUG:
 c         hcm = 0.38730771092310503125D+00008
 
-c         hcm = 1.0d0
+         hcm = 1.0d0
       else
          hcm=hcmmin*10.d0**(inthcm*dble(ihcm-1))
       end if

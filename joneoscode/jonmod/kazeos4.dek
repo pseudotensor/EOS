@@ -1,0 +1,5 @@
+
+
+      real*8 yegrid1,yegrid2,xgrid1,xgrid2 !for ye grid
+
+      common /yegridstuff/ yegrid1,yegrid2,xgrid1,xgrid2
