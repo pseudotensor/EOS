@@ -271,13 +271,14 @@ function eos_extract()
   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
   fid=fopen(file1,'rt');
-  % 3+5+15 = 23 total header entries
-  [myhead,count]=fscanf(fid,'%d',[3]);
-  % 3 header things
+
+  [myhead,count]=fscanf(fid,'%d',[4]);
+  % 4 header things
   ii=1;
   whichrnpmethod=myhead(ii); ii=ii+1;
   whichynumethod=myhead(ii); ii=ii+1;
   whichhcmmethod=myhead(ii); ii=ii+1;
+  whichyelooptype=myhead(ii); ii=ii+1;
   
   % 5 header things
   % for input
@@ -328,10 +329,19 @@ function eos_extract()
   hcmmaxin=myhead(ii); ii=ii+1;
 
   % lsoffset stuff
-  [myhead,count]=fscanf(fid,'%g %g',[2]);
+  [myhead,count]=fscanf(fid,'%g %g %g',[3]);
   ii=1;
   lsoffset=myhead(ii); ii=ii+1;
   fakelsoffset=myhead(ii); ii=ii+1;
+  fakeentropylsoffset=myhead(ii); ii=ii+1;
+
+  % ye grid stuff
+  [myhead,count]=fscanf(fid,'%g %g %g %g',[4]);
+  ii=1;
+  yegrid1=myhead(ii); ii=ii+1;
+  yegrid2=myhead(ii); ii=ii+1;
+  xgrid1=myhead(ii); ii=ii+1;
+  xgrid2=myhead(ii); ii=ii+1;
 
 
   fclose(fid);
@@ -358,12 +368,6 @@ function eos_extract()
   stepltkin=(ltkmaxin-ltkminin)/(ntkin-1);
   steplrhobin=(lrhobmaxin-lrhobminin)/(nrhobin-1);
 
-  if(whichrnpmethod==0 || ntdynoryein<=1)
-    stepltdynoryein=0;
-  else
-    stepltdynoryein=(ltdynoryemaxin-ltdynoryeminin)/(ntdynoryein-1);
-  end
-
   if(whichynumethod==0 || ntdynorynuin<=1)
     stepltdynorynuin=0;
   else
@@ -379,7 +383,11 @@ function eos_extract()
 
   % setup in version of rho grid for density "down"-sampling for input points
   lrhobgridin=lrhobminin:steplrhobin:lrhobmaxin;
-  ltdynoryegridin=ltdynoryeminin:stepltdynoryein:ltdynoryemaxin;
+  % get Y_e array for indexing
+  [stepltdynoryein ltdynoryegridin]=getyearray(whichrnpmethod,whichyelooptype,ltdynoryeminin,ltdynoryemaxin,yegrid1,yegrid2,xgrid1,xgrid2,ntdynoryein);
+    
+  
+    
 
 
 
@@ -500,12 +508,6 @@ function eos_extract()
   stepltkoutnn=(ltkmaxoutnn-ltkminoutnn)/(ntkoutnn-1);
   steplrhoboutnn=(lrhobmaxoutnn-lrhobminoutnn)/(nrhoboutnn-1);
 
-  if(whichrnpmethod==0 || ntdynoryeoutnn<=1)
-    stepltdynoryeoutnn=0;
-  else
-    stepltdynoryeoutnn=(ltdynoryemaxoutnn-ltdynoryeminoutnn)/(ntdynoryeoutnn-1);
-  end
-
   if(whichynumethod==0 || ntdynorynuoutnn<=1)
     stepltdynorynuoutnn=0;
   else
@@ -521,7 +523,8 @@ function eos_extract()
 
   % setup nn version of rho grid for density "down"-sampling
   lrhobgridoutnn=lrhobminoutnn:steplrhoboutnn:lrhobmaxoutnn;
-  ltdynoryegridoutnn=ltdynoryeminoutnn:stepltdynoryeoutnn:ltdynoryemaxoutnn;
+  % get Y_e array for indexing
+  [stepltdynoryeoutnn ltdynoryegridoutnn]=getyearray(whichrnpmethod,whichyelooptype,ltdynoryeminoutnn,ltdynoryemaxoutnn,yegrid1,yegrid2,xgrid1,xgrid2,ntdynoryeoutnn);
 
   
   
@@ -605,12 +608,6 @@ function eos_extract()
   stepltkoutneut=(ltkmaxoutneut-ltkminoutneut)/(ntkoutneut-1);
   steplrhoboutneut=(lrhobmaxoutneut-lrhobminoutneut)/(nrhoboutneut-1);
 
-  if(whichrnpmethod==0 || ntdynoryeoutneut<=1)
-    stepltdynoryeoutneut=0;
-  else
-    stepltdynoryeoutneut=(ltdynoryemaxoutneut-ltdynoryeminoutneut)/(ntdynoryeoutneut-1);
-  end
-
   if(whichynumethod==0 || ntdynorynuoutneut<=1)
     stepltdynorynuoutneut=0;
   else
@@ -627,7 +624,8 @@ function eos_extract()
   
   % setup neut version of rho grid for density "down"-sampling
   lrhobgridoutneut=lrhobminoutneut:steplrhoboutneut:lrhobmaxoutneut;
-  ltdynoryegridoutneut=ltdynoryeminoutneut:stepltdynoryeoutneut:ltdynoryemaxoutneut;
+  % get Y_e array for indexing
+  [stepltdynoryeoutneut ltdynoryegridoutneut]=getyearray(whichrnpmethod,whichyelooptype,ltdynoryeminoutneut,ltdynoryemaxoutneut,yegrid1,yegrid2,xgrid1,xgrid2,ntdynoryeoutneut);
 
   
   
@@ -705,23 +703,48 @@ function eos_extract()
 
   %%%%%% Y_e
   if allowyeinterpolation==0
+    bigntdynoryein=ntdynoryein;
     truentdynoryein=ntdynoryein;
     % now interpolation in Ye, so leave Ye alone
     ntdynoryein=1;
+    ntdynoryeoutnn=1;
+    ntdynoryeoutneut=1;
   else
     % Now allow interpolation in Ye, so have to treat rho,T,Ye the same, so leav ntdynoryein alone
     % ensure truentdynoryein=1 as well.
-    truentdynoryein=1;
+    bigntdynoryein=1;
+    truentdynoryein=ntdynoryein;
   end
 
   %%%%%% Y_\nu
-  truentdynorynuin=ntdynorynuin;
+  if(ntdynorynuoutnn>1 || ntdynorynuoutneut>1)
+    bigntdynorynuin=ntdynorynuin;
+    truentdynorynuin=ntdynorynuin;
+  else
+    % then no need to do multiple Ynu.  Assumes doing pure EOS table that is independent of Ynu so just read-in "first Ynu" and be done
+    ntdynorynuin=1; % so override.  Assumes EOS also independent of hcm.
+    bigntdynorynuin=1;
+    truentdynorynuin=1;
+  end
   ntdynorynuin=1;
+  ntdynorynuout=1;
+  ntdynorynuoutnn=1;
+  ntdynorynuoutneut=1;
 
   %%%%%% H
-  truenhcmin=nhcmin;
+  if(nhcmoutnn>1 || nhcmoutneut>1 || ntdynorynuoutnn>1 || ntdynorynuoutneut>1)
+    bignhcmin=nhcmin;
+    truenhcmin=nhcmin;
+  else
+    % then don't have to do H.  Have to check (as in first part of if conditional) if chunking in Ynu since that's a faster iterator
+    nhcmin=1;
+    bignhcmin=1;
+    truenhcmin=1;    
+  end
   nhcmin=1; % not used because last variable that is always assumed to be read-in 1 element at a time
-  
+  nhcmout=1;
+  nhcmoutnn=1;
+  nhcmoutneut=1;
 
   
   
@@ -789,9 +812,9 @@ function eos_extract()
     
     % consistent order for loops as output and read-in into HARM
     % must also be consistent with how jon_helm.f writes order so read-in in correct order
-    for hiter=1:truenhcmin
-    for ynuiter=1:truentdynorynuin
-      for titer=1:truentdynoryein
+    for hiter=1:bignhcmin
+    for ynuiter=1:bigntdynorynuin
+      for titer=1:bigntdynoryein
 
         
 
@@ -3882,7 +3905,7 @@ function eos_extract()
             
             
             
-            
+            %%%%%%%%%%%% At this point, ntdynorynuin = ntdynorynuout is assumed
             
             
             fprintf(fiddebug,'End Downsample neutloop=%d : %d %d %d\n',neutloop,titer,ynuiter,hiter);
@@ -3920,10 +3943,12 @@ function eos_extract()
             clear lutotdiffgrid4dout lptotdiffgrid4dout lchidiffgrid4dout lstotdiffgrid4dout lsspecdiffgrid4dout
             clear utotgrid4dout ptotgrid4dout chigrid4dout stotgrid4dout
             
+            
+                        
             % generate down-sampled rho
             for p=1:nutotdiffout
               for q=1:ntdynoryeout
-                for r=1:ntdynorynuin
+                for r=1:ntdynorynuout
                   % using 1 instead of p because of size of p is different
                   rhobgrid4dout(:,p,q,r)    = rhobout(:,1,q,r);
                   rhobcsqgrid4dout(:,p,q,r) = rhobcsqout(:,1,q,r);
@@ -3932,7 +3957,7 @@ function eos_extract()
             end
             for p=1:nrhobout
               for q=1:ntdynoryeout
-                for r=1:ntdynorynuin
+                for r=1:ntdynorynuout
                   % diff values
                   lutotdiffgrid4dout(p,:,q,r)  = lutotdiffoutgrid(:);
                   lptotdiffgrid4dout(p,:,q,r)  = lptotdiffoutgrid(:);
@@ -3980,7 +4005,7 @@ function eos_extract()
             %
             %          for p=1:nrhobout
             %            for q=1:ntdynoryeout
-            %              for r=1:ntdynorynuin
+            %              for r=1:ntdynorynuout
             %
             %                UofSdiffout(p,:,q,r) = monotonize(UofSdiffout(p,:,q,r));
             %
@@ -4023,7 +4048,7 @@ function eos_extract()
             
             % adjust speed of sound to be no smaller than 0 and no larger than 1
 
-            for p=1:ntdynorynuin
+            for p=1:ntdynorynuout
               for o=1:ntdynoryeout
                 for n=1:nutotdiffout
                   for m=1:nrhobout
@@ -4141,7 +4166,7 @@ function eos_extract()
             
             if finaldoclean
               
-              for p=1:ntdynorynuin
+              for p=1:ntdynorynuout
                 for o=1:ntdynoryeout
                   for n=1:nutotdiffout
 
@@ -4258,7 +4283,7 @@ function eos_extract()
             %m-1, n-1, o-1, p-1, ...
             % small-memory
             
-            for p=1:ntdynorynu
+            for p=1:ntdynorynuout
               for o=1:ntdynoryeout
                 for n=1:nutotdiffout
                   for m=1:nrhobout
@@ -4363,7 +4388,7 @@ function eos_extract()
             % corresponds to n=1 solution since u~0 implies T~0.  Reduced to degenerate solution independent of temperature
             
             n=1;
-            for p=1:ntdynorynu
+            for p=1:ntdynorynuout
               for o=1:ntdynoryeout
                 for m=1:nrhobout
                   
@@ -4418,7 +4443,9 @@ function eos_extract()
 
             
             
-            
+            %%%%%%%%%%%%%%%%
+            % pack-up the memory to avoid expansion for each iteration
+            pack
             
             
 
@@ -4446,7 +4473,10 @@ function eos_extract()
     end
     end
     
+
     
+    fprintf(fiddebug,'Done over all loops -- closing data files.');
+
     
     
     % close files
@@ -4522,11 +4552,12 @@ function eos_extract()
           
           stepltkout=stepltkoutnn;
           steplrhobout=steplrhoboutnn;
-          stepltdynoryegridout=stepltdynoryegridoutnn;
+          stepltdynoryeout=stepltdynoryeoutnn;
           stepltdynorynuout=stepltdynorynuoutnn;
           steplhcmout=steplhcmoutnn;
 
           lrhobgridout=lrhobgridoutnn;
+          ltdynoryegridout=ltdynoryegridoutnn;
 
           nutotdiffout=nutotdiffoutnn;
           lutotdiffoutmin=lutotdiffoutnnmin;
@@ -4597,11 +4628,12 @@ function eos_extract()
           
           stepltkout=stepltkoutneut;
           steplrhobout=steplrhoboutneut;
-          stepltdynoryegridout=stepltdynoryegridoutneut;
+          stepltdynoryeout=stepltdynoryeoutneut;
           stepltdynorynuout=stepltdynorynuoutneut;
           steplhcmout=steplhcmoutneut;
 
           lrhobgridout=lrhobgridoutneut;
+          ltdynoryegridout=ltdynoryegridoutneut;
 
           nutotdiffout=nutotdiffoutneut;
           lutotdiffoutmin=lutotdiffoutneutmin;
@@ -4702,7 +4734,7 @@ function eos_extract()
         linearoffsetltk=0.0;
 
         % method, number of output colums, num extras
-        fprintf(fid5,'%d %d %d\n',whichrnpmethod,whichynumethod,whichhcmmethod);
+        fprintf(fid5,'%d %d %d %d\n',whichrnpmethod,whichynumethod,whichhcmmethod,whichyelooptype);
         fprintf(fid5,'%d %d %d %d\n',whichdatatype,utotdegencut,NUMOUTCOLUMNS,truenumextras);
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nrhobout,lrhobminout,lrhobmaxout,steplrhobout,baselrhob,linearoffsetlrhob);
 
@@ -4713,10 +4745,13 @@ function eos_extract()
 
         % note that currently different size for "in" and "out" for Ynu,H are not because of interpolation but because of including or not that dimension.  So it's either total number as in original table or just n=1.
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',ntdynoryeout,ltdynoryeminout,ltdynoryemaxout,stepltdynoryeout,baseltdynorye,linearoffsetltdynorye);
+        
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',ntdynorynuout,ltdynorynuminout,ltdynorynumaxout,stepltdynorynuout,baseltdynorynu,linearoffsetltdynorynu);
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nhcmout,lhcmminout,lhcmmaxout,steplhcmout,baselhcm,linearoffsetlhcm);
 
-        fprintf(fid5,'%21.15g %21.15g\n',lsoffset,fakelsoffset);
+        fprintf(fid5,'%21.15g %21.15g %21.15g\n',lsoffset,fakelsoffset,fakeentropylsoffset);
+
+        fprintf(fid5,'%21.15g %21.15g %21.15g %21.15g\n',yegrid1,yegrid2,xgrid1,xgrid2);
 
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',ntkin,ltkminin,ltkmaxin,stepltkin,baseltk,linearoffsetltk);
 
@@ -4731,6 +4766,7 @@ function eos_extract()
   end   %%%%%%%% end over passes
   
 
+  fprintf(fiddebug,'Done over all passes and over writing header files.');
 
   
   %%%%%%%%%%%%%%%%%%
@@ -4742,6 +4778,9 @@ function eos_extract()
   fclose(fiddebug);
 
   fclose('all');
+  
+  fprintf(fiddebug,'Done closing all files.');
+
 
   % BELOW FOR in linux
   if matlabscript
@@ -4875,20 +4914,93 @@ end
 %     From SM, compute Ye for presupernova-like abundances
 function out = yefit(rhob)
 
-tk=0.0;
+  tk=0.0;
 
-if(tk<10.^(9.532))
-  yefit = 0.5;
-else
-  if(tk>10.^(9.92))
-    yefit = 0.43;
+  if(tk<10.^(9.532))
+    yefit = 0.5;
   else
-    yefit = (0.43-0.5)/(10^(9.92)-10^(9.532))*(tk-10.^(9.532))+0.5;
+    if(tk>10.^(9.92))
+      yefit = 0.43;
+    else
+      yefit = (0.43-0.5)/(10^(9.92)-10^(9.532))*(tk-10.^(9.532))+0.5;
+    end
   end
+
+  out = yefit;
+
 end
 
-out = yefit;
 
+
+% get Y_e grid
+function [stepltdynorye ltdynoryegrid] = getyearray(whichrnpmethod,whichyelooptype,ltdynoryemin,ltdynoryemax,yegrid1,yegrid2,xgrid1,xgrid2,ntdynorye)
+
+  
+   
+  % log
+  if whichyelooptype==0
+
+    if(whichrnpmethod==0 || ntdynorye<=1)
+      stepltdynorye=0;
+    else
+      stepltdynorye=(ltdynoryemax-ltdynoryemin)/(ntdynorye-1);
+    end
+    
+    ltdynoryegrid=ltdynoryemin:stepltdynorye:ltdynoryemax;
+    
+  end
+
+  
+  % linear
+  if whichyelooptype==1
+    
+    if(whichrnpmethod==0 || ntdynorye<=1)
+      stepltdynorye=0;
+    else
+      stepltdynorye=(10.^ltdynoryemax - 10.^ltdynoryemin)/(ntdynorye-1);
+    end
+
+    ltdynoryegrid=10.^ltdynoryemin:stepltdynorye:10.^ltdynoryemax;
+  end
+
+  
+  
+  % log-linear-linear regions
+  if whichyelooptype==2
+
+    if(whichrnpmethod==0 || ntdynorye<=1)
+      stepltdynorye=0;
+    else
+      stepltdynorye=0; % unused
+    end
+
+    % setup memory for Ye
+    tdynoryegrid=1:ntdynorye;
+    % setup Ye
+    for i=1:ntdynorye
+      
+      x=(i-1)/(ntdynorye-1);
+      yei=10.^ltdynoryemin;
+      yef=10.^ltdynoryemax;
+      
+      if(x<=xgrid1)
+        tdynorye=yei.*(yegrid1/yei).^(x/xgrid1);
+      end
+      if(x>xgrid1 && x<=xgrid2)
+        tdynorye=(x.*yegrid1-xgrid2.*yegrid1-x.*yegrid2+xgrid1.*yegrid2)/(xgrid1-xgrid2);
+      end
+      if(x>xgrid2)
+        tdynorye=((x-1.0).*yegrid2 + (xgrid2-x).*yef)/(xgrid2-1.0);
+      end
+      
+      tdynoryegrid(i)=tdynorye;
+      
+    end
+    
+    ltdynoryegrid=log10(tdynoryegrid);
+
+  end
+  
 end
 
 

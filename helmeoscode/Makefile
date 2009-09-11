@@ -296,26 +296,26 @@ clean:
 jon_helm_programstartc.o: jon_helm_programstartc.c Makefile
 	$(CC)  -c $(CFLAGS)  jon_helm_programstartc.c
 
-jon_helm_programstart.o: jon_helm_programstart.f jon_helm.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek   kazeos.loopparms.dek  kaz_state.dek  kaz_fakestate.dek const.dek jon_helmstandard.o jon_eosfxt.o Makefile
+jon_helm_programstart.o: jon_helm_programstart.f jon_helm.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek kazeos4.dek   kazeos.loopparms.dek  kaz_state.dek  kaz_fakestate.dek const.dek jon_helmstandard.o jon_eosfxt.o Makefile
 	$(FC)  -c $(FFLAGS)  jon_helm_programstart.f
 
-jon_helm.o: jon_helm.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek   kazeos.loopparms.dek  kaz_state.dek  kaz_fakestate.dek const.dek jon_helmstandard.o jon_eosfxt.o Makefile
+jon_helm.o: jon_helm.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek kazeos4.dek   kazeos.loopparms.dek  kaz_state.dek  kaz_fakestate.dek const.dek jon_helmstandard.o jon_eosfxt.o Makefile
 	$(FC)  -c $(FFLAGS)  jon_helm.f
 
-jon_helm_azbarset.o: jon_helm_azbarset.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek   kazeos.loopparms.dek  kaz_state.dek const.dek Makefile
+jon_helm_azbarset.o: jon_helm_azbarset.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek kazeos4.dek   kazeos.loopparms.dek  kaz_state.dek const.dek Makefile
 	$(FC) $(FFLAGS) -c   jon_helm_azbarset.f
 
 
-jon_helm_stellarinput.o: jon_helm_stellarinput.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek   kazeos.loopparms.dek  kaz_state.dek const.dek jon_helmstandard.o jon_eosfxt.o Makefile
+jon_helm_stellarinput.o: jon_helm_stellarinput.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek kazeos4.dek   kazeos.loopparms.dek  kaz_state.dek const.dek jon_helmstandard.o jon_eosfxt.o Makefile
 	$(FC) $(FFLAGS) -c   jon_helm_stellarinput.f
 
-jon_helm_computekazlike.o: jon_helm_computekazlike.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek   kazeos.loopparms.dek kaz_state.dek const.dek Makefile
+jon_helm_computekazlike.o: jon_helm_computekazlike.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek kazeos4.dek   kazeos.loopparms.dek kaz_state.dek const.dek Makefile
 	$(FC) $(FFLAGS) -c   jon_helm_computekazlike.f
 
-jon_helm_outputstyle.o: jon_helm_outputstyle.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek   kazeos.loopparms.dek  kaz_state.dek const.dek Makefile
+jon_helm_outputstyle.o: jon_helm_outputstyle.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek kazeos4.dek   kazeos.loopparms.dek  kaz_state.dek const.dek Makefile
 	$(FC) $(FFLAGS) -c   jon_helm_outputstyle.f
 
-jon_helmstandard.o: jon_helmstandard.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek   kazeos.loopparms.dek  kaz_state.dek const.dek Makefile
+jon_helmstandard.o: jon_helmstandard.f vector_eos.dek eosparms.f kazeos.dek kazeos1.dek kazeos2.dek kazeos3.dek kazeos4.dek   kazeos.loopparms.dek  kaz_state.dek const.dek Makefile
 	$(FC) $(FFLAGS) -c   jon_helmstandard.f
 
 jon_eosfxt.o: jon_eosfxt.f vector_eos.dek eosparms.f const.dek vector_sneos.dek eos_m4c.inc el_eos.inc force.inc maxwel.inc Makefile
