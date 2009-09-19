@@ -130,9 +130,9 @@ c     In this way the results from this call are actually more correct than usin
 
 
 c     Ensure that neutrino terms aren't there by getting rid of them if they are
-            ptot_row(jj) = ptot_row(jj) - p_nu
-            etot_row(jj) = etot_row(jj) - rho_nu/den_row(jj)
-            stot_row(jj) = stot_row(jj) - (kerg*s_nu)/den_row(jj)
+            ptot_row(jj) = ptot_row(jj) - p_nu_row(jj)
+            etot_row(jj) = etot_row(jj) - rho_nu_row(jj)
+            stot_row(jj) = stot_row(jj) - s_nu_row(jj)
 
 c     Convert HELM EOS format of _row -> kaz like format of variables
             call preparecall2kazeos(jj)
@@ -140,10 +140,20 @@ c     Convert HELM EOS format of _row -> kaz like format of variables
 c     Compute neutrino terms, perhaps iterating to get solution for a given optical depth or dynamical timescale
             call kaz_physics_neutrinos_etae(etae,etap,etan,etanu)
 
-            ptot_row(jj) = ptot_row(jj) + p_nu
-            etot_row(jj) = etot_row(jj) + rho_nu/den_row(jj)
+c     Convert neutrino stuff to HELM form from KAZ form
+c     erg/K/g
+            s_nu_row(jj) = kerg*s_nu/den_row(jj)
+c     erg/g
+            rho_nu_row(jj) = rho_nu/den_row(jj)
+c     same
+            p_nu_row(jj) = p_nu
+
+
+c     Now assign totals
+            ptot_row(jj) = ptot_row(jj) + p_nu_row(jj)
+            etot_row(jj) = etot_row(jj) + rho_nu_row(jj)
 c     entropy here is still in "HELM" form of erg/g/K
-            stot_row(jj) = stot_row(jj) + (kerg*s_nu)/den_row(jj)
+            stot_row(jj) = stot_row(jj) + s_nu_row(jj)
      
 c     NOTE: All non-HELM quantities (pure Kaz quantities) are stored in singles, so no need to have a global _row for each of these!
 c     That is, we just output singles just after this function is called
@@ -281,6 +291,12 @@ c     HELM total pressure
          u_tot = etot_row(jj)*den_row(jj)
 c     entropy density in erg/cc/K/kb = 1/cc
          s_tot = (stot_row(jj)/kerg)*den_row(jj)
+
+c     Convert neutrino stuff to Kaz form
+         s_nu = s_nu_row(jj)/kerg*den_row(jj)
+         rho_nu = rho_nu_row(jj)*den_row(jj)
+         p_nu = p_nu_row(jj)
+
       end if
 ccccccccccccccccccccccccccccccccccccccccccccc
 
@@ -296,6 +312,11 @@ c     HELM total pressure
          u_tot = etot_row(jj)*den_row(jj)
 c     entropy density in erg/cc/K/kb = 1/cc
          s_tot = (stot_row(jj)/kerg)*den_row(jj)
+
+c     Convert neutrino stuff to Kaz form
+         s_nu = s_nu_row(jj)/kerg*den_row(jj)
+         rho_nu = rho_nu_row(jj)*den_row(jj)
+         p_nu = p_nu_row(jj)
       end if
 ccccccccccccccccccccccccccccccccccccccccccccc
 
@@ -312,6 +333,11 @@ c     Kaz-like pressure (replace nucleon EOS)
          u_tot = etot_row(jj)*den_row(jj) - u_N + ukaz_N
 c     1/cc
          s_tot = (stot_row(jj)/kerg)*den_row(jj) - s_N + skaz_N
+
+c     Convert neutrino stuff to Kaz form
+         s_nu = s_nu_row(jj)/kerg*den_row(jj)
+         rho_nu = rho_nu_row(jj)*den_row(jj)
+         p_nu = p_nu_row(jj)
       end if
 
 ccccccccccccccccccccccccccccccccccccccccccccc
@@ -326,6 +352,11 @@ c     PWF pressure (replace all)
          u_tot = upwf_ele + upwf_rad + upwf_N
          
          s_tot = spwf_ele + spwf_rad + spwf_N
+
+c     Convert neutrino stuff to Kaz form
+         s_nu = s_nu_row(jj)/kerg*den_row(jj)
+         rho_nu = rho_nu_row(jj)*den_row(jj)
+         p_nu = p_nu_row(jj)
       end if
 
 

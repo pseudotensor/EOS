@@ -1406,9 +1406,9 @@ c     We want to use store_row_lsspecies() below, but first assign right-hand-si
 
          if(abar.gt.4.5) then
 c     call computemutotfit_xnuc0(den_row(),temp_row(loci),abar_row(loci))
-            xnut =1D-49
-            xprot =1D-49
-            xalfa = 1D-49
+            xnut =1D-150
+            xprot =1D-150
+            xalfa = 1D-150
             xh = 1.0d0
             a = abar
             x = zbar/abar
@@ -1423,7 +1423,7 @@ c     Note that etapls and etanls are set from "lsindex" unlike others, which me
             yefree = 0.5d0      !doesn't matter
             yebound = x
             yeheav = x
-            npratiofree = 1D-49
+            npratiofree = 1D-150
             npratiobound = 1.0d0-x
             npratiototal = npratiobound
             abarbound = abar
@@ -1432,8 +1432,8 @@ c     Note that etapls and etanls are set from "lsindex" unlike others, which me
             
             nptotal = nblocal/(1.0d0 + npratiototal)
             nntotal = nblocal - nptotal
-            npfree = 1D-49
-            nnfree = 1D-49
+            npfree = 1D-150
+            nnfree = 1D-150
             npbound = nptotal
             nnbound = nntotal
             npheav = nptotal
@@ -1441,11 +1441,11 @@ c     Note that etapls and etanls are set from "lsindex" unlike others, which me
 
          else if(abar.gt.3.5) then
 c     call computemutotfit_xnuc0(den_row(),temp_row(loci),abar_row(loci))
-            xnut =1D-49
-            xprot =1D-49
+            xnut =1D-150
+            xprot =1D-150
             xalfa = 1.0d0
-            xh = 1D-49
-            a = 1D-49
+            xh = 1D-150
+            a = 1D-150
             x = 0.50d0 ! doesn't matter
             muhat = abar
 
@@ -1459,7 +1459,7 @@ c     CHANGEMARK:
             yefree = 0.5d0      !doesn't matter
             yebound = x
             yeheav = 0.5d0 ! doesn't matter
-            npratiofree = 1D-49
+            npratiofree = 1D-150
             npratiobound = 1.0d0-x
             npratiototal = npratiobound
             abarbound = abar
@@ -1468,25 +1468,25 @@ c     CHANGEMARK:
             
             nptotal = nblocal/(1.0d0 + npratiototal)
             nntotal = nblocal - nptotal
-            npfree = 1D-49
-            nnfree = 1D-49
+            npfree = 1D-150
+            nnfree = 1D-150
             npbound = nptotal
             nnbound = nntotal
-            npheav = 1D-49
-            nnheav = 1D-49
+            npheav = 1D-150
+            nnheav = 1D-150
 
          else
 c     This extrapolation of etap and etan works unless in hydrogen region.  Just force etap=etan=0 if in that region where etae>>1
-            xnut = 1D-49
+            xnut = 1D-150
             xprot =1
-            xalfa = 1D-49
-            xh = 1D-49
-            a = 1D-49
+            xalfa = 1D-150
+            xh = 1D-150
+            a = 1D-150
             x = 0.5d0
             muhat = abar
 
-            etapls = 1D-49
-            etanls = 1D-49
+            etapls = 1D-150
+            etanls = 1D-150
 
 c     Assume beta equilibrium as valid at high temperatures
 c     see Kohri & Mineshige (2002)
@@ -1498,19 +1498,19 @@ c     Except sometimes assume degenerate nucleons at high density and low temp
 c     see Kohri & Mineshige (2002)
             if( (temp_row(loci) .lt. me*light2/kerg) .AND. (den_row(loci).gt. 1.0D10) ) then
                etanls = etae + (mn-mb)*light2
-               etapls = 1D-49
+               etapls = 1D-150
             end if
 
 
             xnuc = xnut + xprot
             yetot = zbar/abar
             yefree = zbar/abar
-            yebound = 1D-49
+            yebound = 1D-150
             yeheav = 0.5d0 !doesn't matter
             npratiofree = 1.0d0 - yefree
-            npratiobound = 1D-49
+            npratiobound = 1D-150
             npratiototal = npratiofree
-            abarbound = 1D-49
+            abarbound = 1D-150
 
             nblocal = (den_row(loci)/mb)
             
@@ -1518,10 +1518,10 @@ c     see Kohri & Mineshige (2002)
             nntotal = nblocal - nptotal
             npfree = nptotal
             nnfree = nntotal
-            npbound = 1D-49
-            nnbound = 1D-49
-            npheav = 1D-49
-            nnheav = 1D-49
+            npbound = 1D-150
+            nnbound = 1D-150
+            npheav = 1D-150
+            nnheav = 1D-150
 
          end if
 
@@ -1599,12 +1599,12 @@ c     Other things:
 cccccccccccccccccccccc
 c     Compute xalfa and xh
 c      if(abar.gt.4.5) then
-      xalfa = 1D-49
+      xalfa = 1D-150
       xh = (1.0d0-xnuc)
 c      else
 c     Can't make all alfa and get any Y_e and <A>, so create avoid and only make heavies for now
 c         xalfa = (1.0-xnuc)
-c         xh = 1D-49
+c         xh = 1D-150
 c      end if
 
 
@@ -1645,9 +1645,9 @@ c     Enforce Y_e consistency
 
 c         write(*,*) 'bada',abar_row(loci),xh,xnuc,xalfa,a
 c         write(*,*) 'xcheck',xnut+xprot+xalfa+xh
-c         xh = 1D-49
+c         xh = 1D-150
 c         xalfa = (1.0-xnuc)
-c         a=1D-49
+c         a=1D-150
 c      end if
 
       muhat = abar_row(loci)
@@ -1656,8 +1656,8 @@ c      end if
 
 c     This extrapolation of etap and etan works unless in hydrogen region.  Just force etap=etan=0 if in that region where etae>>1
 c     No non-nuclear \eta's
-      etapls = 1D-49
-      etanls = 1D-49
+      etapls = 1D-150
+      etanls = 1D-150
 
 c     Assume beta equilibrium as valid at high temperatures
 c     see Kohri & Mineshige (2002)
@@ -1669,7 +1669,7 @@ c     Except sometimes assume degenerate nucleons at high density and low temp
 c     see Kohri & Mineshige (2002)
       if( (temp_row(loci) .lt. me*light2/kerg) .AND. (den_row(loci).gt. 1.0D10) ) then
          etanls = etae + (mn-mb)*light2
-         etapls = 1D-49
+         etapls = 1D-150
       end if
 
 c     All same Y_e
