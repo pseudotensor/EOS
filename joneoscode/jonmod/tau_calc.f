@@ -55,7 +55,7 @@ c      real*8 ntaut_nue,ntaut_nuebar,ntautmu,ntauttau
 
 
 c     A small number to avoid division by 0
-      SMALL = 1D-50
+      SMALL = 1D-150
 
 
 
@@ -564,7 +564,7 @@ C======================================================================
 C============================= tau-calculation part=====================
 C======================================================================
 
-      SMALL = 1D-50
+      SMALL = 1D-150
       H = hcm
 c      T10=T11/1.d1
       T10=T11*10.0
@@ -903,14 +903,14 @@ c     New method that is easier to fix-up
 ccccccccccccccccccccccccc
 c     GODMARK: Need Sumi on whether below is correct -- how to define npfree from Xnut,Xprot?
 ccccccccccccccccccccccccc
-c      nbfree=dmax1(1D-30,(npfree*mp+nnfree*mn)/mb)
+c      nbfree=dmax1(1D-150,(npfree*mp+nnfree*mn)/mb)
 c See Shen guide just below equation 18 for definition of $n_b$
-      nbfree=dmax1(1D-30,(npfree+nnfree))
+      nbfree=dmax1(1D-150,(npfree+nnfree))
 c     Note that below is a *definition* for the mass-weighting used
 c     Presumes below is used really for number of free baryons but in "mass form" so that don't really need true total mass-energy
       rho10free=mb*nbfree/1.0D10
-c      nbfreenondeg=dmax1(1D-30,(mp*npfreenondeg+mn*nnfreenondeg)/mb)
-      nbfreenondeg=dmax1(1D-30,(npfreenondeg+nnfreenondeg))
+c      nbfreenondeg=dmax1(1D-150,(mp*npfreenondeg+mn*nnfreenondeg)/mb)
+      nbfreenondeg=dmax1(1D-150,(npfreenondeg+nnfreenondeg))
       rho10freenondeg=mb*nbfreenondeg/1.0D10
 
 c     Free (and non-degen) neutron fraction
@@ -2006,7 +2006,7 @@ c     1     )/(nminus_nue + nminus_nuebar + nminusmu + nminustau+SMALL)
 c     JCM: This is use to evolve Y_\nu, that only involves thermalizing electron types of neutrinos
 c     JCM: So for now just ignore \mu and \tau types
 c     Number-rate weighted mean free path (i.e. most important emission dominates estimate of \lambda)
-      ilambdaintot = 1D-49 + (
+      ilambdaintot = 1D-150 + (
      1     +nminus_nue/lambdain_nue
      1     +nminus_nuebar/lambdain_nuebar
      1     )/(nminus_nue + nminus_nuebar + SMALL)

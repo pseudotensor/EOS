@@ -716,7 +716,11 @@ function eos_extract()
     truentdynoryein=ntdynoryein;
   end
 
+
   %%%%%% Y_\nu
+  truentdynorynuoutnn=ntdynorynuoutnn;
+  truentdynorynuoutneut=ntdynorynuoutneut;
+  
   if(ntdynorynuoutnn>1 || ntdynorynuoutneut>1)
     bigntdynorynuin=ntdynorynuin;
     truentdynorynuin=ntdynorynuin;
@@ -727,12 +731,12 @@ function eos_extract()
     truentdynorynuin=1;
   end
   ntdynorynuin=1;
-  ntdynorynuout=1;
   ntdynorynuoutnn=1;
   ntdynorynuoutneut=1;
-
+  
+  
   %%%%%% H
-  if(nhcmoutnn>1 || nhcmoutneut>1 || ntdynorynuoutnn>1 || ntdynorynuoutneut>1)
+  if(nhcmoutnn>1 || nhcmoutneut>1 || truentdynorynuoutnn>1 || truentdynorynuoutneut>1)
     bignhcmin=nhcmin;
     truenhcmin=nhcmin;
   else
@@ -742,7 +746,6 @@ function eos_extract()
     truenhcmin=1;    
   end
   nhcmin=1; % not used because last variable that is always assumed to be read-in 1 element at a time
-  nhcmout=1;
   nhcmoutnn=1;
   nhcmoutneut=1;
 
@@ -3343,6 +3346,7 @@ function eos_extract()
               tdynoryemaxout=tdynoryemaxoutnn;
 
               ntdynorynuout=ntdynorynuoutnn;
+              truentdynorynuout=truentdynorynuoutnn;
               tdynorynuminout=tdynorynuminoutnn;
               tdynorynumaxout=tdynorynumaxoutnn;
 
@@ -3420,6 +3424,7 @@ function eos_extract()
               tdynoryemaxout=tdynoryemaxoutneut;
 
               ntdynorynuout=ntdynorynuoutneut;
+              truentdynorynuout=truentdynorynuoutneut;
               tdynorynuminout=tdynorynuminoutneut;
               tdynorynumaxout=tdynorynumaxoutneut;
 
@@ -4532,6 +4537,7 @@ function eos_extract()
           tdynoryemaxout=tdynoryemaxoutnn;
 
           ntdynorynuout=ntdynorynuoutnn;
+          truentdynorynuout=truentdynorynuoutnn;
           tdynorynuminout=tdynorynuminoutnn;
           tdynorynumaxout=tdynorynumaxoutnn;
 
@@ -4608,6 +4614,7 @@ function eos_extract()
           tdynoryemaxout=tdynoryemaxoutneut;
 
           ntdynorynuout=ntdynorynuoutneut;
+          truentdynorynuout=truentdynorynuoutneut;
           tdynorynuminout=tdynorynuminoutneut;
           tdynorynumaxout=tdynorynumaxoutneut;
 
@@ -4746,7 +4753,7 @@ function eos_extract()
         % note that currently different size for "in" and "out" for Ynu,H are not because of interpolation but because of including or not that dimension.  So it's either total number as in original table or just n=1.
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',ntdynoryeout,ltdynoryeminout,ltdynoryemaxout,stepltdynoryeout,baseltdynorye,linearoffsetltdynorye);
         
-        fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',ntdynorynuout,ltdynorynuminout,ltdynorynumaxout,stepltdynorynuout,baseltdynorynu,linearoffsetltdynorynu);
+        fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',truentdynorynuout,ltdynorynuminout,ltdynorynumaxout,stepltdynorynuout,baseltdynorynu,linearoffsetltdynorynu);
         fprintf(fid5,'%d %21.15g %21.15g %21.15g %21.15g %21.15g\n',nhcmout,lhcmminout,lhcmmaxout,steplhcmout,baselhcm,linearoffsetlhcm);
 
         fprintf(fid5,'%21.15g %21.15g %21.15g\n',lsoffset,fakelsoffset,fakeentropylsoffset);
@@ -4779,7 +4786,7 @@ function eos_extract()
 
   fclose('all');
   
-  fprintf(fiddebug,'Done closing all files.');
+  fprintf('Done closing all files.');
 
 
   % BELOW FOR in linux
