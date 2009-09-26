@@ -83,7 +83,7 @@ c     Do not iterate, just solve and force tauiter==0 so pure thermalization
      1     )
 c     Assign from one global to another
 c     Ynuthermal for method that includes H in table
-c     AND Ynuthermal is used to set blocking factor as relative to Ynu0 *always*.  Never use optical depth version.
+c     AND Ynuthermal0 is used to set blocking factor as relative to Ynu0 *always*.  Never use optical depth version.
       Ynuthermal0=Ynu0
       Ynuthermal=Ynu
 c     Need 0 version of number densities to compute Ynuthermal in HARM and below recomputation of Ynuthermal
@@ -2254,7 +2254,7 @@ c     Outputs not used (at all!) if whichdatatype==4 (i.e. whichhcmmethod==0)
      1     ,lambdatot,lambdaintot
      1     ,tauphotonohcm, tauphotonabsohcm
      1     ,nnueth0,nnuebarth0
-     1     ,Qphoton,Qm,graddotrhouye,Tthermaltot,Tdifftot,rho_nu,p_nu,s_nu,Ynulocal,Ynuthermal ! outputs
+     1     ,Qphoton,Qm,graddotrhouye,Tthermaltot,Tdifftot,rho_nu,p_nu,s_nu,Ynulocal,Ynuthermal,Ynuthermal0 ! outputs
      1     ,Enuglobal,Enueglobal,Enuebarglobal ! more outputs
      1     )
 

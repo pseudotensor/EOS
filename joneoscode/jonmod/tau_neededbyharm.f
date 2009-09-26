@@ -1,6 +1,7 @@
 
 
 c     f2c -f -P tau_neededbyharm.f ; cp tau_neededbyharm.c tau_neededbyharm.P ~/latestcode
+c     Currently, ki-rh42 does not have f2c, so use ki-rh39.
 
 
 c     Duplicates those operations from tau_calc() that involve things dependent upon hcm so that hcm isn't independent variable in table
@@ -18,7 +19,7 @@ c     ENSURE this list is the same for how used in tau_calc.f
      1     ,lambdatot,lambdaintot
      1     ,tauphotonohcm, tauphotonabsohcm
      1     ,nnueth0,nnuebarth0
-     1     ,Qphoton,Qm,graddotrhouye,Tthermaltot,Tdifftot,rho_nu,p_nu,s_nu,Ynulocal,Ynuthermal ! outputs
+     1     ,Qphoton,Qm,graddotrhouye,Tthermaltot,Tdifftot,rho_nu,p_nu,s_nu,Ynulocal,Ynuthermal,Ynuthermal0 ! outputs
      1     ,Enu,Enue,Enuebar ! more outputs
      1     )
       
@@ -40,7 +41,7 @@ c     Passed to here
      1     ,lambdatot,lambdaintot
      1     ,tauphotonohcm, tauphotonabsohcm
      1     ,nnueth0,nnuebarth0
-     1     ,Qphoton,Qm,graddotrhouye,Tthermaltot,Tdifftot,rho_nu,p_nu,s_nu,Ynulocal,Ynuthermal ! outputs
+     1     ,Qphoton,Qm,graddotrhouye,Tthermaltot,Tdifftot,rho_nu,p_nu,s_nu,Ynulocal,Ynuthermal,Ynuthermal0 ! outputs
      1     ,Enu,Enue,Enuebar ! more outputs
 
 c     Locals
@@ -118,6 +119,14 @@ c     Set some equivalences
 
       qtauttauohcm=qtautmuohcm
       qtauatauohcm=qtauamuohcm
+
+
+
+
+c     Non-optical depth version of Ynuthermal:
+      Ynuthermal0 = (n_nueth0-n_nuebarth0)/nb
+
+
 
 
 c     Set 2-stream approximation solutions
@@ -236,7 +245,6 @@ c     Thermalized faction Y_\nu
 c     can be negative due to optical depth supression
       Ynuthermal = (n_nueth-n_nuebarth)/nb
 
-
       Tdifftot =tdifffromlambda(clight,H,lambdatot)
       Tthermaltot =tdifffromlambda(clight,H,lambdaintot)
 
@@ -250,6 +258,8 @@ c     These energies are used for neutrino annihilation heating rates
 
       return
       end
+
+
 
 
 
@@ -377,6 +387,50 @@ c     [k_b] form is s_nu/(rho/m_b) is "per baryon" entropy for rho and S given i
 
 
 
+
+
+c     Compute Ynuthermal0.  No optical depth corrections.
+C======================================================================
+c     ENSURE this list is the same for how used in tau_calc.f
+      subroutine compute_ynuthermal0_fromhcm(
+     1     clight,mb
+     1     ,rhob
+     1     ,nnueth0,nnuebarth0
+     1     ,Ynuthermal0 ! outputs
+     1     )
+      
+C======================================================================
+      implicit none
+
+
+c     Passed to here
+      real*8 clight,mb
+     !     ,rhob
+     1     ,nnueth0,nnuebarth0
+     1     ,Ynuthermal0 ! outputs
+
+c     Locals
+      real*8 H
+      real*8 n_nueth0,n_nuebarth0
+
+      real*8 nb
+      real*8 SMALL
+
+
+c     Set some things
+      nb = rhob/mb
+      SMALL = 1D-150
+
+
+      n_nueth0=nnueth0
+      n_nuebarth0=nnuebarth0
+
+c     Thermalized faction Y_\nu
+      Ynuthermal0 = (n_nueth0-n_nuebarth0)/nb
+
+
+      return
+      end
 
 
 
