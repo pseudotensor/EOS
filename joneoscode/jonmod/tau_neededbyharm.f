@@ -410,7 +410,6 @@ c     Passed to here
      1     ,Ynuthermal0 ! outputs
 
 c     Locals
-      real*8 H
       real*8 n_nueth0,n_nuebarth0
 
       real*8 nb
